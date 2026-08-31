@@ -11,8 +11,8 @@ const THICKNESS := 0.08
 ##
 ## 갈림길이 거짓일 때 참 쪽 배선이 흐려지는 것이 눈에 보여야 한다.
 ## 왜 거짓인지는 말하지 않는다. 흐르는지 아닌지만 보여준다.
-const LIVE_COLOUR := Color(1.00, 0.90, 0.50)
-const IDLE_COLOUR := Color(0.45, 0.45, 0.42)
+const LIVE_COLOUR := Palette.WIRE_LIVE
+const IDLE_COLOUR := Palette.WIRE_IDLE
 
 var _circuit: Circuit
 var _node: MultiMeshInstance3D

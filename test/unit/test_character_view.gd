@@ -55,3 +55,21 @@ func test_view_never_writes_to_the_character() -> void:
     view.sync(0.5)
     assert_bool(character.cell() == Vector3i(4, 5, 2)).is_true()
     assert_bool(character.facing == Vector3i(1, 0, 0)).is_true()
+
+
+func test_the_head_is_bigger_than_the_body() -> void:
+    # 치비 비율. 머리가 커야 밝고 경쾌한 톤에 맞는다.
+    var view := _view(_at(Vector3i(0, 0, 1)))
+    assert_float(view.head_radius()).is_greater(view.body_radius())
+
+
+func test_the_head_sits_on_top_of_the_body() -> void:
+    var view := _view(_at(Vector3i(0, 0, 1)))
+    assert_float(view.head_height()).is_greater(view.body_height())
+
+
+func test_the_whole_body_fits_in_two_cells() -> void:
+    var view := _view(_at(Vector3i(0, 0, 1)))
+    var top := view.head_height() + view.head_radius()
+    var bottom := view.body_height() - CharacterView.BODY_HEIGHT * 0.5
+    assert_float(top - bottom).is_less_equal(CharacterState.HEIGHT * SimViewCoords.CELL_SIZE)
