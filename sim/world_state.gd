@@ -14,11 +14,19 @@ var tick: int = 0
 ## 이 월드의 유일한 난수원.
 var rng: SimRng
 
+## 섬의 복셀 격자.
+var grid: VoxelGrid
+
+## 플레이어 캐릭터.
+var character: CharacterState
+
 var _values: Dictionary[StringName, int] = {}
 
 
 func _init(p_rng: SimRng = null) -> void:
     rng = p_rng if p_rng != null else SimRng.new(0)
+    grid = VoxelGrid.new()
+    character = CharacterState.new()
 
 
 func set_value(key: StringName, value: int) -> void:
@@ -74,6 +82,12 @@ func to_hash_fields() -> Array:
         ["tick", tick],
         ["rng.seed", rng.get_seed()],
         ["rng.state", rng.get_state()],
+        ["grid.digest", grid.digest()],
+        ["character.x", character.position.x],
+        ["character.y", character.position.y],
+        ["character.z", character.position.z],
+        ["character.facing.x", character.facing.x],
+        ["character.facing.y", character.facing.y],
         ["values.count", _values.size()],
     ]
     for key in sorted_keys():
