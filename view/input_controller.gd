@@ -19,10 +19,21 @@ const MOVE_ACTIONS: Array = [
 
 const ACTION_PLACE := &"place_block"
 const ACTION_BREAK := &"break_block"
+const ACTION_LINK := &"link_parts"
+const ACTION_TARGET := &"cycle_target"
 
 ## 손에 쥘 수 있는 재료. 고를 수 있는 순서대로.
-const PLACEABLE: Array[int] = [BlockType.GROUND, BlockType.STONE, BlockType.WOOD]
-const SELECT_ACTIONS: Array = [&"select_1", &"select_2", &"select_3"]
+const PLACEABLE: Array[int] = [
+    BlockType.GROUND,
+    BlockType.STONE,
+    BlockType.WOOD,
+    BlockType.DOOR_CLOSED,
+    BlockType.DETECTOR,
+    BlockType.ACTUATOR,
+]
+const SELECT_ACTIONS: Array = [
+    &"select_1", &"select_2", &"select_3", &"select_4", &"select_5", &"select_6",
+]
 
 ## 키를 누르고 있을 때 한 걸음마다 두는 간격(틱).
 const REPEAT_TICKS := 4
@@ -31,6 +42,9 @@ var _simulation: Simulation
 var _selected: int = BlockType.WOOD
 var _next_move_tick: int = 0
 var _target: BlockTarget = null
+var _detector_target: int = DetectorPart.TARGET_PLAYER
+var _link_source: Vector3i = Vector3i.ZERO
+var _has_link_source: bool = false
 
 
 func bind(simulation: Simulation) -> void:
@@ -88,10 +102,56 @@ func place_cell() -> Vector3i:
     return _facing_cell()
 
 
+## 감지기가 무엇을 볼지. 놓기 전에 고른다.
+func detector_target() -> int:
+    return _detector_target
+
+
+func cycle_detector_target() -> void:
+    _detector_target = (_detector_target + 1) % DetectorPart.TARGET_COUNT
+
+
+func has_link_source() -> bool:
+    return _has_link_source
+
+
+func link_source() -> Vector3i:
+    return _link_source
+
+
+func clear_link_source() -> void:
+    _has_link_source = false
+
+
+## 부품 둘을 배선으로 잇는다. 처음 누르면 출발점, 다음에 누르면 도착점이다.
+func submit_link() -> void:
+    if _simulation == null:
+        return
+
+    var cell := break_cell()
+    if not _simulation.state.circuit.has_part(cell):
+        clear_link_source()
+        return
+
+    if not _has_link_source:
+        _link_source = cell
+        _has_link_source = true
+        return
+
+    if _link_source != cell:
+        _simulation.submit(ConnectPartsCommand.create(_link_source, cell))
+    clear_link_source()
+
+
 func submit_place() -> void:
     if _simulation == null:
         return
-    _simulation.submit(PlaceBlockCommand.create(place_cell(), _selected))
+
+    var cell := place_cell()
+    if BlockType.is_part(_selected):
+        _simulation.submit(PlacePartCommand.create(cell, _selected, _detector_target))
+        return
+    _simulation.submit(PlaceBlockCommand.create(cell, _selected))
 
 
 func submit_break() -> void:
@@ -120,6 +180,11 @@ static func install_actions() -> void:
     _install(&"select_1", [KEY_1])
     _install(&"select_2", [KEY_2])
     _install(&"select_3", [KEY_3])
+    _install(&"select_4", [KEY_4])
+    _install(&"select_5", [KEY_5])
+    _install(&"select_6", [KEY_6])
+    _install(ACTION_LINK, [KEY_R])
+    _install(ACTION_TARGET, [KEY_T])
 
 
 static func _install(action: StringName, keys: Array) -> void:
@@ -152,6 +217,10 @@ func _poll_blocks() -> void:
         submit_place()
     if Input.is_action_just_pressed(ACTION_BREAK):
         submit_break()
+    if Input.is_action_just_pressed(ACTION_LINK):
+        submit_link()
+    if Input.is_action_just_pressed(ACTION_TARGET):
+        cycle_detector_target()
 
 
 func _poll_selection() -> void:

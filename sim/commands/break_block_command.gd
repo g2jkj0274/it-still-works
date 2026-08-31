@@ -24,12 +24,15 @@ func get_type() -> StringName:
 func apply(state: WorldState) -> void:
     if VoxelGrid.is_bedrock(position):
         return
-    if not state.grid.is_solid(position):
+    var broken := state.grid.get_block(position)
+    if not BlockType.is_breakable(broken):
         return
 
-    var broken := state.grid.get_block(position)
     state.grid.set_block(position, BlockType.EMPTY)
-    state.inventory.add(broken, 1)
+    state.inventory.add(BlockType.material_of(broken), 1)
+
+    # 부품을 걷어내면 거기 이어진 배선도 함께 사라진다.
+    state.circuit.remove_part(position)
 
 
 func write_payload(data: Dictionary) -> void:

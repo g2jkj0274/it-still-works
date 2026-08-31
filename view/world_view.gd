@@ -13,6 +13,10 @@ const _COLOURS: Dictionary[int, Color] = {
     BlockType.GROUND: Color(0.56, 0.78, 0.51),
     BlockType.STONE: Color(0.62, 0.67, 0.75),
     BlockType.WOOD: Color(0.76, 0.60, 0.44),
+    BlockType.DOOR_CLOSED: Color(0.85, 0.66, 0.42),
+    BlockType.DOOR_OPEN: Color(0.85, 0.66, 0.42, 0.30),
+    BlockType.DETECTOR: Color(0.58, 0.74, 0.86),
+    BlockType.ACTUATOR: Color(0.88, 0.66, 0.72),
 }
 
 var _grid: VoxelGrid

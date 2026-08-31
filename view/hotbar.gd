@@ -6,7 +6,7 @@ extends CanvasLayer
 ## 인벤토리와 입력을 읽기만 한다. 여기서 개수를 고치지 않는다.
 ## 재료 이름은 게임 말로만 적는다. 프로그래밍 용어는 화면에 나오지 않는다.
 
-const SLOT_SIZE := Vector2(104, 44)
+const SLOT_SIZE := Vector2(88, 44)
 const SLOT_GAP := 8.0
 const BOTTOM_MARGIN := 24.0
 
@@ -18,6 +18,9 @@ const _NAMES: Dictionary[int, String] = {
     BlockType.GROUND: "흙",
     BlockType.STONE: "돌",
     BlockType.WOOD: "나무",
+    BlockType.DOOR_CLOSED: "문",
+    BlockType.DETECTOR: "눈",
+    BlockType.ACTUATOR: "손",
 }
 
 var _inventory: Inventory

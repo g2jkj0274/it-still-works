@@ -76,6 +76,11 @@ func set_block(pos: Vector3i, type: int) -> bool:
     return true
 
 
+## 아직 아무것도 없는 칸인가. 열린 문은 지나갈 수 있지만 빈 칸은 아니다.
+func is_empty_cell(pos: Vector3i) -> bool:
+    return is_inside(pos) and get_block(pos) == BlockType.EMPTY
+
+
 func is_solid(pos: Vector3i) -> bool:
     return BlockType.is_solid(get_block(pos))
 

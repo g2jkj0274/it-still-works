@@ -148,3 +148,74 @@ func test_targeted_break_reaches_a_block_that_is_not_in_front() -> void:
     controller.submit_break()
     sim.advance(2)
     assert_bool(sim.state.grid.is_solid(aimed)).is_false()
+
+
+func test_choosing_a_part_places_a_part_not_a_block() -> void:
+    var sim := _sim()
+    var controller := _controller(sim)
+    controller.select_block(BlockType.DETECTOR)
+    var cell := sim.state.character.facing_cell()
+
+    controller.submit_place()
+    sim.advance(2)
+    assert_int(sim.state.grid.get_block(cell)).is_equal(BlockType.DETECTOR)
+    assert_bool(sim.state.circuit.has_part(cell)).is_true()
+
+
+func test_the_detector_watches_what_was_chosen() -> void:
+    var sim := _sim()
+    var controller := _controller(sim)
+    assert_int(controller.detector_target()).is_equal(DetectorPart.TARGET_PLAYER)
+
+    controller.cycle_detector_target()
+    var chosen := controller.detector_target()
+    assert_int(chosen).is_not_equal(DetectorPart.TARGET_PLAYER)
+
+    controller.select_block(BlockType.DETECTOR)
+    var cell := sim.state.character.facing_cell()
+    controller.submit_place()
+    sim.advance(2)
+    assert_int((sim.state.circuit.part_at(cell) as DetectorPart).target).is_equal(chosen)
+
+
+func test_target_choice_wraps_around() -> void:
+    var controller := _controller(_sim())
+    for i in DetectorPart.TARGET_COUNT:
+        controller.cycle_detector_target()
+    assert_int(controller.detector_target()).is_equal(DetectorPart.TARGET_PLAYER)
+
+
+func test_wiring_needs_two_presses() -> void:
+    var sim := _sim()
+    var controller := _controller(sim)
+    var first := Vector3i(32, 31, 2)
+    var second := Vector3i(33, 31, 2)
+    sim.state.circuit.add_part(DetectorPart.create(first, DetectorPart.TARGET_PLAYER))
+    sim.state.circuit.add_part(ActuatorPart.create(second))
+
+    controller.set_target(_target_on(first, VoxelGrid.UP))
+    controller.submit_link()
+    assert_bool(controller.has_link_source()).is_true()
+    assert_int(sim.state.circuit.link_count()).is_equal(0)
+
+    controller.set_target(_target_on(second, VoxelGrid.UP))
+    controller.submit_link()
+    sim.advance(2)
+    assert_bool(controller.has_link_source()).is_false()
+    assert_bool(sim.state.circuit.is_linked(first, second)).is_true()
+
+
+func test_pointing_at_nothing_cancels_the_wiring() -> void:
+    var sim := _sim()
+    var controller := _controller(sim)
+    var part := Vector3i(32, 31, 2)
+    sim.state.circuit.add_part(DetectorPart.create(part, DetectorPart.TARGET_PLAYER))
+
+    controller.set_target(_target_on(part, VoxelGrid.UP))
+    controller.submit_link()
+    assert_bool(controller.has_link_source()).is_true()
+
+    controller.set_target(_target_on(Vector3i(20, 20, 1), VoxelGrid.UP))
+    controller.submit_link()
+    assert_bool(controller.has_link_source()).is_false()
+    assert_int(sim.state.circuit.link_count()).is_equal(0)

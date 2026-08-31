@@ -26,7 +26,7 @@ func get_type() -> StringName:
 func apply(state: WorldState) -> void:
     if not BlockType.is_solid(block_type):
         return
-    if not state.grid.is_free(position):
+    if not state.grid.is_empty_cell(position):
         return
     if state.character.occupies(position):
         return

@@ -69,6 +69,7 @@ func _build_steps() -> Array:
         ["04_place", _place],
         ["05_break", _break],
         ["06_build_tower", _build_tower],
+        ["07_auto_door", _build_auto_door],
     ]
 
 
@@ -103,6 +104,26 @@ func _build_tower() -> void:
     for i in 3:
         _main.simulation.submit_at(
             PlaceBlockCommand.create(base + VoxelGrid.UP * i, BlockType.GROUND), start + i * 2)
+
+
+## 감지기 → 작동기 → 문. 스펙 5절의 첫 번째 조합이 화면에 나오는지 본다.
+func _build_auto_door() -> void:
+    var state: Object = _main.simulation.state
+    state.inventory.add(BlockType.DOOR_CLOSED, 2)
+    state.inventory.add(BlockType.DETECTOR, 2)
+    state.inventory.add(BlockType.ACTUATOR, 2)
+
+    var here: Vector3i = state.character.cell()
+    var door := here + Vector3i(2, 0, 0)
+    var actuator := here + Vector3i(3, 0, 0)
+    var detector := here + Vector3i(4, 0, 0)
+
+    var start := _main.simulation.current_tick()
+    _main.simulation.submit_at(PlaceBlockCommand.create(door, BlockType.DOOR_CLOSED), start)
+    _main.simulation.submit_at(PlacePartCommand.create(actuator, BlockType.ACTUATOR), start + 2)
+    _main.simulation.submit_at(
+        PlacePartCommand.create(detector, BlockType.DETECTOR, DetectorPart.TARGET_PLAYER), start + 4)
+    _main.simulation.submit_at(ConnectPartsCommand.create(detector, actuator), start + 6)
 
 
 func _begin_step() -> void:

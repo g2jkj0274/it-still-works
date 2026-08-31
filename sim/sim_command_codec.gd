@@ -34,4 +34,10 @@ static func create_by_type(type: StringName) -> SimCommand:
         return PlaceBlockCommand.new()
     if type == BreakBlockCommand.TYPE:
         return BreakBlockCommand.new()
+    if type == PlacePartCommand.TYPE:
+        return PlacePartCommand.new()
+    if type == ConnectPartsCommand.TYPE:
+        return ConnectPartsCommand.new()
+    if type == DisconnectPartsCommand.TYPE:
+        return DisconnectPartsCommand.new()
     return null
