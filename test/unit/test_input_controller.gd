@@ -15,6 +15,8 @@ func _controller(sim: Simulation) -> InputController:
 func _sim() -> Simulation:
     var sim := Simulation.new(1)
     IslandBuilder.populate(sim.state)
+    for type in InputController.PLACEABLE:
+        sim.state.inventory.add(type, 4)
     return sim
 
 
@@ -41,8 +43,8 @@ func test_submitting_a_move_only_queues_a_command() -> void:
     assert_int(sim.queue.size()).is_equal(1)
     assert_str(sim.state_hash()).is_equal(before)
 
-    sim.step()
-    assert_bool(sim.state.character.position == IslandBuilder.SPAWN + Vector3i(0, -1, 0)).is_true()
+    sim.advance(10)
+    assert_bool(sim.state.character.cell() == IslandBuilder.SPAWN + Vector3i(0, -1, 0)).is_true()
 
 
 func test_place_targets_the_cell_in_front() -> void:
@@ -52,7 +54,7 @@ func test_place_targets_the_cell_in_front() -> void:
     var target := sim.state.character.facing_cell()
 
     controller.submit_place()
-    sim.step()
+    sim.advance(2)
     assert_int(sim.state.grid.get_block(target)).is_equal(BlockType.STONE)
 
 
@@ -63,7 +65,7 @@ func test_break_targets_the_cell_in_front() -> void:
     sim.state.grid.set_block(target, BlockType.WOOD)
 
     controller.submit_break()
-    sim.step()
+    sim.advance(2)
     assert_bool(sim.state.grid.is_solid(target)).is_false()
 
 
@@ -93,3 +95,56 @@ func test_installing_twice_does_not_duplicate_events() -> void:
     var count := InputMap.action_get_events(action).size()
     InputController.install_actions()
     assert_int(InputMap.action_get_events(action).size()).is_equal(count)
+
+
+func _target_on(cell: Vector3i, normal: Vector3i) -> BlockTarget:
+    var target := BlockTarget.new()
+    target.hit = true
+    target.cell = cell
+    target.normal = normal
+    return target
+
+
+func test_without_a_target_the_cell_in_front_is_used() -> void:
+    var sim := _sim()
+    var controller := _controller(sim)
+    controller.clear_target()
+    assert_bool(controller.has_target()).is_false()
+    assert_bool(controller.break_cell() == sim.state.character.facing_cell()).is_true()
+    assert_bool(controller.place_cell() == sim.state.character.facing_cell()).is_true()
+
+
+func test_breaking_uses_the_targeted_cell() -> void:
+    var sim := _sim()
+    var controller := _controller(sim)
+    var aimed := IslandBuilder.SPAWN + Vector3i(2, 0, -1)
+    controller.set_target(_target_on(aimed, VoxelGrid.UP))
+    assert_bool(controller.break_cell() == aimed).is_true()
+
+
+func test_placing_uses_the_face_of_the_targeted_cell() -> void:
+    var sim := _sim()
+    var controller := _controller(sim)
+    var aimed := IslandBuilder.SPAWN + Vector3i(2, 0, -1)
+    controller.set_target(_target_on(aimed, VoxelGrid.UP))
+    assert_bool(controller.place_cell() == aimed + VoxelGrid.UP).is_true()
+
+
+func test_a_missed_target_falls_back_to_the_cell_in_front() -> void:
+    var sim := _sim()
+    var controller := _controller(sim)
+    controller.set_target(BlockTarget.new())
+    assert_bool(controller.has_target()).is_false()
+    assert_bool(controller.break_cell() == sim.state.character.facing_cell()).is_true()
+
+
+func test_targeted_break_reaches_a_block_that_is_not_in_front() -> void:
+    var sim := _sim()
+    var controller := _controller(sim)
+    var aimed := IslandBuilder.SPAWN + Vector3i(3, 3, -1)
+    assert_bool(sim.state.grid.is_solid(aimed)).is_true()
+
+    controller.set_target(_target_on(aimed, VoxelGrid.UP))
+    controller.submit_break()
+    sim.advance(2)
+    assert_bool(sim.state.grid.is_solid(aimed)).is_false()

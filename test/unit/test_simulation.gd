@@ -86,26 +86,26 @@ func _standing_sim() -> Simulation:
     for y in 8:
         for x in 8:
             sim.state.grid.set_block(Vector3i(x, y, 0), BlockType.GROUND)
-    sim.state.character.position = Vector3i(4, 4, 1)
+    sim.state.character.place_at(Vector3i(4, 4, 1))
     return sim
 
 
 func test_move_command_moves_the_character_on_step() -> void:
     var sim := _standing_sim()
     sim.submit(MoveCharacterCommand.create(Vector3i(1, 0, 0)))
-    sim.step()
-    assert_bool(sim.state.character.position == Vector3i(5, 4, 1)).is_true()
+    sim.advance(10)
+    assert_bool(sim.state.character.cell() == Vector3i(5, 4, 1)).is_true()
 
 
 func test_character_settles_when_the_ground_is_removed() -> void:
     # 발밑이 사라지면 다음 틱에 내려앉는다. 공중에 남지 않는다.
     var sim := _standing_sim()
-    sim.state.character.position = Vector3i(4, 4, 4)
-    sim.step()
-    assert_bool(sim.state.character.position == Vector3i(4, 4, 1)).is_true()
+    sim.state.character.place_at(Vector3i(4, 4, 4))
+    sim.advance(30)
+    assert_bool(sim.state.character.cell() == Vector3i(4, 4, 1)).is_true()
 
 
 func test_settled_character_stays_put() -> void:
     var sim := _standing_sim()
     sim.advance(5)
-    assert_bool(sim.state.character.position == Vector3i(4, 4, 1)).is_true()
+    assert_bool(sim.state.character.cell() == Vector3i(4, 4, 1)).is_true()

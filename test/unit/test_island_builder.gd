@@ -61,7 +61,7 @@ func test_spawn_is_standable() -> void:
 func test_populate_places_the_character_at_spawn() -> void:
     var state := WorldState.new(SimRng.new(1))
     IslandBuilder.populate(state)
-    assert_bool(state.character.position == IslandBuilder.SPAWN).is_true()
+    assert_bool(state.character.cell() == IslandBuilder.SPAWN).is_true()
     assert_bool(state.grid.is_solid(Vector3i(32, 32, 0))).is_true()
 
 

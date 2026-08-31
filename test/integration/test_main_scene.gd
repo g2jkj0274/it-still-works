@@ -14,6 +14,8 @@ func _main() -> GameMain:
     var main: GameMain = auto_free((load(MAIN_SCENE) as PackedScene).instantiate())
     add_child(main)
     main.set_physics_process(false)
+    for type in InputController.PLACEABLE:
+        main.simulation.state.inventory.add(type, 8)
     return main
 
 
@@ -36,7 +38,7 @@ func test_simulation_is_never_advanced_from_process() -> void:
 func test_scene_builds_the_island_and_spawns_the_character() -> void:
     var main := _main()
     assert_object(main.simulation).is_not_null()
-    assert_bool(main.simulation.state.character.position == IslandBuilder.SPAWN).is_true()
+    assert_bool(main.simulation.state.character.cell() == IslandBuilder.SPAWN).is_true()
     assert_bool(main.simulation.state.grid.is_solid(Vector3i(32, 32, 0))).is_true()
 
 
@@ -55,23 +57,23 @@ func test_camera_is_isometric_and_starts_on_the_character() -> void:
 
 func test_walking_moves_the_character_and_the_view_follows() -> void:
     var main := _main()
-    var start := main.simulation.state.character.position
+    var start := main.simulation.state.character.cell()
     var start_screen := main.character_view().position
 
     main.input_controller().submit_move(Vector3i(0, -1, 0))
-    _advance(main, 1)
+    _advance(main, 10)
 
-    assert_bool(main.simulation.state.character.position == start + Vector3i(0, -1, 0)).is_true()
+    assert_bool(main.simulation.state.character.cell() == start + Vector3i(0, -1, 0)).is_true()
     assert_bool(main.character_view().position.is_equal_approx(start_screen)).is_false()
 
 
 func test_walking_repeatedly_covers_ground() -> void:
     var main := _main()
-    var start := main.simulation.state.character.position
+    var start := main.simulation.state.character.cell()
     for i in 5:
         main.input_controller().submit_move(Vector3i(1, 0, 0))
-        _advance(main, 1)
-    assert_int(main.simulation.state.character.position.x).is_equal(start.x + 5)
+        _advance(main, 10)
+    assert_int(main.simulation.state.character.cell().x).is_equal(start.x + 5)
 
 
 func test_placing_a_block_changes_the_world_and_the_drawing() -> void:
@@ -81,7 +83,7 @@ func test_placing_a_block_changes_the_world_and_the_drawing() -> void:
     var drawn := main.world_view().instance_count(BlockType.STONE)
 
     main.input_controller().submit_place()
-    _advance(main, 1)
+    _advance(main, 2)
 
     assert_int(main.simulation.state.grid.get_block(target)).is_equal(BlockType.STONE)
     assert_int(main.world_view().instance_count(BlockType.STONE)).is_equal(drawn + 1)
@@ -93,11 +95,11 @@ func test_breaking_a_block_changes_the_world_and_the_drawing() -> void:
     var target := main.simulation.state.character.facing_cell()
 
     main.input_controller().submit_place()
-    _advance(main, 1)
+    _advance(main, 2)
     assert_bool(main.simulation.state.grid.is_solid(target)).is_true()
 
     main.input_controller().submit_break()
-    _advance(main, 1)
+    _advance(main, 2)
     assert_bool(main.simulation.state.grid.is_solid(target)).is_false()
 
 
@@ -116,3 +118,35 @@ func test_input_only_queues_commands() -> void:
     main.input_controller().submit_place()
     assert_int(main.simulation.queue.size()).is_equal(2)
     assert_str(main.simulation.state_hash()).is_equal(before)
+
+
+func test_aiming_at_the_screen_centre_finds_a_block() -> void:
+    var main := _main()
+    var centre := Vector2(main.get_viewport().get_visible_rect().size) * 0.5
+    var target: BlockTarget = main.pick_target(centre)
+    assert_object(target).is_not_null()
+    assert_bool(target.hit).is_true()
+    assert_bool(main.simulation.state.grid.is_solid(target.cell)).is_true()
+
+
+func test_aiming_shows_the_highlight_on_the_targeted_cell() -> void:
+    var main := _main()
+    var centre := Vector2(main.get_viewport().get_visible_rect().size) * 0.5
+    var target: BlockTarget = main.pick_target(centre)
+
+    main.input_controller().set_target(target)
+    main.block_highlight().show_cell(target.cell)
+    assert_bool(main.block_highlight().is_showing()).is_true()
+    assert_bool(main.block_highlight().targeted_cell() == target.cell).is_true()
+
+
+func test_the_highlight_starts_hidden() -> void:
+    assert_bool(_main().block_highlight().is_showing()).is_false()
+
+
+func test_out_of_reach_targets_are_refused() -> void:
+    var main := _main()
+    var far := BlockTarget.new()
+    far.hit = true
+    far.cell = Vector3i(2, 2, 1)
+    assert_bool(far.is_usable(main.simulation.state.character.cell())).is_false()

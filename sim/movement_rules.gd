@@ -40,11 +40,12 @@ static func settle(grid: VoxelGrid, feet: Vector3i) -> Vector3i:
     return result
 
 
-## 한 걸음 뒤의 발 위치. 갈 수 없으면 제자리를 돌려준다.
+## 한 걸음 뒤에 도착할 칸. 갈 수 없으면 제자리를 돌려준다.
 ##
-## 한 칸 턱은 오르고, 낮은 곳으로는 떨어진다. 딛을 곳이 없는 칸으로는 나가지
-## 않는다. 그래서 섬 밖 바다로 걸어 나갈 수 없다.
-static func resolve_step(grid: VoxelGrid, feet: Vector3i, dir: Vector3i) -> Vector3i:
+## 한 칸 턱은 오른다. 떨어지는 것은 여기서 처리하지 않는다. 걸음은 걸음이고
+## 낙하는 낙하다. 다만 떨어진 끝에 딛을 곳이 없다면 애초에 나가지 않는다.
+## 그래서 섬 밖 바다로 걸어 나갈 수 없다.
+static func resolve_walk(grid: VoxelGrid, feet: Vector3i, dir: Vector3i) -> Vector3i:
     if not is_direction(dir):
         return feet
 
@@ -58,7 +59,6 @@ static func resolve_step(grid: VoxelGrid, feet: Vector3i, dir: Vector3i) -> Vect
     else:
         return feet
 
-    var landed := settle(grid, stepped)
-    if not is_supported(grid, landed):
+    if not is_supported(grid, settle(grid, stepped)):
         return feet
-    return landed
+    return stepped

@@ -65,9 +65,10 @@ func _build_steps() -> Array:
     return [
         ["01_spawn", func() -> void: pass],
         ["02_walk", _walk],
-        ["03_place", _place],
-        ["04_break", _break],
-        ["05_build_tower", _build_tower],
+        ["03_gather", _gather],
+        ["04_place", _place],
+        ["05_break", _break],
+        ["06_build_tower", _build_tower],
     ]
 
 
@@ -77,8 +78,17 @@ func _walk() -> void:
         _main.simulation.submit_at(MoveCharacterCommand.create(Vector3i(0, -1, 0)), start + i * 2)
 
 
+func _gather() -> void:
+    # 빈손으로 시작하므로 먼저 부숴 재료를 모은다.
+    var start := _main.simulation.current_tick()
+    var here := _main.simulation.state.character.cell()
+    for i in 4:
+        _main.simulation.submit_at(
+            BreakBlockCommand.create(here + Vector3i(i - 2, 2, -1)), start + i * 2)
+
+
 func _place() -> void:
-    _main.input_controller().select_block(BlockType.STONE)
+    _main.input_controller().select_block(BlockType.GROUND)
     _main.input_controller().submit_place()
 
 
@@ -92,7 +102,7 @@ func _build_tower() -> void:
     var start := _main.simulation.current_tick()
     for i in 3:
         _main.simulation.submit_at(
-            PlaceBlockCommand.create(base + VoxelGrid.UP * i, BlockType.WOOD), start + i * 2)
+            PlaceBlockCommand.create(base + VoxelGrid.UP * i, BlockType.GROUND), start + i * 2)
 
 
 func _begin_step() -> void:
