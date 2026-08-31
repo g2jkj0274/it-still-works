@@ -31,10 +31,11 @@ const PLACEABLE: Array[int] = [
     BlockType.DETECTOR,
     BlockType.ACTUATOR,
     BlockType.REPEATER,
+    BlockType.BOX,
 ]
 const SELECT_ACTIONS: Array = [
     &"select_1", &"select_2", &"select_3", &"select_4",
-    &"select_5", &"select_6", &"select_7",
+    &"select_5", &"select_6", &"select_7", &"select_8",
 ]
 
 ## 키를 누르고 있을 때 한 걸음마다 두는 간격(틱).
@@ -55,6 +56,7 @@ var _next_move_tick: int = 0
 var _target: BlockTarget = null
 var _detector_target: int = DetectorPart.TARGET_PLAYER
 var _repeater_preset: int = 0
+var _box_shape: int = BoxPart.SHAPE_SQUARE
 var _link_source: Vector3i = Vector3i.ZERO
 var _has_link_source: bool = false
 
@@ -123,10 +125,17 @@ func repeater_preset() -> int:
     return _repeater_preset
 
 
+func box_shape() -> int:
+    return _box_shape
+
+
 ## 지금 고른 부품의 설정을 다음 것으로 넘긴다.
 func cycle_part_setting() -> void:
     if _selected == BlockType.REPEATER:
         _repeater_preset = (_repeater_preset + 1) % REPEATER_PRESETS.size()
+        return
+    if _selected == BlockType.BOX:
+        _box_shape = (_box_shape + 1) % BoxPart.SHAPE_COUNT
         return
     _detector_target = (_detector_target + 1) % DetectorPart.TARGET_COUNT
 
@@ -142,6 +151,8 @@ func part_settings() -> PackedInt32Array:
     if _selected == BlockType.REPEATER:
         var preset: Array = REPEATER_PRESETS[_repeater_preset]
         return PackedInt32Array([preset[0], preset[1], preset[2]])
+    if _selected == BlockType.BOX:
+        return PackedInt32Array([_box_shape])
     return PackedInt32Array()
 
 
@@ -218,6 +229,7 @@ static func install_actions() -> void:
     _install(&"select_5", [KEY_5])
     _install(&"select_6", [KEY_6])
     _install(&"select_7", [KEY_7])
+    _install(&"select_8", [KEY_8])
     _install(ACTION_LINK, [KEY_R])
     _install(ACTION_TARGET, [KEY_T])
 

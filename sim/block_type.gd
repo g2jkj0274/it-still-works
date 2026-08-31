@@ -33,11 +33,14 @@ const ACTUATOR := 7
 ## 되풀이. 받은 신호를 정한 간격으로 반복해 내보낸다.
 const REPEATER := 8
 
-const COUNT := 9
+## 상자. 값 하나를 담는다.
+const BOX := 9
+
+const COUNT := 10
 
 const _NAMES: PackedStringArray = [
     "empty", "ground", "stone", "wood",
-    "door_closed", "door_open", "detector", "actuator", "repeater",
+    "door_closed", "door_open", "detector", "actuator", "repeater", "box",
 ]
 
 
@@ -61,7 +64,7 @@ static func is_door(type: int) -> bool:
 
 ## 회로 부품인가.
 static func is_part(type: int) -> bool:
-    return type == DETECTOR or type == ACTUATOR or type == REPEATER
+    return type == DETECTOR or type == ACTUATOR or type == REPEATER or type == BOX
 
 
 static func opened_door() -> int:
