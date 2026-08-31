@@ -33,6 +33,11 @@ func occupied_cells() -> Array[Vector3i]:
     return cells
 
 
+## 바라보는 쪽 바로 앞 칸. 블록을 놓고 부술 목표가 된다.
+func facing_cell() -> Vector3i:
+    return position + facing
+
+
 func occupies(pos: Vector3i) -> bool:
     if pos.x != position.x or pos.y != position.y:
         return false

@@ -34,3 +34,8 @@ func test_occupies_covers_the_whole_body() -> void:
     assert_bool(character.occupies(Vector3i(4, 5, 5))).is_false()
     assert_bool(character.occupies(Vector3i(4, 5, 8))).is_false()
     assert_bool(character.occupies(Vector3i(5, 5, 6))).is_false()
+
+
+func test_facing_cell_is_directly_in_front_of_the_feet() -> void:
+    var character := CharacterState.new(Vector3i(4, 5, 6), Vector3i(1, 0, 0))
+    assert_bool(character.facing_cell() == Vector3i(5, 5, 6)).is_true()

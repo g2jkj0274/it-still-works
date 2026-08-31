@@ -17,6 +17,9 @@ const CELL_COUNT := SIZE_X * SIZE_Y * SIZE_Z
 ## 높이 방향 단위 벡터.
 const UP := Vector3i(0, 0, 1)
 
+## 섬의 바닥층. 부술 수 없다.
+const BEDROCK_Z := 0
+
 ## 이웃 6방향. 순서가 고정되어 있어야 표면 판정이 항상 같다.
 const NEIGHBOURS: Array[Vector3i] = [
     Vector3i(1, 0, 0),
@@ -42,6 +45,10 @@ static func is_inside(pos: Vector3i) -> bool:
         and pos.y >= 0 and pos.y < SIZE_Y
         and pos.z >= 0 and pos.z < SIZE_Z
     )
+
+
+static func is_bedrock(pos: Vector3i) -> bool:
+    return pos.z <= BEDROCK_Z
 
 
 static func index_of(pos: Vector3i) -> int:

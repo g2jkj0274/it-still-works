@@ -1,0 +1,39 @@
+class_name BreakBlockCommand
+extends SimCommand
+
+## 블록 하나를 부순다.
+##
+## 섬의 바닥층은 부술 수 없다. 부술 수 있으면 딛을 곳이 없는 칸이 생겨
+## 캐릭터가 갇힌다.
+
+const TYPE := &"break_block"
+
+var position: Vector3i = Vector3i.ZERO
+
+
+static func create(p_position: Vector3i) -> BreakBlockCommand:
+    var command := BreakBlockCommand.new()
+    command.position = p_position
+    return command
+
+
+func get_type() -> StringName:
+    return TYPE
+
+
+func apply(state: WorldState) -> void:
+    if VoxelGrid.is_bedrock(position):
+        return
+    if not state.grid.is_solid(position):
+        return
+
+    state.grid.set_block(position, BlockType.EMPTY)
+
+
+func write_payload(data: Dictionary) -> void:
+    data["pos"] = [position.x, position.y, position.z]
+
+
+func read_payload(data: Dictionary) -> void:
+    var raw: Array = data.get("pos", [0, 0, 0])
+    position = Vector3i(int(raw[0]), int(raw[1]), int(raw[2]))
