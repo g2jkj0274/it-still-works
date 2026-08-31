@@ -6,7 +6,7 @@ extends GdUnitTestSuite
 ## 이 테스트가 깨지면 결정론이 깨진 것이고 lockstep 멀티플레이 가능성이 사라진다.
 
 const SEED := 20250901
-const TOTAL_TICKS := 40
+const TOTAL_TICKS := 110
 
 const NORTH := Vector3i(0, -1, 0)
 const SOUTH := Vector3i(0, 1, 0)
@@ -16,9 +16,14 @@ const WEST := Vector3i(-1, 0, 0)
 ## 아래 시나리오를 SEED 로 TOTAL_TICKS 만큼 돌렸을 때의 상태 해시.
 ## Godot 4.7.2 / 서로 다른 프로세스 3회 실행에서 동일함을 확인하고 고정했다.
 ##
+## 갱신 이력:
+##   742dc8ed... 최초 고정
+##   a72acf41... 캐릭터 위치가 서브유닛이 되며 걸음이 여러 틱에 걸치게 됨.
+##               명령 간격을 넓히고 총 틱 수를 40 → 110 으로 늘림
+##
 ## 이 값이 깨졌다면 시뮬레이션 동작이 바뀐 것이다. 값을 고쳐 통과시키지 말고
 ## 무엇이 바뀌었는지 먼저 밝힌다.
-const GOLDEN_HASH := "742dc8ed995d201bab260385aea8247e14c47e63d1bd88c0b8244eab9a30aff0"
+const GOLDEN_HASH := "a72acf41d2d7cf1ec5707fef66af1f6f9174f940b2aed25353a8a5c44610f068"
 
 ## 같은 실행이 끝났을 때 캐릭터가 서 있는 칸.
 ## 해시보다 읽기 쉬워서 이동 규칙이 어긋났을 때 원인을 빨리 좁혀준다.
@@ -26,25 +31,28 @@ const GOLDEN_POSITION := Vector3i(32, 31, 2)
 
 
 ## 실행마다 새로 만든다. 명령 객체는 큐가 틱과 순서를 새겨 넣으므로 재사용하지 않는다.
+##
+## 한 걸음이 여러 틱에 걸치므로 명령 간격을 걸음보다 넓게 둔다. 좁으면 걷는 중에
+## 들어온 명령이 무시되어 시나리오가 실제로 아무 데도 가지 않는다.
 func _scenario() -> Array:
     return [
         [0, MoveCharacterCommand.create(NORTH)],
-        [2, MoveCharacterCommand.create(NORTH)],
-        [4, PlaceBlockCommand.create(Vector3i(33, 30, 2), BlockType.WOOD)],
-        [6, PlaceBlockCommand.create(Vector3i(31, 30, 2), BlockType.WOOD)],
-        [8, MoveCharacterCommand.create(EAST)],
-        [10, BreakBlockCommand.create(Vector3i(33, 30, 2))],
-        [12, MoveCharacterCommand.create(SOUTH)],
-        [14, MoveCharacterCommand.create(WEST)],
-        [16, PlaceBlockCommand.create(Vector3i(32, 32, 2), BlockType.STONE)],
-        [18, MoveCharacterCommand.create(SOUTH)],
-        [20, PlaceBlockCommand.create(Vector3i(32, 33, 2), BlockType.WOOD)],
-        [22, BreakBlockCommand.create(Vector3i(32, 32, 2))],
+        [6, MoveCharacterCommand.create(NORTH)],
+        [12, PlaceBlockCommand.create(Vector3i(33, 30, 2), BlockType.WOOD)],
+        [18, PlaceBlockCommand.create(Vector3i(31, 30, 2), BlockType.WOOD)],
         [24, MoveCharacterCommand.create(EAST)],
-        [26, RollValueCommand.create(&"night_roll", 0, 99)],
-        [28, MoveCharacterCommand.create(NORTH)],
-        [30, BreakBlockCommand.create(Vector3i(32, 33, 2))],
-        [32, MoveCharacterCommand.create(WEST)],
+        [30, BreakBlockCommand.create(Vector3i(33, 30, 2))],
+        [36, MoveCharacterCommand.create(SOUTH)],
+        [42, MoveCharacterCommand.create(WEST)],
+        [48, PlaceBlockCommand.create(Vector3i(32, 32, 2), BlockType.STONE)],
+        [54, MoveCharacterCommand.create(SOUTH)],
+        [60, PlaceBlockCommand.create(Vector3i(32, 33, 2), BlockType.WOOD)],
+        [66, BreakBlockCommand.create(Vector3i(32, 32, 2))],
+        [72, MoveCharacterCommand.create(EAST)],
+        [78, RollValueCommand.create(&"night_roll", 0, 99)],
+        [84, MoveCharacterCommand.create(NORTH)],
+        [90, BreakBlockCommand.create(Vector3i(32, 33, 2))],
+        [96, MoveCharacterCommand.create(WEST)],
     ]
 
 
@@ -80,7 +88,7 @@ func test_scenario_actually_changes_the_world() -> void:
     var played := _run()
     var untouched := Simulation.new(SEED)
     IslandBuilder.populate(untouched.state)
-    assert_bool(played.state.character.position == IslandBuilder.SPAWN).is_false()
+    assert_bool(played.state.character.cell() == IslandBuilder.SPAWN).is_false()
     assert_str(played.state.grid.digest()).is_not_equal(untouched.state.grid.digest())
 
 
@@ -116,4 +124,4 @@ func test_golden_hash_is_unchanged() -> void:
 
 
 func test_golden_character_position_is_unchanged() -> void:
-    assert_bool(_run().state.character.position == GOLDEN_POSITION).is_true()
+    assert_bool(_run().state.character.cell() == GOLDEN_POSITION).is_true()

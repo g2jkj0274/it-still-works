@@ -24,7 +24,16 @@ func apply(state: WorldState) -> void:
 
     # 갈 수 없어도 방향은 바뀐다. 제자리에서 돌아설 수 있어야 한다.
     state.character.facing = direction
-    state.character.position = MovementRules.resolve_step(state.grid, state.character.position, direction)
+
+    # 이미 걷는 중이면 새 걸음을 받지 않는다. 칸 경계에 정확히 서야 다음 판정이 맞는다.
+    if state.character.is_moving():
+        return
+
+    var here := state.character.cell()
+    var destination := MovementRules.resolve_walk(state.grid, here, direction)
+    if destination == here:
+        return
+    state.character.walk_to(destination)
 
 
 func write_payload(data: Dictionary) -> void:

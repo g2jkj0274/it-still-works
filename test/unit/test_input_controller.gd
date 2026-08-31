@@ -41,8 +41,8 @@ func test_submitting_a_move_only_queues_a_command() -> void:
     assert_int(sim.queue.size()).is_equal(1)
     assert_str(sim.state_hash()).is_equal(before)
 
-    sim.step()
-    assert_bool(sim.state.character.position == IslandBuilder.SPAWN + Vector3i(0, -1, 0)).is_true()
+    sim.advance(10)
+    assert_bool(sim.state.character.cell() == IslandBuilder.SPAWN + Vector3i(0, -1, 0)).is_true()
 
 
 func test_place_targets_the_cell_in_front() -> void:
@@ -52,7 +52,7 @@ func test_place_targets_the_cell_in_front() -> void:
     var target := sim.state.character.facing_cell()
 
     controller.submit_place()
-    sim.step()
+    sim.advance(2)
     assert_int(sim.state.grid.get_block(target)).is_equal(BlockType.STONE)
 
 
@@ -63,7 +63,7 @@ func test_break_targets_the_cell_in_front() -> void:
     sim.state.grid.set_block(target, BlockType.WOOD)
 
     controller.submit_break()
-    sim.step()
+    sim.advance(2)
     assert_bool(sim.state.grid.is_solid(target)).is_false()
 
 

@@ -138,7 +138,7 @@ func test_block_change_changes_hash() -> void:
 func test_character_move_changes_hash() -> void:
     var state := _make(42)
     var before := state.compute_hash()
-    state.character.position = Vector3i(1, 0, 0)
+    state.character.place_at(Vector3i(1, 0, 0))
     assert_str(state.compute_hash()).is_not_equal(before)
 
 
@@ -154,5 +154,5 @@ func test_states_with_same_world_hash_equal() -> void:
     var b := _make(42)
     for state: WorldState in [a, b]:
         state.grid.set_block(Vector3i(3, 4, 5), BlockType.STONE)
-        state.character.position = Vector3i(9, 9, 1)
+        state.character.place_at(Vector3i(9, 9, 1))
     assert_str(a.compute_hash()).is_equal(b.compute_hash())

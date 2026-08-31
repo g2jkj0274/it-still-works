@@ -53,11 +53,24 @@ func step() -> void:
     state.tick += 1
 
 
-## 발밑 블록이 사라졌을 때 캐릭터가 공중에 남지 않게 한다.
+## 걷는 중이면 한 틱만큼 나아가고, 멈춰 있는데 발밑이 비었으면 한 칸 떨어진다.
 ##
 ## 입력에서 온 변경이 아니라 월드가 스스로 지키는 규칙이므로 명령을 거치지 않는다.
+## 한 칸씩 떨어뜨리는 이유는 떨어지는 도중에 지형이 바뀌어도 어긋나지 않게 하려는 것이다.
 func _settle_character() -> void:
-    state.character.position = MovementRules.settle(state.grid, state.character.position)
+    var character := state.character
+    if character.is_moving():
+        character.advance()
+        return
+
+    var here := character.cell()
+    if here.z <= VoxelGrid.BEDROCK_Z:
+        return
+    if MovementRules.is_supported(state.grid, here):
+        return
+    if not MovementRules.can_occupy(state.grid, here - VoxelGrid.UP):
+        return
+    character.walk_to(here - VoxelGrid.UP)
 
 
 ## [param ticks] 만큼 진행한다. 0 이하면 아무 일도 하지 않는다.

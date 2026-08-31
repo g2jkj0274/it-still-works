@@ -8,7 +8,7 @@ func _state() -> WorldState:
     for y in 8:
         for x in 8:
             state.grid.set_block(Vector3i(x, y, 0), BlockType.GROUND)
-    state.character.position = Vector3i(4, 4, 1)
+    state.character.place_at(Vector3i(4, 4, 1))
     state.character.facing = Vector3i(1, 0, 0)
     return state
 
@@ -110,7 +110,7 @@ func test_breaking_the_floor_makes_the_character_settle_next_tick() -> void:
         for x in 8:
             sim.state.grid.set_block(Vector3i(x, y, 0), BlockType.GROUND)
             sim.state.grid.set_block(Vector3i(x, y, 1), BlockType.GROUND)
-    sim.state.character.position = Vector3i(4, 4, 2)
+    sim.state.character.place_at(Vector3i(4, 4, 2))
     sim.submit(BreakBlockCommand.create(Vector3i(4, 4, 1)))
-    sim.step()
-    assert_bool(sim.state.character.position == Vector3i(4, 4, 1)).is_true()
+    sim.advance(10)
+    assert_bool(sim.state.character.cell() == Vector3i(4, 4, 1)).is_true()

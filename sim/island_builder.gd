@@ -49,7 +49,7 @@ const SPAWN := Vector3i(32, 32, GROUND_TOP_Z + 1)
 ## 격자에 섬을 배치하고 캐릭터를 시작 위치에 세운다.
 static func populate(state: WorldState) -> void:
     build(state.grid)
-    state.character.position = SPAWN
+    state.character.place_at(SPAWN)
     state.character.facing = Vector3i(0, 1, 0)
 
 

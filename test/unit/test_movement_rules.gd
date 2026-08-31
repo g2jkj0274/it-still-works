@@ -64,48 +64,50 @@ func test_walking_moves_one_cell_in_each_direction() -> void:
     var grid := _flat()
     var start := Vector3i(4, 4, 1)
     for dir: Vector3i in MovementRules.DIRECTIONS:
-        assert_bool(MovementRules.resolve_step(grid, start, dir) == start + dir).is_true()
+        assert_bool(MovementRules.resolve_walk(grid, start, dir) == start + dir).is_true()
 
 
 func test_non_direction_does_not_move() -> void:
     var grid := _flat()
     var start := Vector3i(4, 4, 1)
-    assert_bool(MovementRules.resolve_step(grid, start, Vector3i(1, 1, 0)) == start).is_true()
+    assert_bool(MovementRules.resolve_walk(grid, start, Vector3i(1, 1, 0)) == start).is_true()
 
 
 func test_two_tall_wall_blocks_the_step() -> void:
     var grid := _with_ledge(2)
     var start := Vector3i(4, 4, 1)
-    assert_bool(MovementRules.resolve_step(grid, start, Vector3i(-1, 0, 0)) == start).is_true()
+    assert_bool(MovementRules.resolve_walk(grid, start, Vector3i(-1, 0, 0)) == start).is_true()
 
 
 func test_one_tall_ledge_is_climbed() -> void:
     var grid := _with_ledge(1)
     var start := Vector3i(4, 4, 1)
-    assert_bool(MovementRules.resolve_step(grid, start, Vector3i(-1, 0, 0)) == Vector3i(3, 4, 2)).is_true()
+    assert_bool(MovementRules.resolve_walk(grid, start, Vector3i(-1, 0, 0)) == Vector3i(3, 4, 2)).is_true()
 
 
 func test_climbing_needs_headroom() -> void:
     var grid := _with_ledge(1)
     grid.set_block(Vector3i(4, 4, 3), BlockType.GROUND)
     var start := Vector3i(4, 4, 1)
-    assert_bool(MovementRules.resolve_step(grid, start, Vector3i(-1, 0, 0)) == start).is_true()
+    assert_bool(MovementRules.resolve_walk(grid, start, Vector3i(-1, 0, 0)) == start).is_true()
 
 
-func test_stepping_off_a_ledge_drops_down() -> void:
+func test_stepping_off_a_ledge_walks_out_over_the_drop() -> void:
+    # 걸음은 같은 높이로 나간다. 떨어지는 것은 시뮬레이션이 뒤이어 처리한다.
     var grid := _with_ledge(1)
     var start := Vector3i(3, 4, 2)
-    assert_bool(MovementRules.resolve_step(grid, start, Vector3i(1, 0, 0)) == Vector3i(4, 4, 1)).is_true()
+    assert_bool(MovementRules.resolve_walk(grid, start, Vector3i(1, 0, 0)) == Vector3i(4, 4, 2)).is_true()
+    assert_bool(MovementRules.settle(grid, Vector3i(4, 4, 2)) == Vector3i(4, 4, 1)).is_true()
 
 
 func test_walking_into_the_void_is_refused() -> void:
     # 딛을 곳이 없는 칸으로는 나가지 않는다. 섬 밖으로 걸어 나가는 것을 막는다.
     var grid := _flat()
     var edge := Vector3i(PLATFORM - 1, 4, 1)
-    assert_bool(MovementRules.resolve_step(grid, edge, Vector3i(1, 0, 0)) == edge).is_true()
+    assert_bool(MovementRules.resolve_walk(grid, edge, Vector3i(1, 0, 0)) == edge).is_true()
 
 
 func test_walking_out_of_the_grid_is_refused() -> void:
     var grid := _flat()
     var corner := Vector3i(0, 0, 1)
-    assert_bool(MovementRules.resolve_step(grid, corner, Vector3i(-1, 0, 0)) == corner).is_true()
+    assert_bool(MovementRules.resolve_walk(grid, corner, Vector3i(-1, 0, 0)) == corner).is_true()

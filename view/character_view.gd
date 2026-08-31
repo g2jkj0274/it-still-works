@@ -37,7 +37,7 @@ func bind(character: CharacterState) -> void:
 func target_position() -> Vector3:
     if _character == null:
         return Vector3.ZERO
-    var feet := SimViewCoords.cell_to_world(_character.position)
+    var feet := SimViewCoords.sub_to_world(_character.sub_position)
     return feet + Vector3.UP * (CharacterState.HEIGHT - 1) * SimViewCoords.CELL_SIZE * 0.5
 
 

@@ -10,6 +10,16 @@ extends RefCounted
 const CELL_SIZE := 1.0
 
 
+## 서브유닛 위치에 해당하는 월드 좌표. 칸과 칸 사이도 나타낸다.
+static func sub_to_world(sub: Vector3i) -> Vector3:
+    var scale := float(CharacterState.SUBUNITS)
+    return Vector3(
+        (sub.x / scale + 0.5) * CELL_SIZE,
+        (sub.z / scale + 0.5) * CELL_SIZE,
+        (sub.y / scale + 0.5) * CELL_SIZE,
+    )
+
+
 ## 칸의 한가운데에 해당하는 월드 좌표.
 static func cell_to_world(cell: Vector3i) -> Vector3:
     return Vector3(
