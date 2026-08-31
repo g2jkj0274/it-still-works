@@ -122,7 +122,7 @@ func _build_auto_door() -> void:
     _main.simulation.submit_at(PlaceBlockCommand.create(door, BlockType.DOOR_CLOSED), start)
     _main.simulation.submit_at(PlacePartCommand.create(actuator, BlockType.ACTUATOR), start + 2)
     _main.simulation.submit_at(
-        PlacePartCommand.create(detector, BlockType.DETECTOR, DetectorPart.TARGET_PLAYER), start + 4)
+        PlacePartCommand.create(detector, BlockType.DETECTOR, PackedInt32Array([DetectorPart.TARGET_PLAYER])), start + 4)
     _main.simulation.submit_at(ConnectPartsCommand.create(detector, actuator), start + 6)
 
 

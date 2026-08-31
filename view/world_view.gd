@@ -17,6 +17,7 @@ const _COLOURS: Dictionary[int, Color] = {
     BlockType.DOOR_OPEN: Color(0.85, 0.66, 0.42, 0.30),
     BlockType.DETECTOR: Color(0.58, 0.74, 0.86),
     BlockType.ACTUATOR: Color(0.88, 0.66, 0.72),
+    BlockType.REPEATER: Color(0.80, 0.80, 0.56),
 }
 
 var _grid: VoxelGrid
