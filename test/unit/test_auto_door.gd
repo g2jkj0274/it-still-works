@@ -131,7 +131,7 @@ func test_the_whole_thing_can_be_built_by_commands() -> void:
 
     sim.submit(PlaceBlockCommand.create(DOOR, BlockType.DOOR_CLOSED))
     sim.submit(PlacePartCommand.create(ACTUATOR, BlockType.ACTUATOR))
-    sim.submit(PlacePartCommand.create(DETECTOR, BlockType.DETECTOR, DetectorPart.TARGET_PLAYER))
+    sim.submit(PlacePartCommand.create(DETECTOR, BlockType.DETECTOR, PackedInt32Array([DetectorPart.TARGET_PLAYER])))
     sim.submit_at(ConnectPartsCommand.create(DETECTOR, ACTUATOR), 1)
     sim.advance(5)
 

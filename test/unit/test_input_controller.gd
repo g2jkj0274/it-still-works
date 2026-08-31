@@ -167,7 +167,7 @@ func test_the_detector_watches_what_was_chosen() -> void:
     var controller := _controller(sim)
     assert_int(controller.detector_target()).is_equal(DetectorPart.TARGET_PLAYER)
 
-    controller.cycle_detector_target()
+    controller.cycle_part_setting()
     var chosen := controller.detector_target()
     assert_int(chosen).is_not_equal(DetectorPart.TARGET_PLAYER)
 
@@ -181,7 +181,7 @@ func test_the_detector_watches_what_was_chosen() -> void:
 func test_target_choice_wraps_around() -> void:
     var controller := _controller(_sim())
     for i in DetectorPart.TARGET_COUNT:
-        controller.cycle_detector_target()
+        controller.cycle_part_setting()
     assert_int(controller.detector_target()).is_equal(DetectorPart.TARGET_PLAYER)
 
 

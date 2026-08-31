@@ -28,8 +28,13 @@ func apply(state: WorldState) -> void:
     if not BlockType.is_breakable(broken):
         return
 
+    # 타 버린 부품은 재료가 돌아오지 않는다. 소모된 자원은 돌아오지 않는다.
+    var part := state.circuit.part_at(position)
+    var gives_material := part == null or part.yields_material()
+
     state.grid.set_block(position, BlockType.EMPTY)
-    state.inventory.add(BlockType.material_of(broken), 1)
+    if gives_material:
+        state.inventory.add(BlockType.material_of(broken), 1)
 
     # 부품을 걷어내면 거기 이어진 배선도 함께 사라진다.
     state.circuit.remove_part(position)

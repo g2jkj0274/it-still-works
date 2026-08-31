@@ -30,19 +30,31 @@ const PLACEABLE: Array[int] = [
     BlockType.DOOR_CLOSED,
     BlockType.DETECTOR,
     BlockType.ACTUATOR,
+    BlockType.REPEATER,
 ]
 const SELECT_ACTIONS: Array = [
-    &"select_1", &"select_2", &"select_3", &"select_4", &"select_5", &"select_6",
+    &"select_1", &"select_2", &"select_3", &"select_4",
+    &"select_5", &"select_6", &"select_7",
 ]
 
 ## 키를 누르고 있을 때 한 걸음마다 두는 간격(틱).
 const REPEAT_TICKS := 4
+
+## 되풀이를 놓을 때 고를 수 있는 설정들. [갈래, 횟수, 간격].
+## 숫자를 자유롭게 넣을 화면이 아직 없어 미리 정해 둔 몇 가지로 돌린다.
+const REPEATER_PRESETS: Array = [
+    [RepeaterPart.MODE_COUNT, 3, 10],
+    [RepeaterPart.MODE_COUNT, 10, 10],
+    [RepeaterPart.MODE_WHILE, 0, 10],
+    [RepeaterPart.MODE_FOREVER, 0, 10],
+]
 
 var _simulation: Simulation
 var _selected: int = BlockType.WOOD
 var _next_move_tick: int = 0
 var _target: BlockTarget = null
 var _detector_target: int = DetectorPart.TARGET_PLAYER
+var _repeater_preset: int = 0
 var _link_source: Vector3i = Vector3i.ZERO
 var _has_link_source: bool = false
 
@@ -107,8 +119,30 @@ func detector_target() -> int:
     return _detector_target
 
 
+func repeater_preset() -> int:
+    return _repeater_preset
+
+
+## 지금 고른 부품의 설정을 다음 것으로 넘긴다.
+func cycle_part_setting() -> void:
+    if _selected == BlockType.REPEATER:
+        _repeater_preset = (_repeater_preset + 1) % REPEATER_PRESETS.size()
+        return
+    _detector_target = (_detector_target + 1) % DetectorPart.TARGET_COUNT
+
+
 func cycle_detector_target() -> void:
     _detector_target = (_detector_target + 1) % DetectorPart.TARGET_COUNT
+
+
+## 지금 고른 부품을 놓을 때 함께 넘길 설정값.
+func part_settings() -> PackedInt32Array:
+    if _selected == BlockType.DETECTOR:
+        return PackedInt32Array([_detector_target])
+    if _selected == BlockType.REPEATER:
+        var preset: Array = REPEATER_PRESETS[_repeater_preset]
+        return PackedInt32Array([preset[0], preset[1], preset[2]])
+    return PackedInt32Array()
 
 
 func has_link_source() -> bool:
@@ -149,7 +183,7 @@ func submit_place() -> void:
 
     var cell := place_cell()
     if BlockType.is_part(_selected):
-        _simulation.submit(PlacePartCommand.create(cell, _selected, _detector_target))
+        _simulation.submit(PlacePartCommand.create(cell, _selected, part_settings()))
         return
     _simulation.submit(PlaceBlockCommand.create(cell, _selected))
 
@@ -183,6 +217,7 @@ static func install_actions() -> void:
     _install(&"select_4", [KEY_4])
     _install(&"select_5", [KEY_5])
     _install(&"select_6", [KEY_6])
+    _install(&"select_7", [KEY_7])
     _install(ACTION_LINK, [KEY_R])
     _install(ACTION_TARGET, [KEY_T])
 
@@ -220,7 +255,7 @@ func _poll_blocks() -> void:
     if Input.is_action_just_pressed(ACTION_LINK):
         submit_link()
     if Input.is_action_just_pressed(ACTION_TARGET):
-        cycle_detector_target()
+        cycle_part_setting()
 
 
 func _poll_selection() -> void:

@@ -36,8 +36,13 @@ func kind() -> int:
     return BlockType.DETECTOR
 
 
-func parameter() -> int:
-    return target
+func parameters() -> PackedInt32Array:
+    return PackedInt32Array([target])
+
+
+func configure(values: PackedInt32Array) -> void:
+    if values.size() >= 1 and is_target(values[0]):
+        target = values[0]
 
 
 func compute(state: WorldState, _incoming: Array) -> void:

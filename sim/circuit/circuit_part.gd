@@ -36,15 +36,37 @@ func act(_state: WorldState) -> void:
     pass
 
 
-## 부품마다 고유한 설정값. 해시와 직렬화에 쓴다.
-func parameter() -> int:
-    return 0
+## 놓을 때 정한 설정값. 부품마다 뜻이 다르다.
+func parameters() -> PackedInt32Array:
+    return PackedInt32Array()
+
+
+## 설정값을 받아 부품을 맞춘다. 놓을 때 한 번만 부른다.
+func configure(_values: PackedInt32Array) -> void:
+    pass
+
+
+## 부품이 스스로 굴리는 상태. 해시에 함께 접힌다.
+func extra_hash_fields() -> Array:
+    return []
+
+
+## 부쉈을 때 재료가 돌아오는가. 타 버린 부품은 돌아오지 않는다.
+func yields_material() -> bool:
+    return true
 
 
 func to_hash_fields() -> Array:
     var key := "part.%d.%d.%d" % [position.x, position.y, position.z]
-    return [
+    var fields: Array = [
         [key + ".kind", kind()],
-        [key + ".parameter", parameter()],
         [key + ".output", output.to_key()],
     ]
+
+    var values := parameters()
+    for i in values.size():
+        fields.append(["%s.param.%d" % [key, i], values[i]])
+
+    for field: Array in extra_hash_fields():
+        fields.append(["%s.%s" % [key, field[0]], field[1]])
+    return fields
