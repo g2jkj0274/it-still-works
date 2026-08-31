@@ -20,7 +20,7 @@ func test_all_types_are_distinct_and_contiguous() -> void:
     var types := [
         BlockType.EMPTY, BlockType.GROUND, BlockType.STONE, BlockType.WOOD,
         BlockType.DOOR_CLOSED, BlockType.DOOR_OPEN, BlockType.DETECTOR, BlockType.ACTUATOR,
-        BlockType.REPEATER, BlockType.BOX,
+        BlockType.REPEATER, BlockType.BOX, BlockType.BRANCH,
     ]
     assert_int(types.size()).is_equal(BlockType.COUNT)
     types.sort()
@@ -65,6 +65,7 @@ func test_parts_are_recognised() -> void:
     assert_bool(BlockType.is_part(BlockType.ACTUATOR)).is_true()
     assert_bool(BlockType.is_part(BlockType.REPEATER)).is_true()
     assert_bool(BlockType.is_part(BlockType.BOX)).is_true()
+    assert_bool(BlockType.is_part(BlockType.BRANCH)).is_true()
     assert_bool(BlockType.is_part(BlockType.WOOD)).is_false()
 
 

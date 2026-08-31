@@ -62,3 +62,41 @@ func test_view_never_writes_to_the_circuit() -> void:
     view.rebuild()
     assert_int(circuit.link_count()).is_equal(1)
     assert_int(circuit.part_count()).is_equal(2)
+
+
+func test_a_wire_with_no_signal_reads_as_idle() -> void:
+    var circuit := _circuit()
+    circuit.link(A, B)
+    var view := _view(circuit)
+    assert_int(view.live_count()).is_equal(0)
+
+
+func test_a_wire_carrying_a_signal_reads_as_live() -> void:
+    var circuit := _circuit()
+    circuit.link(A, B)
+    var view := _view(circuit)
+
+    var source := circuit.part_at(A)
+    source.output = SignalValue.of_bool(true)
+    view.sync()
+    assert_int(view.live_count()).is_equal(1)
+
+
+func test_the_untaken_way_out_of_a_branch_reads_as_idle() -> void:
+    # 갈림길이 참일 때 거짓 쪽 배선은 흐르지 않는 것이 보여야 한다.
+    var circuit := Circuit.new()
+    var branch := BranchPart.create(A)
+    branch.configure(PackedInt32Array([BranchPart.MODE_TRUTH, 0]))
+    circuit.add_part(branch)
+    circuit.add_part(ActuatorPart.create(B))
+    circuit.add_part(ActuatorPart.create(Vector3i(12, 4, 1)))
+    circuit.link(A, B, BranchPart.PORT_TRUE)
+    circuit.link(A, Vector3i(12, 4, 1), BranchPart.PORT_FALSE)
+
+    var view := _view(circuit)
+    branch.compute(WorldState.new(SimRng.new(1)), [SignalValue.of_bool(true)])
+    branch.commit()
+    view.sync()
+
+    assert_int(view.wire_count()).is_equal(2)
+    assert_int(view.live_count()).is_equal(1)

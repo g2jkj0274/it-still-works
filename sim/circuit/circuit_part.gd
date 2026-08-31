@@ -11,7 +11,7 @@ extends RefCounted
 
 var position: Vector3i = Vector3i.ZERO
 
-## 지금 내보내고 있는 신호.
+## 지금 내보내고 있는 신호. 출구가 하나뿐인 부품은 이것만 쓴다.
 var output: SignalValue = SignalValue.none()
 
 var _next_output: SignalValue = SignalValue.none()
@@ -49,6 +49,18 @@ func configure(_values: PackedInt32Array) -> void:
 ## 부품이 스스로 굴리는 상태. 해시에 함께 접힌다.
 func extra_hash_fields() -> Array:
     return []
+
+
+## 출구가 몇 개인가. 갈림길만 둘이다.
+func output_count() -> int:
+    return 1
+
+
+## [param port] 번 출구로 나가는 신호. 없는 출구는 신호가 없다.
+func output_at(port: int) -> SignalValue:
+    if port == 0:
+        return output
+    return SignalValue.none()
 
 
 ## 부쉈을 때 재료가 돌아오는가. 타 버린 부품은 돌아오지 않는다.

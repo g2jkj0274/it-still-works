@@ -10,7 +10,10 @@ extends RefCounted
 
 var _parts: Array[CircuitPart] = []
 
-## 배선. 각 항목은 [출발 칸, 도착 칸] 이다.
+## 배선. 각 항목은 [출발 칸, 도착 칸, 출구 번호] 이다.
+##
+## 출구 번호는 출발 부품의 어느 구멍에서 나오는지를 가리킨다. 갈림길만 구멍이
+## 둘이고 나머지는 0번 하나뿐이다.
 var _links: Array = []
 
 
@@ -65,27 +68,29 @@ func remove_part(pos: Vector3i) -> bool:
     return true
 
 
-func link(from: Vector3i, to: Vector3i) -> bool:
+func link(from: Vector3i, to: Vector3i, port: int = 0) -> bool:
     if from == to or not has_part(from) or not has_part(to):
         return false
-    if is_linked(from, to):
+    if port < 0 or port >= part_at(from).output_count():
         return false
-    _links.append([from, to])
+    if is_linked(from, to, port):
+        return false
+    _links.append([from, to, port])
     _links.sort_custom(_link_before)
     return true
 
 
-func unlink(from: Vector3i, to: Vector3i) -> bool:
+func unlink(from: Vector3i, to: Vector3i, port: int = 0) -> bool:
     for i in _links.size():
-        if _links[i][0] == from and _links[i][1] == to:
+        if _links[i][0] == from and _links[i][1] == to and _links[i][2] == port:
             _links.remove_at(i)
             return true
     return false
 
 
-func is_linked(from: Vector3i, to: Vector3i) -> bool:
+func is_linked(from: Vector3i, to: Vector3i, port: int = 0) -> bool:
     for link: Array in _links:
-        if link[0] == from and link[1] == to:
+        if link[0] == from and link[1] == to and link[2] == port:
             return true
     return false
 
@@ -109,7 +114,7 @@ func to_hash_fields() -> Array:
         fields.append_array(part.to_hash_fields())
     for i in _links.size():
         var link: Array = _links[i]
-        fields.append(["circuit.link.%d" % i, "%s>%s" % [link[0], link[1]]])
+        fields.append(["circuit.link.%d" % i, "%s>%s@%d" % [link[0], link[1], link[2]]])
     return fields
 
 
@@ -121,7 +126,7 @@ func _incoming(pos: Vector3i) -> Array:
             continue
         var source := part_at(link[0])
         if source != null:
-            values.append(source.output)
+            values.append(source.output_at(link[2]))
     return values
 
 
@@ -132,7 +137,9 @@ func _part_before(left: CircuitPart, right: CircuitPart) -> bool:
 func _link_before(left: Array, right: Array) -> bool:
     if left[0] != right[0]:
         return _cell_before(left[0], right[0])
-    return _cell_before(left[1], right[1])
+    if left[1] != right[1]:
+        return _cell_before(left[1], right[1])
+    return left[2] < right[2]
 
 
 func _cell_before(left: Vector3i, right: Vector3i) -> bool:

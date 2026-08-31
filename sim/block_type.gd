@@ -36,11 +36,14 @@ const REPEATER := 8
 ## 상자. 값 하나를 담는다.
 const BOX := 9
 
-const COUNT := 10
+## 갈림길. 조건을 판정해 신호를 한쪽으로만 보낸다.
+const BRANCH := 10
+
+const COUNT := 11
 
 const _NAMES: PackedStringArray = [
     "empty", "ground", "stone", "wood",
-    "door_closed", "door_open", "detector", "actuator", "repeater", "box",
+    "door_closed", "door_open", "detector", "actuator", "repeater", "box", "branch",
 ]
 
 
@@ -64,7 +67,7 @@ static func is_door(type: int) -> bool:
 
 ## 회로 부품인가.
 static func is_part(type: int) -> bool:
-    return type == DETECTOR or type == ACTUATOR or type == REPEATER or type == BOX
+    return type == DETECTOR or type == ACTUATOR or type == REPEATER or type == BOX or type == BRANCH
 
 
 static func opened_door() -> int:
