@@ -9,32 +9,21 @@ extends Node3D
 ## 속에 묻힌 블록은 그리지 않는다. 이웃 여섯 칸이 모두 단단하면 어차피 보이지 않는다.
 ## 종류마다 MultiMesh 하나를 써서 수천 칸을 한 번에 낸다.
 
-const _COLOURS: Dictionary[int, Color] = {
-    BlockType.GROUND: Color(0.56, 0.78, 0.51),
-    BlockType.STONE: Color(0.62, 0.67, 0.75),
-    BlockType.WOOD: Color(0.76, 0.60, 0.44),
-    BlockType.DOOR_CLOSED: Color(0.85, 0.66, 0.42),
-    BlockType.DOOR_OPEN: Color(0.85, 0.66, 0.42, 0.30),
-    BlockType.DETECTOR: Color(0.58, 0.74, 0.86),
-    BlockType.ACTUATOR: Color(0.88, 0.66, 0.72),
-    BlockType.REPEATER: Color(0.80, 0.80, 0.56),
-    BlockType.BOX: Color(0.72, 0.62, 0.84),
-    BlockType.BRANCH: Color(0.94, 0.78, 0.56),
-}
-
 var _grid: VoxelGrid
 var _layers: Dictionary[int, MultiMeshInstance3D] = {}
 var _last_version: int = -1
 var _build_count: int = 0
 
 
-## 종류별 대표 색. 프로토타입이므로 단색 프리미티브만 쓴다.
+## 종류별 대표 색.
 static func colour_of(block_type: int) -> Color:
-    return _COLOURS.get(block_type, Color.MAGENTA)
+    return Palette.of_block(block_type)
 
 
 func _ready() -> void:
-    for block_type in _COLOURS:
+    for block_type in BlockType.COUNT:
+        if block_type == BlockType.EMPTY:
+            continue
         _layers[block_type] = _make_layer(block_type)
 
 
@@ -57,6 +46,7 @@ func rebuild() -> void:
     var cells: Dictionary[int, Array] = {}
     for block_type in _layers:
         cells[block_type] = []
+
 
     for z in VoxelGrid.SIZE_Z:
         for y in VoxelGrid.SIZE_Y:
@@ -94,9 +84,18 @@ func build_count() -> int:
     return _build_count
 
 
+## 이 층이 그리는 블록의 바탕색.
+func _base_colour(node: MultiMeshInstance3D) -> Color:
+    for block_type in _layers:
+        if _layers[block_type] == node:
+            return colour_of(block_type)
+    return Palette.MISSING
+
+
 func _make_layer(block_type: int) -> MultiMeshInstance3D:
     var material := StandardMaterial3D.new()
-    material.albedo_color = colour_of(block_type)
+    material.albedo_color = Color.WHITE
+    material.vertex_color_use_as_albedo = true
 
     var mesh := BoxMesh.new()
     mesh.size = Vector3.ONE * SimViewCoords.CELL_SIZE
@@ -104,6 +103,7 @@ func _make_layer(block_type: int) -> MultiMeshInstance3D:
 
     var multimesh := MultiMesh.new()
     multimesh.transform_format = MultiMesh.TRANSFORM_3D
+    multimesh.use_colors = true
     multimesh.mesh = mesh
     multimesh.instance_count = 0
 
@@ -118,5 +118,7 @@ func _fill_layer(node: MultiMeshInstance3D, cells: Array) -> void:
     var multimesh := node.multimesh
     multimesh.instance_count = cells.size()
     for i in cells.size():
-        var origin: Vector3 = SimViewCoords.cell_to_world(cells[i])
-        multimesh.set_instance_transform(i, Transform3D(Basis(), origin))
+        var cell: Vector3i = cells[i]
+        multimesh.set_instance_transform(i, Transform3D(Basis(), SimViewCoords.cell_to_world(cell)))
+        # 칸마다 명암을 아주 조금 달리해 넓은 면이 한 덩어리로 보이지 않게 한다.
+        multimesh.set_instance_color(i, Palette.varied(_base_colour(node), cell))

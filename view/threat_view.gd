@@ -4,7 +4,7 @@ extends Node3D
 ## 밤에 나온 위협들을 그린다. 위협 목록을 읽기만 한다.
 
 const RADIUS := 0.32
-const COLOUR := Color(0.62, 0.36, 0.52)
+const COLOUR := Palette.THREAT
 
 var _field: ThreatField
 var _node: MultiMeshInstance3D

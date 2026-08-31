@@ -6,14 +6,14 @@ extends Node3D
 ## 틱을 읽어 색을 정할 뿐 시뮬레이션을 건드리지 않는다.
 ## 밤에는 어두워지고 시야가 좁아진다.
 
-const DAY_SKY := Color(0.63, 0.80, 0.90)
-const NIGHT_SKY := Color(0.12, 0.15, 0.26)
+const DAY_SKY := Palette.SKY_DAY
+const NIGHT_SKY := Palette.SKY_NIGHT
 
-const DAY_AMBIENT := Color(0.78, 0.82, 0.90)
-const NIGHT_AMBIENT := Color(0.24, 0.28, 0.42)
+const DAY_AMBIENT := Palette.AMBIENT_DAY
+const NIGHT_AMBIENT := Palette.AMBIENT_NIGHT
 
 const DAY_LIGHT := 1.1
-const NIGHT_LIGHT := 0.25
+const NIGHT_LIGHT := 0.20
 
 ## 해가 지고 뜨는 데 걸리는 틱. 갑자기 캄캄해지지 않는다.
 const TWILIGHT_TICKS := 15 * Simulation.TICK_RATE
@@ -37,6 +37,9 @@ func _ready() -> void:
     _light = DirectionalLight3D.new()
     _light.name = "Sun"
     _light.rotation_degrees = Vector3(-55.0, -40.0, 0.0)
+    # 그림자는 부드럽게. 또렷한 그림자는 톤을 무겁게 만든다.
+    _light.shadow_enabled = true
+    _light.light_angular_distance = 2.0
     add_child(_light)
 
     apply(0)

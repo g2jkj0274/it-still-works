@@ -7,7 +7,7 @@ extends Node3D
 
 ## 블록보다 살짝 크게 그려 안쪽 면과 겹치지 않게 한다.
 const MARGIN := 0.03
-const COLOUR := Color(1.0, 1.0, 1.0, 0.30)
+const COLOUR := Palette.HIGHLIGHT
 
 var _cell: Vector3i = Vector3i.ZERO
 var _mesh: MeshInstance3D
