@@ -33,3 +33,20 @@ func test_field_order_matters() -> void:
 
 func test_empty_fields_hash_is_stable() -> void:
     assert_str(SimHash.hash_fields([])).is_equal(SimHash.hash_fields([]))
+
+
+func test_byte_hash_is_stable() -> void:
+    var bytes := PackedByteArray([1, 2, 3])
+    assert_str(SimHash.hash_bytes(bytes)).is_equal(SimHash.hash_bytes(bytes))
+
+
+func test_byte_hash_is_fixed_length_hex() -> void:
+    var digest := SimHash.hash_bytes(PackedByteArray([0]))
+    assert_str(digest).has_length(64)
+    assert_bool(digest.is_valid_hex_number(false)).is_true()
+
+
+func test_byte_hash_reacts_to_a_single_byte() -> void:
+    var left := SimHash.hash_bytes(PackedByteArray([1, 2, 3]))
+    var right := SimHash.hash_bytes(PackedByteArray([1, 2, 4]))
+    assert_str(left).is_not_equal(right)

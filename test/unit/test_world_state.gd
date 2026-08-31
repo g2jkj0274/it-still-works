@@ -119,3 +119,40 @@ func test_sorted_keys_are_lexicographic_not_intern_order() -> void:
         actual.append(String(key))
 
     assert_array(actual).contains_exactly(expected)
+
+
+func test_state_owns_a_grid_and_a_character() -> void:
+    var state := _make()
+    assert_object(state.grid).is_not_null()
+    assert_object(state.character).is_not_null()
+    assert_int(state.grid.get_block(Vector3i(0, 0, 0))).is_equal(BlockType.EMPTY)
+
+
+func test_block_change_changes_hash() -> void:
+    var state := _make(42)
+    var before := state.compute_hash()
+    state.grid.set_block(Vector3i(3, 4, 5), BlockType.STONE)
+    assert_str(state.compute_hash()).is_not_equal(before)
+
+
+func test_character_move_changes_hash() -> void:
+    var state := _make(42)
+    var before := state.compute_hash()
+    state.character.position = Vector3i(1, 0, 0)
+    assert_str(state.compute_hash()).is_not_equal(before)
+
+
+func test_character_facing_changes_hash() -> void:
+    var state := _make(42)
+    var before := state.compute_hash()
+    state.character.facing = Vector3i(1, 0, 0)
+    assert_str(state.compute_hash()).is_not_equal(before)
+
+
+func test_states_with_same_world_hash_equal() -> void:
+    var a := _make(42)
+    var b := _make(42)
+    for state: WorldState in [a, b]:
+        state.grid.set_block(Vector3i(3, 4, 5), BlockType.STONE)
+        state.character.position = Vector3i(9, 9, 1)
+    assert_str(a.compute_hash()).is_equal(b.compute_hash())
