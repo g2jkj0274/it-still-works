@@ -15,6 +15,8 @@ func _controller(sim: Simulation) -> InputController:
 func _sim() -> Simulation:
     var sim := Simulation.new(1)
     IslandBuilder.populate(sim.state)
+    for type in InputController.PLACEABLE:
+        sim.state.inventory.add(type, 4)
     return sim
 
 

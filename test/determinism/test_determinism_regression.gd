@@ -16,7 +16,8 @@ const TOTAL_TICKS := 20
 ##   2b530828... 최초 고정
 ##   c022a3f9... 월드 상태에 복셀 격자와 캐릭터가 추가되어 해시 대상이 늘어남
 ##   53fd7af9... 캐릭터 위치가 서브유닛이 되고 이동 목표가 상태에 추가됨
-const GOLDEN_HASH := "53fd7af9cc28f6422a637b4860825a5aef1d8e6102fbe884d1f64f94aa420d0a"
+##   a94b6b4f... 손에 든 재료가 상태에 추가됨
+const GOLDEN_HASH := "a94b6b4f2a7295431ede925e052e9d8a4b7f7d5becb94faad6f4c0484b0b289b"
 
 ## 실행마다 새로 만든다. 명령 객체는 큐가 틱과 순서를 새겨 넣으므로 재사용하지 않는다.
 func _scenario() -> Array:

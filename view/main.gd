@@ -29,6 +29,7 @@ var _character_view: CharacterView
 var _camera: IsometricCamera
 var _highlight: BlockHighlight
 var _input: InputController
+var _hotbar: Hotbar
 var _last_usec: int = 0
 
 
@@ -86,10 +87,15 @@ func block_highlight() -> BlockHighlight:
     return _highlight
 
 
+func hotbar() -> Hotbar:
+    return _hotbar
+
+
 ## 시뮬레이션 상태를 읽어 화면을 맞춘다. 시뮬레이션은 건드리지 않는다.
 func sync_views() -> void:
     _world_view.sync()
     _character_view.sync(CHARACTER_FOLLOW)
+    _hotbar.sync()
     _camera.follow(_character_view.target_position(), CAMERA_FOLLOW)
 
 
@@ -159,6 +165,12 @@ func _build_input() -> void:
     _input.name = "Input"
     add_child(_input)
     _input.bind(simulation)
+
+    _hotbar = Hotbar.new()
+    _hotbar.name = "Hotbar"
+    add_child(_hotbar)
+    _hotbar.bind(simulation.state.inventory, _input)
+    _hotbar.sync()
 
 
 func _build_hint() -> void:

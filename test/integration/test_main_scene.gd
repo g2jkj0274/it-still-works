@@ -14,6 +14,8 @@ func _main() -> GameMain:
     var main: GameMain = auto_free((load(MAIN_SCENE) as PackedScene).instantiate())
     add_child(main)
     main.set_physics_process(false)
+    for type in InputController.PLACEABLE:
+        main.simulation.state.inventory.add(type, 8)
     return main
 
 

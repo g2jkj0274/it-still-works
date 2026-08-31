@@ -14,7 +14,7 @@ func _state() -> WorldState:
 
 
 func test_place_fills_an_empty_cell() -> void:
-    var state := _state()
+    var state := _stocked()
     PlaceBlockCommand.create(Vector3i(5, 4, 1), BlockType.WOOD).apply(state)
     assert_int(state.grid.get_block(Vector3i(5, 4, 1))).is_equal(BlockType.WOOD)
 
@@ -114,3 +114,52 @@ func test_breaking_the_floor_makes_the_character_settle_next_tick() -> void:
     sim.submit(BreakBlockCommand.create(Vector3i(4, 4, 1)))
     sim.advance(10)
     assert_bool(sim.state.character.cell() == Vector3i(4, 4, 1)).is_true()
+
+
+func _stocked() -> WorldState:
+    var state := _state()
+    state.inventory.add(BlockType.WOOD, 4)
+    state.inventory.add(BlockType.STONE, 4)
+    return state
+
+
+func test_placing_spends_a_material() -> void:
+    var state := _stocked()
+    PlaceBlockCommand.create(Vector3i(5, 4, 1), BlockType.WOOD).apply(state)
+    assert_int(state.inventory.count_of(BlockType.WOOD)).is_equal(3)
+
+
+func test_placing_without_the_material_does_nothing() -> void:
+    var state := _state()
+    assert_int(state.inventory.count_of(BlockType.WOOD)).is_equal(0)
+    PlaceBlockCommand.create(Vector3i(5, 4, 1), BlockType.WOOD).apply(state)
+    assert_bool(state.grid.is_solid(Vector3i(5, 4, 1))).is_false()
+
+
+func test_a_refused_placement_keeps_the_material() -> void:
+    # 놓이지 않았는데 재료만 사라지면 손해다.
+    var state := _stocked()
+    PlaceBlockCommand.create(Vector3i(5, 4, 0), BlockType.WOOD).apply(state)
+    assert_int(state.inventory.count_of(BlockType.WOOD)).is_equal(4)
+
+
+func test_breaking_yields_the_material() -> void:
+    var state := _state()
+    state.grid.set_block(Vector3i(5, 4, 1), BlockType.STONE)
+    BreakBlockCommand.create(Vector3i(5, 4, 1)).apply(state)
+    assert_int(state.inventory.count_of(BlockType.STONE)).is_equal(1)
+
+
+func test_a_refused_break_yields_nothing() -> void:
+    var state := _state()
+    BreakBlockCommand.create(Vector3i(5, 4, VoxelGrid.BEDROCK_Z)).apply(state)
+    assert_int(state.inventory.total()).is_equal(0)
+
+
+func test_break_then_place_returns_the_same_material() -> void:
+    var state := _state()
+    state.grid.set_block(Vector3i(5, 4, 1), BlockType.WOOD)
+    BreakBlockCommand.create(Vector3i(5, 4, 1)).apply(state)
+    PlaceBlockCommand.create(Vector3i(5, 4, 1), BlockType.WOOD).apply(state)
+    assert_int(state.grid.get_block(Vector3i(5, 4, 1))).is_equal(BlockType.WOOD)
+    assert_int(state.inventory.count_of(BlockType.WOOD)).is_equal(0)

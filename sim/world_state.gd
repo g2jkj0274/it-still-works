@@ -20,6 +20,9 @@ var grid: VoxelGrid
 ## 플레이어 캐릭터.
 var character: CharacterState
 
+## 손에 든 재료.
+var inventory: Inventory
+
 var _values: Dictionary[StringName, int] = {}
 
 
@@ -27,6 +30,7 @@ func _init(p_rng: SimRng = null) -> void:
     rng = p_rng if p_rng != null else SimRng.new(0)
     grid = VoxelGrid.new()
     character = CharacterState.new()
+    inventory = Inventory.new()
 
 
 func set_value(key: StringName, value: int) -> void:
@@ -93,6 +97,7 @@ func to_hash_fields() -> Array:
         ["character.facing.y", character.facing.y],
         ["values.count", _values.size()],
     ]
+    fields.append_array(inventory.to_hash_fields())
     for key in sorted_keys():
         fields.append(["value." + String(key), _values[key]])
     return fields

@@ -27,7 +27,9 @@ func apply(state: WorldState) -> void:
     if not state.grid.is_solid(position):
         return
 
+    var broken := state.grid.get_block(position)
     state.grid.set_block(position, BlockType.EMPTY)
+    state.inventory.add(broken, 1)
 
 
 func write_payload(data: Dictionary) -> void:

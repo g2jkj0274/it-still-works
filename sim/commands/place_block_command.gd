@@ -33,6 +33,10 @@ func apply(state: WorldState) -> void:
     if not _has_solid_neighbour(state.grid):
         return
 
+    # 재료는 마지막에 빼다. 놓이지 않았는데 재료만 사라지면 손해다.
+    if not state.inventory.take(block_type, 1):
+        return
+
     state.grid.set_block(position, block_type)
 
 

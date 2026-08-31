@@ -20,39 +20,43 @@ const WEST := Vector3i(-1, 0, 0)
 ##   742dc8ed... 최초 고정
 ##   a72acf41... 캐릭터 위치가 서브유닛이 되며 걸음이 여러 틱에 걸치게 됨.
 ##               명령 간격을 넓히고 총 틱 수를 40 → 110 으로 늘림
+##   f4e53348... 재료가 있어야 놓을 수 있게 됨. 먼저 부수고 그 재료로 놓도록 시나리오 수정
 ##
 ## 이 값이 깨졌다면 시뮬레이션 동작이 바뀐 것이다. 값을 고쳐 통과시키지 말고
 ## 무엇이 바뀌었는지 먼저 밝힌다.
-const GOLDEN_HASH := "a72acf41d2d7cf1ec5707fef66af1f6f9174f940b2aed25353a8a5c44610f068"
+const GOLDEN_HASH := "f4e533483b930821ef0f5422f25a339b658fa0e248ce496ab89cbffb3bd61d5b"
 
 ## 같은 실행이 끝났을 때 캐릭터가 서 있는 칸.
 ## 해시보다 읽기 쉬워서 이동 규칙이 어긋났을 때 원인을 빨리 좁혀준다.
-const GOLDEN_POSITION := Vector3i(32, 31, 2)
+const GOLDEN_POSITION := Vector3i(32, 32, 2)
 
 
 ## 실행마다 새로 만든다. 명령 객체는 큐가 틱과 순서를 새겨 넣으므로 재사용하지 않는다.
 ##
 ## 한 걸음이 여러 틱에 걸치므로 명령 간격을 걸음보다 넓게 둔다. 좁으면 걷는 중에
 ## 들어온 명령이 무시되어 시나리오가 실제로 아무 데도 가지 않는다.
+##
+## 재료가 있어야 놓을 수 있으므로 먼저 부수고 그 재료로 놓는다. 빈손으로
+## 시작하는 것이 이 게임의 시작이다.
 func _scenario() -> Array:
     return [
-        [0, MoveCharacterCommand.create(NORTH)],
-        [6, MoveCharacterCommand.create(NORTH)],
-        [12, PlaceBlockCommand.create(Vector3i(33, 30, 2), BlockType.WOOD)],
-        [18, PlaceBlockCommand.create(Vector3i(31, 30, 2), BlockType.WOOD)],
-        [24, MoveCharacterCommand.create(EAST)],
-        [30, BreakBlockCommand.create(Vector3i(33, 30, 2))],
-        [36, MoveCharacterCommand.create(SOUTH)],
-        [42, MoveCharacterCommand.create(WEST)],
-        [48, PlaceBlockCommand.create(Vector3i(32, 32, 2), BlockType.STONE)],
-        [54, MoveCharacterCommand.create(SOUTH)],
-        [60, PlaceBlockCommand.create(Vector3i(32, 33, 2), BlockType.WOOD)],
-        [66, BreakBlockCommand.create(Vector3i(32, 32, 2))],
-        [72, MoveCharacterCommand.create(EAST)],
-        [78, RollValueCommand.create(&"night_roll", 0, 99)],
-        [84, MoveCharacterCommand.create(NORTH)],
-        [90, BreakBlockCommand.create(Vector3i(32, 33, 2))],
-        [96, MoveCharacterCommand.create(WEST)],
+        [0, BreakBlockCommand.create(Vector3i(32, 31, 1))],
+        [6, BreakBlockCommand.create(Vector3i(33, 32, 1))],
+        [12, BreakBlockCommand.create(Vector3i(31, 32, 1))],
+        [18, PlaceBlockCommand.create(Vector3i(32, 31, 1), BlockType.GROUND)],
+        [24, MoveCharacterCommand.create(NORTH)],
+        [30, PlaceBlockCommand.create(Vector3i(32, 30, 2), BlockType.GROUND)],
+        [36, MoveCharacterCommand.create(NORTH)],
+        [42, BreakBlockCommand.create(Vector3i(32, 30, 2))],
+        [48, PlaceBlockCommand.create(Vector3i(33, 30, 2), BlockType.GROUND)],
+        [54, MoveCharacterCommand.create(EAST)],
+        [60, RollValueCommand.create(&"night_roll", 0, 99)],
+        [66, BreakBlockCommand.create(Vector3i(33, 30, 2))],
+        [72, MoveCharacterCommand.create(SOUTH)],
+        [78, MoveCharacterCommand.create(WEST)],
+        [84, PlaceBlockCommand.create(Vector3i(32, 32, 2), BlockType.GROUND)],
+        [90, MoveCharacterCommand.create(SOUTH)],
+        [96, BreakBlockCommand.create(Vector3i(32, 32, 2))],
     ]
 
 
@@ -88,8 +92,18 @@ func test_scenario_actually_changes_the_world() -> void:
     var played := _run()
     var untouched := Simulation.new(SEED)
     IslandBuilder.populate(untouched.state)
-    assert_bool(played.state.character.cell() == IslandBuilder.SPAWN).is_false()
+
     assert_str(played.state.grid.digest()).is_not_equal(untouched.state.grid.digest())
+    assert_int(played.state.inventory.total()).is_greater(0)
+
+    # 시나리오는 걸어 나갔다가 돌아오므로 끝 위치는 시작과 같을 수 있다.
+    # 도중에 실제로 움직였는지를 본다.
+    var midway := Simulation.new(SEED)
+    IslandBuilder.populate(midway.state)
+    for entry: Array in _scenario():
+        midway.submit_at(entry[1] as SimCommand, int(entry[0]))
+    midway.advance(TOTAL_TICKS / 2)
+    assert_bool(midway.state.character.cell() == IslandBuilder.SPAWN).is_false()
 
 
 func test_dropping_one_command_produces_different_hash() -> void:
