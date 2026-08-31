@@ -31,3 +31,14 @@ func test_mapping_is_injective_over_the_grid_axes() -> void:
         var key := str(SimViewCoords.cell_to_world(cell))
         assert_bool(seen.has(key)).is_false()
         seen[key] = true
+
+
+func test_world_and_grid_point_round_trip() -> void:
+    for cell in [Vector3i(0, 0, 0), Vector3i(3, 4, 5), Vector3i(63, 63, 15)]:
+        var back := SimViewCoords.world_to_grid_point(SimViewCoords.cell_to_world(cell))
+        assert_bool(Vector3i(floori(back.x), floori(back.y), floori(back.z)) == cell).is_true()
+
+
+func test_direction_axis_swap_has_no_offset() -> void:
+    var grid_dir := SimViewCoords.world_to_grid_direction(Vector3(0, -1, 0))
+    assert_bool(grid_dir.is_equal_approx(Vector3(0, 0, -1))).is_true()

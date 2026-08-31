@@ -30,6 +30,7 @@ const REPEAT_TICKS := 4
 var _simulation: Simulation
 var _selected: int = BlockType.WOOD
 var _next_move_tick: int = 0
+var _target: BlockTarget = null
 
 
 func bind(simulation: Simulation) -> void:
@@ -59,16 +60,44 @@ func submit_move(direction: Vector3i) -> void:
     _simulation.submit(MoveCharacterCommand.create(direction))
 
 
+## 시선이 가리키는 칸을 알려준다. 표현 레이어가 매 프레임 갱신한다.
+func set_target(target: BlockTarget) -> void:
+    _target = target
+
+
+func clear_target() -> void:
+    _target = null
+
+
+func has_target() -> bool:
+    return _target != null and _target.hit
+
+
+## 부술 칸. 가리키는 곳이 없으면 바라보는 앞 칸으로 물러난다.
+## 마우스 없이 키만으로도 놀 수 있어야 한다.
+func break_cell() -> Vector3i:
+    if has_target():
+        return _target.cell
+    return _facing_cell()
+
+
+## 놓을 칸. 가리키는 블록의 맞은 면 바깥이다.
+func place_cell() -> Vector3i:
+    if has_target():
+        return _target.place_cell()
+    return _facing_cell()
+
+
 func submit_place() -> void:
     if _simulation == null:
         return
-    _simulation.submit(PlaceBlockCommand.create(_target_cell(), _selected))
+    _simulation.submit(PlaceBlockCommand.create(place_cell(), _selected))
 
 
 func submit_break() -> void:
     if _simulation == null:
         return
-    _simulation.submit(BreakBlockCommand.create(_target_cell()))
+    _simulation.submit(BreakBlockCommand.create(break_cell()))
 
 
 ## 눌린 키를 읽어 명령을 만든다. 표현 레이어의 프레임 루프에서 부른다.
@@ -103,7 +132,7 @@ static func _install(action: StringName, keys: Array) -> void:
         InputMap.action_add_event(action, event)
 
 
-func _target_cell() -> Vector3i:
+func _facing_cell() -> Vector3i:
     return _simulation.state.character.facing_cell()
 
 

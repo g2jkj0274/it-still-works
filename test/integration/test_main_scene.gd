@@ -116,3 +116,35 @@ func test_input_only_queues_commands() -> void:
     main.input_controller().submit_place()
     assert_int(main.simulation.queue.size()).is_equal(2)
     assert_str(main.simulation.state_hash()).is_equal(before)
+
+
+func test_aiming_at_the_screen_centre_finds_a_block() -> void:
+    var main := _main()
+    var centre := Vector2(main.get_viewport().get_visible_rect().size) * 0.5
+    var target: BlockTarget = main.pick_target(centre)
+    assert_object(target).is_not_null()
+    assert_bool(target.hit).is_true()
+    assert_bool(main.simulation.state.grid.is_solid(target.cell)).is_true()
+
+
+func test_aiming_shows_the_highlight_on_the_targeted_cell() -> void:
+    var main := _main()
+    var centre := Vector2(main.get_viewport().get_visible_rect().size) * 0.5
+    var target: BlockTarget = main.pick_target(centre)
+
+    main.input_controller().set_target(target)
+    main.block_highlight().show_cell(target.cell)
+    assert_bool(main.block_highlight().is_showing()).is_true()
+    assert_bool(main.block_highlight().targeted_cell() == target.cell).is_true()
+
+
+func test_the_highlight_starts_hidden() -> void:
+    assert_bool(_main().block_highlight().is_showing()).is_false()
+
+
+func test_out_of_reach_targets_are_refused() -> void:
+    var main := _main()
+    var far := BlockTarget.new()
+    far.hit = true
+    far.cell = Vector3i(2, 2, 1)
+    assert_bool(far.is_usable(main.simulation.state.character.cell())).is_false()
