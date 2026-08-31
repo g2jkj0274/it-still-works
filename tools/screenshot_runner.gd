@@ -70,6 +70,7 @@ func _build_steps() -> Array:
         ["05_break", _break],
         ["06_build_tower", _build_tower],
         ["07_auto_door", _build_auto_door],
+        ["08_night", _fall_of_night],
     ]
 
 
@@ -126,6 +127,11 @@ func _build_auto_door() -> void:
     _main.simulation.submit_at(ConnectPartsCommand.create(detector, actuator), start + 6)
 
 
+## 밤으로 건너뛴다. 어두워지고 위협이 나오는지 본다.
+func _fall_of_night() -> void:
+    _main.simulation.advance(DayCycle.DAY_TICKS - _main.simulation.current_tick() + 20)
+
+
 func _begin_step() -> void:
     var action: Callable = _steps[_index][1]
     action.call()
@@ -163,10 +169,11 @@ func _evaluate(without_subject: Image) -> void:
         _fail(name, "캐릭터가 있어야 할 자리에 아무것도 그려지지 않았다")
 
     if problems.is_empty():
-        _report.append("  OK   %s  (색 %d종, 밝기 %.2f)" % [
+        _report.append("  OK   %s  (색 %d종, 밝기 %.2f, 어둠 %.2f)" % [
             name,
             ScreenshotCheck.distinct_colours(_with_subject),
             ScreenshotCheck.average_luminance(_with_subject),
+            _main.sky_view().darkness(),
         ])
 
 

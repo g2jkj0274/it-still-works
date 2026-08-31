@@ -23,8 +23,17 @@ var character: CharacterState
 ## 손에 든 재료.
 var inventory: Inventory
 
+## 쓰러졌을 때 다시 일어나는 자리.
+var spawn: Vector3i = Vector3i.ZERO
+
 ## 월드에 놓인 회로.
 var circuit: Circuit
+
+## 생존 지표.
+var vitals: Vitals
+
+## 지금 나와 있는 위협들.
+var threats: ThreatField
 
 var _values: Dictionary[StringName, int] = {}
 
@@ -35,6 +44,8 @@ func _init(p_rng: SimRng = null) -> void:
     character = CharacterState.new()
     inventory = Inventory.new()
     circuit = Circuit.new()
+    vitals = Vitals.new()
+    threats = ThreatField.new()
 
 
 func set_value(key: StringName, value: int) -> void:
@@ -103,6 +114,8 @@ func to_hash_fields() -> Array:
     ]
     fields.append_array(inventory.to_hash_fields())
     fields.append_array(circuit.to_hash_fields())
+    fields.append_array(vitals.to_hash_fields())
+    fields.append_array(threats.to_hash_fields())
     for key in sorted_keys():
         fields.append(["value." + String(key), _values[key]])
     return fields
