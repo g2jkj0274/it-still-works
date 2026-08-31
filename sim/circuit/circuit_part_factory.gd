@@ -23,4 +23,6 @@ static func _bare(part_type: int, at: Vector3i) -> CircuitPart:
         return ActuatorPart.create(at)
     if part_type == BlockType.REPEATER:
         return RepeaterPart.create(at)
+    if part_type == BlockType.BOX:
+        return BoxPart.create(at)
     return null

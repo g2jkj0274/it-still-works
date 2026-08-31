@@ -22,6 +22,7 @@ const _NAMES: Dictionary[int, String] = {
     BlockType.DETECTOR: "눈",
     BlockType.ACTUATOR: "손",
     BlockType.REPEATER: "되풀이",
+    BlockType.BOX: "상자",
 }
 
 var _inventory: Inventory
