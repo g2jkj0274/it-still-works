@@ -23,6 +23,14 @@ static func hash_fields(fields: Array) -> String:
     return hash_text(canonical_text(fields))
 
 
+## 바이트 배열의 SHA-256 16진 다이제스트. 복셀 격자처럼 큰 상태를 접을 때 쓴다.
+static func hash_bytes(bytes: PackedByteArray) -> String:
+    var context := HashingContext.new()
+    context.start(HashingContext.HASH_SHA256)
+    context.update(bytes)
+    return context.finish().hex_encode()
+
+
 ## 해시 이전 단계의 정규 문자열. 실패한 해시를 눈으로 비교할 때 쓴다.
 static func canonical_text(fields: Array) -> String:
     var parts := PackedStringArray()
