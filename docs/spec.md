@@ -44,10 +44,12 @@
 - 위치·수량은 정수 격자만 사용. 시뮬레이션 로직에 부동소수점 금지
 - 난수는 시드 고정된 단일 RNG 인스턴스 경유. `randi()` 전역 호출 금지
 - 딕셔너리 순회 등 순서 비보장 자료구조를 시뮬레이션 판단에 사용 금지
+- `StringName` 끼리의 비교는 사전순이 아니라 내부 포인터 순이다. `Array[StringName].sort()` 는 실행마다 순서가 달라진다. 정렬이 필요하면 `String` 으로 바꾼 뒤 정렬
 
 **2. 틱 기반 고정 시간**
 
-- 시뮬레이션은 고정 틱(예: 20 tick/s)으로 진행. 렌더 프레임과 분리
+- 시뮬레이션은 고정 20 tick/s 로 진행. 렌더 프레임과 분리
+- 틱 간격은 정수 마이크로초(50,000)로 다룬다. 실수 delta 를 정수로 바꾸는 일은 표현 레이어의 몫
 - `_process`가 아니라 누적 틱 루프에서 시뮬레이션 갱신
 - 프레임률이 달라져도 시뮬레이션 결과가 동일해야 함
 
@@ -285,7 +287,7 @@
 godot --headless --path . --quit
 
 # GdUnit4 전체 테스트
-godot --headless --path . -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd --run-tests
+godot --headless --path . -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd -a test -c --ignoreHeadlessMode
 
 # E2E
 pytest tests/ -v
