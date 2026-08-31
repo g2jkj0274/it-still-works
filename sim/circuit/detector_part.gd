@@ -8,7 +8,7 @@ extends CircuitPart
 ## **조건을 만족할 때만 신호를 낸다.** 만족하지 않으면 거짓이 아니라 아무것도
 ## 내지 않는다. 회로에서 "실행된다"는 곧 "신호가 있다"이고, 값은 그 위에 실린다.
 ##
-## 아직 세상에 없는 대상(작물)도 신호를 내지 않는다.
+## 모든 대상이 이제 실제로 동작한다.
 
 const TARGET_PLAYER := 0
 const TARGET_THREAT := 1
@@ -65,9 +65,22 @@ func compute(state: WorldState, _incoming: Array) -> void:
             var distance := _nearest_threat_distance(state)
             if distance >= 0:
                 _next_output = SignalValue.of_int(distance)
+        TARGET_CROP:
+            if _ripe_crop_is_near(state):
+                _next_output = SignalValue.of_bool(true)
         _:
-            # 작물은 아직 세상에 없다.
             pass
+
+
+## 손 닿는 곳에 다 자란 밭이 있는가.
+func _ripe_crop_is_near(state: WorldState) -> bool:
+    for cell in state.crops.cells():
+        if not state.crops.is_mature(cell):
+            continue
+        var offset := cell - position
+        if offset.x * offset.x + offset.y * offset.y + offset.z * offset.z <= SENSE_RADIUS * SENSE_RADIUS:
+            return true
+    return false
 
 
 ## 근접한 위협까지의 거리(칸). 아무도 없으면 -1.

@@ -38,6 +38,7 @@ func apply(state: WorldState) -> void:
 
     # 부품을 걷어내면 거기 이어진 배선도 함께 사라진다.
     state.circuit.remove_part(position)
+    state.crops.uproot(position)
 
 
 func write_payload(data: Dictionary) -> void:

@@ -38,6 +38,8 @@ func apply(state: WorldState) -> void:
         return
 
     state.grid.set_block(position, block_type)
+    if block_type == BlockType.FIELD:
+        state.crops.plant(position)
 
 
 func _has_solid_neighbour(grid: VoxelGrid) -> bool:

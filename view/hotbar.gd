@@ -24,6 +24,8 @@ const _NAMES: Dictionary[int, String] = {
     BlockType.REPEATER: "되풀이",
     BlockType.BOX: "상자",
     BlockType.BRANCH: "갈림길",
+    BlockType.FIELD: "밭",
+    BlockType.CROP: "작물",
 }
 
 var _inventory: Inventory

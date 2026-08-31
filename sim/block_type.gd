@@ -39,11 +39,17 @@ const BOX := 9
 ## 갈림길. 조건을 판정해 신호를 한쪽으로만 보낸다.
 const BRANCH := 10
 
-const COUNT := 11
+## 밭. 작물이 자란다.
+const FIELD := 11
+
+## 거둔 작물. 먹을 거리다.
+const CROP := 12
+
+const COUNT := 13
 
 const _NAMES: PackedStringArray = [
     "empty", "ground", "stone", "wood",
-    "door_closed", "door_open", "detector", "actuator", "repeater", "box", "branch",
+    "door_closed", "door_open", "detector", "actuator", "repeater", "box", "branch", "field", "crop",
 ]
 
 

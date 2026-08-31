@@ -21,6 +21,7 @@ const ACTION_PLACE := &"place_block"
 const ACTION_BREAK := &"break_block"
 const ACTION_LINK := &"link_parts"
 const ACTION_TARGET := &"cycle_target"
+const ACTION_EAT := &"eat"
 
 ## 손에 쥘 수 있는 재료. 고를 수 있는 순서대로.
 const PLACEABLE: Array[int] = [
@@ -33,10 +34,11 @@ const PLACEABLE: Array[int] = [
     BlockType.REPEATER,
     BlockType.BOX,
     BlockType.BRANCH,
+    BlockType.FIELD,
 ]
 const SELECT_ACTIONS: Array = [
     &"select_1", &"select_2", &"select_3", &"select_4",
-    &"select_5", &"select_6", &"select_7", &"select_8", &"select_9",
+    &"select_5", &"select_6", &"select_7", &"select_8", &"select_9", &"select_0",
 ]
 
 ## 키를 누르고 있을 때 한 걸음마다 두는 간격(틱).
@@ -210,6 +212,13 @@ func submit_link() -> void:
     clear_link_source()
 
 
+## 작물을 먹는다. 포만도가 찬다.
+func submit_eat() -> void:
+    if _simulation == null:
+        return
+    _simulation.submit(EatCommand.create())
+
+
 func submit_place() -> void:
     if _simulation == null:
         return
@@ -253,6 +262,8 @@ static func install_actions() -> void:
     _install(&"select_7", [KEY_7])
     _install(&"select_8", [KEY_8])
     _install(&"select_9", [KEY_9])
+    _install(&"select_0", [KEY_0])
+    _install(ACTION_EAT, [KEY_F])
     _install(ACTION_LINK, [KEY_R])
     _install(ACTION_TARGET, [KEY_T])
 
@@ -291,6 +302,8 @@ func _poll_blocks() -> void:
         submit_link()
     if Input.is_action_just_pressed(ACTION_TARGET):
         cycle_part_setting()
+    if Input.is_action_just_pressed(ACTION_EAT):
+        submit_eat()
 
 
 func _poll_selection() -> void:

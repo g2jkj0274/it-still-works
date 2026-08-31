@@ -49,6 +49,7 @@ func submit_at(command: SimCommand, at_tick: int) -> SimCommand:
 func step() -> void:
     for command in queue.take_due(state.tick):
         command.apply(state)
+    state.crops.advance()
     state.circuit.tick(state)
     _turn_of_day()
     state.threats.advance(state)

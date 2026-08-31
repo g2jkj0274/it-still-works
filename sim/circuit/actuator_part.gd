@@ -35,12 +35,28 @@ func compute(_state: WorldState, incoming: Array) -> void:
 
 
 func act(state: WorldState) -> void:
-    var wanted := BlockType.opened_door() if _wants_open else BlockType.closed_door()
     for offset in VoxelGrid.NEIGHBOURS:
         var neighbour := position + offset
-        if not BlockType.is_door(state.grid.get_block(neighbour)):
-            continue
-        # 닫으려는 자리에 캐릭터가 서 있으면 그대로 둔다. 몸이 블록에 갇히면 안 된다.
-        if not _wants_open and state.character.occupies(neighbour):
-            continue
-        state.grid.set_block(neighbour, wanted)
+        _work_door(state, neighbour)
+        _work_field(state, neighbour)
+
+
+## 문은 신호가 오면 열리고 오지 않으면 닫힌다.
+func _work_door(state: WorldState, cell: Vector3i) -> void:
+    if not BlockType.is_door(state.grid.get_block(cell)):
+        return
+    # 닫으려는 자리에 캐릭터가 서 있으면 그대로 둔다. 몸이 블록에 갇히면 안 된다.
+    if not _wants_open and state.character.occupies(cell):
+        return
+    state.grid.set_block(cell, BlockType.opened_door() if _wants_open else BlockType.closed_door())
+
+
+## 밭은 신호가 올 때만 거둔다. 다 자라지 않았으면 아무 일도 없다.
+func _work_field(state: WorldState, cell: Vector3i) -> void:
+    if not _wants_open:
+        return
+    if state.grid.get_block(cell) != BlockType.FIELD:
+        return
+    if not state.crops.harvest(cell):
+        return
+    state.inventory.add(BlockType.CROP, CropField.YIELD)
