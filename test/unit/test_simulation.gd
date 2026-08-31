@@ -79,3 +79,33 @@ func test_simulation_runs_without_scene_tree() -> void:
     assert_bool(ClassDB.is_parent_class(sim.get_class(), "Node")).is_false()
     sim.advance(5)
     assert_int(sim.current_tick()).is_equal(5)
+
+
+func _standing_sim() -> Simulation:
+    var sim := Simulation.new(1)
+    for y in 8:
+        for x in 8:
+            sim.state.grid.set_block(Vector3i(x, y, 0), BlockType.GROUND)
+    sim.state.character.position = Vector3i(4, 4, 1)
+    return sim
+
+
+func test_move_command_moves_the_character_on_step() -> void:
+    var sim := _standing_sim()
+    sim.submit(MoveCharacterCommand.create(Vector3i(1, 0, 0)))
+    sim.step()
+    assert_bool(sim.state.character.position == Vector3i(5, 4, 1)).is_true()
+
+
+func test_character_settles_when_the_ground_is_removed() -> void:
+    # 발밑이 사라지면 다음 틱에 내려앉는다. 공중에 남지 않는다.
+    var sim := _standing_sim()
+    sim.state.character.position = Vector3i(4, 4, 4)
+    sim.step()
+    assert_bool(sim.state.character.position == Vector3i(4, 4, 1)).is_true()
+
+
+func test_settled_character_stays_put() -> void:
+    var sim := _standing_sim()
+    sim.advance(5)
+    assert_bool(sim.state.character.position == Vector3i(4, 4, 1)).is_true()

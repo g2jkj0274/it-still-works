@@ -28,4 +28,6 @@ static func create_by_type(type: StringName) -> SimCommand:
         return AddValueCommand.new()
     if type == RollValueCommand.TYPE:
         return RollValueCommand.new()
+    if type == MoveCharacterCommand.TYPE:
+        return MoveCharacterCommand.new()
     return null

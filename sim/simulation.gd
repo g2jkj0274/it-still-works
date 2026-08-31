@@ -49,7 +49,15 @@ func submit_at(command: SimCommand, at_tick: int) -> SimCommand:
 func step() -> void:
     for command in queue.take_due(state.tick):
         command.apply(state)
+    _settle_character()
     state.tick += 1
+
+
+## 발밑 블록이 사라졌을 때 캐릭터가 공중에 남지 않게 한다.
+##
+## 입력에서 온 변경이 아니라 월드가 스스로 지키는 규칙이므로 명령을 거치지 않는다.
+func _settle_character() -> void:
+    state.character.position = MovementRules.settle(state.grid, state.character.position)
 
 
 ## [param ticks] 만큼 진행한다. 0 이하면 아무 일도 하지 않는다.
