@@ -43,12 +43,21 @@ func value_count() -> int:
     return _values.size()
 
 
-## 항상 정렬된 키를 돌려준다.
+## 항상 사전순으로 정렬된 키를 돌려준다.
 ## 딕셔너리 순회 순서는 보장되지 않으므로 시뮬레이션 판단에 직접 쓰지 않는다.
+##
+## 주의: StringName 끼리의 비교는 사전순이 아니라 내부 포인터 순이다.
+## Array[StringName].sort() 를 그대로 쓰면 실행마다 순서가 달라져 결정론이 깨진다.
+## 반드시 String 으로 바꾼 뒤 정렬한다.
 func sorted_keys() -> Array[StringName]:
+    var names: Array[String] = []
+    for key: StringName in _values.keys():
+        names.append(String(key))
+    names.sort()
+
     var keys: Array[StringName] = []
-    keys.assign(_values.keys())
-    keys.sort()
+    for name in names:
+        keys.append(StringName(name))
     return keys
 
 

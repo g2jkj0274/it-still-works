@@ -101,3 +101,21 @@ func test_erased_key_is_not_confused_with_zero_value() -> void:
     var present := _make(42)
     present.set_value(&"wood", 0)
     assert_str(absent.compute_hash()).is_not_equal(present.compute_hash())
+
+
+func test_sorted_keys_are_lexicographic_not_intern_order() -> void:
+    # StringName 끼리의 비교는 내부 포인터 순이다. 사전순 정렬을 보장하지 않는다.
+    # 역순으로 넣어 삽입 순서와 사전순이 어긋나게 만든 뒤 결과를 확인한다.
+    var state := _make()
+    var names: Array = ["wood", "ore", "crop", "door", "lamp", "field", "box", "alarm"]
+    for i in names.size():
+        state.set_value(StringName(names[names.size() - 1 - i]), i)
+
+    var expected: Array = names.duplicate()
+    expected.sort()
+
+    var actual: Array = []
+    for key in state.sorted_keys():
+        actual.append(String(key))
+
+    assert_array(actual).contains_exactly(expected)
