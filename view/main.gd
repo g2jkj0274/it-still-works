@@ -29,6 +29,7 @@ var _character_view: CharacterView
 var _camera: IsometricCamera
 var _highlight: BlockHighlight
 var _input: InputController
+var _wire_view: WireView
 var _hotbar: Hotbar
 var _last_usec: int = 0
 
@@ -91,10 +92,15 @@ func hotbar() -> Hotbar:
     return _hotbar
 
 
+func wire_view() -> WireView:
+    return _wire_view
+
+
 ## 시뮬레이션 상태를 읽어 화면을 맞춘다. 시뮬레이션은 건드리지 않는다.
 func sync_views() -> void:
     _world_view.sync()
     _character_view.sync(CHARACTER_FOLLOW)
+    _wire_view.sync()
     _hotbar.sync()
     _camera.follow(_character_view.target_position(), CAMERA_FOLLOW)
 
@@ -148,6 +154,12 @@ func _build_views() -> void:
     _character_view.bind(simulation.state.character)
     _character_view.snap()
 
+    _wire_view = WireView.new()
+    _wire_view.name = "WireView"
+    add_child(_wire_view)
+    _wire_view.bind(simulation.state.circuit)
+    _wire_view.rebuild()
+
     _camera = IsometricCamera.new()
     _camera.name = "Camera"
     add_child(_camera)
@@ -180,7 +192,9 @@ func _build_hint() -> void:
 마우스로 결령
 놓기  E
 부수기  Q
-재료  1 흙  2 돌  3 나무"
+재료  1 흙  2 돌  3 나무  4 문  5 눈  6 손
+잎기  R 두 번
+눈이 볼 것  T"
     label.position = Vector2(16, 16)
     label.add_theme_color_override("font_color", Color(0.15, 0.18, 0.22))
 

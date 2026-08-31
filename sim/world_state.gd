@@ -23,6 +23,9 @@ var character: CharacterState
 ## 손에 든 재료.
 var inventory: Inventory
 
+## 월드에 놓인 회로.
+var circuit: Circuit
+
 var _values: Dictionary[StringName, int] = {}
 
 
@@ -31,6 +34,7 @@ func _init(p_rng: SimRng = null) -> void:
     grid = VoxelGrid.new()
     character = CharacterState.new()
     inventory = Inventory.new()
+    circuit = Circuit.new()
 
 
 func set_value(key: StringName, value: int) -> void:
@@ -98,6 +102,7 @@ func to_hash_fields() -> Array:
         ["values.count", _values.size()],
     ]
     fields.append_array(inventory.to_hash_fields())
+    fields.append_array(circuit.to_hash_fields())
     for key in sorted_keys():
         fields.append(["value." + String(key), _values[key]])
     return fields
