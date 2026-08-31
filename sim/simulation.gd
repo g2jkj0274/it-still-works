@@ -50,8 +50,33 @@ func step() -> void:
     for command in queue.take_due(state.tick):
         command.apply(state)
     state.circuit.tick(state)
+    _turn_of_day()
+    state.threats.advance(state)
+    state.vitals.tick()
+    _revive_if_fallen()
     _settle_character()
     state.tick += 1
+
+
+## 밤이 되면 위협이 나오고 날이 밝으면 사라진다.
+func _turn_of_day() -> void:
+    if DayCycle.is_nightfall(state.tick):
+        state.threats.spawn_night(state)
+    elif DayCycle.is_daybreak(state.tick):
+        state.threats.clear()
+
+
+## 쓰러지면 시작 자리에서 다시 일어난다.
+##
+## 인벤토리의 절반을 떨어뜨린다. 실패는 가벼워야 하지만 공짜여서는 안 된다.
+## 만든 것은 그대로 남는다.
+func _revive_if_fallen() -> void:
+    if not state.vitals.is_dead():
+        return
+
+    state.inventory.drop_half()
+    state.vitals.revive()
+    state.character.place_at(state.spawn)
 
 
 ## 걷는 중이면 한 틱만큼 나아가고, 멈춰 있는데 발밑이 비었으면 한 칸 떨어진다.

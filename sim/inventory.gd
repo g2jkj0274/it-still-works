@@ -38,6 +38,12 @@ func take(block_type: int, amount: int) -> bool:
     return true
 
 
+## 절반을 떨어뜨린다. 홀수는 남는 쪽이 손해가 되도록 버림한다.
+func drop_half() -> void:
+    for type in BlockType.COUNT:
+        _counts[type] = _counts[type] / 2
+
+
 func total() -> int:
     var sum := 0
     for count in _counts:

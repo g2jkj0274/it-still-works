@@ -18,9 +18,6 @@ const CAMERA_FOLLOW := 0.12
 ## 마우스 광선을 따라갈 거리. 직교 카메라가 멀리 있어 넭넉히 잡는다.
 const RAY_DISTANCE := 300.0
 
-const SKY_COLOUR := Color(0.63, 0.80, 0.90)
-const AMBIENT_COLOUR := Color(0.78, 0.82, 0.90)
-
 var simulation: Simulation
 var driver: TickDriver
 
@@ -30,6 +27,9 @@ var _camera: IsometricCamera
 var _highlight: BlockHighlight
 var _input: InputController
 var _wire_view: WireView
+var _sky_view: SkyView
+var _threat_view: ThreatView
+var _vitals_bar: VitalsBar
 var _hotbar: Hotbar
 var _last_usec: int = 0
 
@@ -96,12 +96,27 @@ func wire_view() -> WireView:
     return _wire_view
 
 
+func sky_view() -> SkyView:
+    return _sky_view
+
+
+func threat_view() -> ThreatView:
+    return _threat_view
+
+
+func vitals_bar() -> VitalsBar:
+    return _vitals_bar
+
+
 ## 시뮬레이션 상태를 읽어 화면을 맞춘다. 시뮬레이션은 건드리지 않는다.
 func sync_views() -> void:
     _world_view.sync()
     _character_view.sync(CHARACTER_FOLLOW)
     _wire_view.sync()
+    _threat_view.sync()
+    _sky_view.apply(simulation.current_tick())
     _hotbar.sync()
+    _vitals_bar.sync()
     _camera.follow(_character_view.target_position(), CAMERA_FOLLOW)
 
 
@@ -122,23 +137,9 @@ func camera() -> IsometricCamera:
 
 
 func _build_environment() -> void:
-    var environment := Environment.new()
-    environment.background_mode = Environment.BG_COLOR
-    environment.background_color = SKY_COLOUR
-    environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-    environment.ambient_light_color = AMBIENT_COLOUR
-    environment.ambient_light_energy = 0.7
-
-    var holder := WorldEnvironment.new()
-    holder.name = "Environment"
-    holder.environment = environment
-    add_child(holder)
-
-    var light := DirectionalLight3D.new()
-    light.name = "Sun"
-    light.rotation_degrees = Vector3(-55.0, -40.0, 0.0)
-    light.light_energy = 1.1
-    add_child(light)
+    _sky_view = SkyView.new()
+    _sky_view.name = "Sky"
+    add_child(_sky_view)
 
 
 func _build_views() -> void:
@@ -159,6 +160,11 @@ func _build_views() -> void:
     add_child(_wire_view)
     _wire_view.bind(simulation.state.circuit)
     _wire_view.rebuild()
+
+    _threat_view = ThreatView.new()
+    _threat_view.name = "ThreatView"
+    add_child(_threat_view)
+    _threat_view.bind(simulation.state.threats)
 
     _camera = IsometricCamera.new()
     _camera.name = "Camera"
@@ -183,6 +189,12 @@ func _build_input() -> void:
     add_child(_hotbar)
     _hotbar.bind(simulation.state.inventory, _input)
     _hotbar.sync()
+
+    _vitals_bar = VitalsBar.new()
+    _vitals_bar.name = "Vitals"
+    add_child(_vitals_bar)
+    _vitals_bar.bind(simulation.state.vitals)
+    _vitals_bar.sync()
 
 
 func _build_hint() -> void:

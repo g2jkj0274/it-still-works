@@ -19,7 +19,7 @@ const BRANCH := Vector3i(33, 31, 2)
 
 ## 아래 시나리오를 SEED 로 TOTAL_TICKS 만큼 돌렸을 때의 상태 해시.
 ## Godot 4.7.2 / 서로 다른 프로세스 3회 실행에서 동일함을 확인하고 고정했다.
-const GOLDEN_HASH := "9841d785b145c7ac107f379eb2ef493d01eba8c9fa585c19e48c0ba1f59821ec"
+const GOLDEN_HASH := "7889eb1324b7ba46d5318da93bebd4f626834fba58eb87f4b32d1166546b492c"
 
 ## 같은 실행이 끝났을 때 문이 어떤 상태인지. 해시보다 읽기 쉽다.
 const GOLDEN_DOOR := BlockType.DOOR_CLOSED

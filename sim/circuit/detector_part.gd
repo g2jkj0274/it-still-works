@@ -8,7 +8,7 @@ extends CircuitPart
 ## **조건을 만족할 때만 신호를 낸다.** 만족하지 않으면 거짓이 아니라 아무것도
 ## 내지 않는다. 회로에서 "실행된다"는 곧 "신호가 있다"이고, 값은 그 위에 실린다.
 ##
-## 아직 세상에 없는 대상(위협·시간·작물)도 신호를 내지 않는다.
+## 아직 세상에 없는 대상(작물)도 신호를 내지 않는다.
 
 const TARGET_PLAYER := 0
 const TARGET_THREAT := 1
@@ -58,9 +58,33 @@ func compute(state: WorldState, _incoming: Array) -> void:
             var held := state.inventory.total()
             if held > 0:
                 _next_output = SignalValue.of_int(held)
+        TARGET_TIME:
+            if DayCycle.is_night(state.tick):
+                _next_output = SignalValue.of_bool(true)
+        TARGET_THREAT:
+            var distance := _nearest_threat_distance(state)
+            if distance >= 0:
+                _next_output = SignalValue.of_int(distance)
         _:
-            # 위협·시간·작물은 아직 세상에 없다.
+            # 작물은 아직 세상에 없다.
             pass
+
+
+## 근접한 위협까지의 거리(칸). 아무도 없으면 -1.
+##
+## 스펙대로 거리를 정수로 내보낸다. 값이 0 일 수 있으므로 신호가 있는지로
+## 있고 없음을 가른다.
+func _nearest_threat_distance(state: WorldState) -> int:
+    var nearest := -1
+    for threat in state.threats.threats():
+        var offset := threat.position - position
+        var squared := offset.x * offset.x + offset.y * offset.y + offset.z * offset.z
+        if squared > SENSE_RADIUS * SENSE_RADIUS:
+            continue
+        var distance := absi(offset.x) + absi(offset.y) + absi(offset.z)
+        if nearest < 0 or distance < nearest:
+            nearest = distance
+    return nearest
 
 
 func _player_is_near(state: WorldState) -> bool:
