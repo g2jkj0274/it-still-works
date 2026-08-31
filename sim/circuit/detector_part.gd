@@ -5,8 +5,10 @@ extends CircuitPart
 ##
 ## 같은 부품인데 지정한 대상에 따라 다르게 동작한다.
 ##
-## 아직 세상에 없는 대상(위협·시간·작물)은 신호를 내지 않는다. 거짓을 내면
-## "없다"와 "아직 만들지 않았다"가 구별되지 않는다.
+## **조건을 만족할 때만 신호를 낸다.** 만족하지 않으면 거짓이 아니라 아무것도
+## 내지 않는다. 회로에서 "실행된다"는 곧 "신호가 있다"이고, 값은 그 위에 실린다.
+##
+## 아직 세상에 없는 대상(위협·시간·작물)도 신호를 내지 않는다.
 
 const TARGET_PLAYER := 0
 const TARGET_THREAT := 1
@@ -46,14 +48,19 @@ func configure(values: PackedInt32Array) -> void:
 
 
 func compute(state: WorldState, _incoming: Array) -> void:
+    _next_output = SignalValue.none()
+
     match target:
         TARGET_PLAYER:
-            _next_output = SignalValue.of_bool(_player_is_near(state))
+            if _player_is_near(state):
+                _next_output = SignalValue.of_bool(true)
         TARGET_ITEM:
-            _next_output = SignalValue.of_int(state.inventory.total())
+            var held := state.inventory.total()
+            if held > 0:
+                _next_output = SignalValue.of_int(held)
         _:
             # 위협·시간·작물은 아직 세상에 없다.
-            _next_output = SignalValue.none()
+            pass
 
 
 func _player_is_near(state: WorldState) -> bool:

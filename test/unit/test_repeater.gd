@@ -22,7 +22,8 @@ func _repeater(mode: int, limit: int = 3, interval: int = 2) -> RepeaterPart:
 ## 신호를 계속 넣으면서 몇 번 나오는지 센다.
 func _pulses(part: RepeaterPart, ticks: int, signal_on: bool = true) -> int:
     var state := _state()
-    var incoming: Array = [SignalValue.of_bool(signal_on)]
+    # 신호가 없다는 것은 거짓이 아니라 아무것도 닿지 않는 것이다.
+    var incoming: Array = [SignalValue.of_bool(true)] if signal_on else []
     var count := 0
     for i in ticks:
         part.compute(state, incoming)
@@ -62,7 +63,7 @@ func test_conditional_repeats_run_while_the_condition_holds() -> void:
     var part := _repeater(RepeaterPart.MODE_WHILE, 0, 2)
     var state := _state()
     var on: Array = [SignalValue.of_bool(true)]
-    var off: Array = [SignalValue.of_bool(false)]
+    var off: Array = []
 
     var during := 0
     for i in 10:
@@ -108,7 +109,7 @@ func test_a_bounded_loop_never_burns() -> void:
     var part := _repeater(RepeaterPart.MODE_COUNT, 4, 2)
     var state := _state()
     var on: Array = [SignalValue.of_bool(true)]
-    var off: Array = [SignalValue.of_bool(false)]
+    var off: Array = []
     for round_index in 30:
         for i in 20:
             part.compute(state, on)

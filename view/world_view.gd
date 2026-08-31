@@ -19,6 +19,7 @@ const _COLOURS: Dictionary[int, Color] = {
     BlockType.ACTUATOR: Color(0.88, 0.66, 0.72),
     BlockType.REPEATER: Color(0.80, 0.80, 0.56),
     BlockType.BOX: Color(0.72, 0.62, 0.84),
+    BlockType.BRANCH: Color(0.94, 0.78, 0.56),
 }
 
 var _grid: VoxelGrid

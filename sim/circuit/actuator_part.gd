@@ -6,7 +6,8 @@ extends CircuitPart
 ## 무엇을 하는지는 붙인 블록이 정하고, 언제 하는지만 회로가 정한다.
 ## 그래서 나중에 블록을 늘려도 회로 부품은 늘지 않는다.
 ##
-## 지금 작동시킬 수 있는 블록은 문뿐이다. 참이면 열고 거짓이면 닫는다.
+## 신호가 오면 작동하고 오지 않으면 되돌린다. 회로에서 "실행된다"는 곧
+## "신호가 있다"이다. 지금 작동시킬 수 있는 블록은 문뿐이다.
 
 var _wants_open: bool = false
 
@@ -22,10 +23,10 @@ func kind() -> int:
 
 
 func compute(_state: WorldState, incoming: Array) -> void:
-    # 들어온 신호 중 하나라도 참이면 작동한다.
+    # 신호가 하나라도 닿으면 작동한다.
     var active := false
     for value: SignalValue in incoming:
-        if value.as_bool():
+        if value.is_present():
             active = true
             break
 

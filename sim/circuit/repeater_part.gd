@@ -140,9 +140,10 @@ func _burn() -> void:
     _running = false
 
 
-## 들어온 신호 중 처음으로 참인 것. 되풀이할 값이 된다.
+## 들어온 신호 중 처음 닿은 것. 되풀이할 값이 된다.
+## 참인지 거짓인지가 아니라 신호가 있는지로 본다.
 func _first_true(incoming: Array) -> SignalValue:
     for value: SignalValue in incoming:
-        if value.as_bool():
+        if value.is_present():
             return value
     return null

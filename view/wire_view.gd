@@ -6,7 +6,13 @@ extends Node3D
 ## 회로를 읽기만 한다. 배선이 바뀌었을 때만 다시 만든다.
 
 const THICKNESS := 0.08
-const COLOUR := Color(0.96, 0.85, 0.45)
+
+## 신호가 흐르는 배선과 흐르지 않는 배선.
+##
+## 갈림길이 거짓일 때 참 쪽 배선이 흐려지는 것이 눈에 보여야 한다.
+## 왜 거짓인지는 말하지 않는다. 흐르는지 아닌지만 보여준다.
+const LIVE_COLOUR := Color(1.00, 0.90, 0.50)
+const IDLE_COLOUR := Color(0.45, 0.45, 0.42)
 
 var _circuit: Circuit
 var _node: MultiMeshInstance3D
@@ -16,8 +22,8 @@ var _build_count: int = 0
 
 func _ready() -> void:
     var material := StandardMaterial3D.new()
-    material.albedo_color = COLOUR
     material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+    material.vertex_color_use_as_albedo = true
 
     var mesh := BoxMesh.new()
     # z 방향 길이 1 을 기준으로 두고 배선 길이만큼 늘려 쓴다.
@@ -26,6 +32,7 @@ func _ready() -> void:
 
     var multimesh := MultiMesh.new()
     multimesh.transform_format = MultiMesh.TRANSFORM_3D
+    multimesh.use_colors = true
     multimesh.mesh = mesh
     multimesh.instance_count = 0
 
@@ -43,10 +50,9 @@ func bind(circuit: Circuit) -> void:
 func sync() -> void:
     if _circuit == null:
         return
-    var signature := _signature()
-    if signature == _last_signature:
-        return
-    rebuild()
+    if _signature() != _last_signature:
+        rebuild()
+    refresh_flow()
 
 
 func rebuild() -> void:
@@ -65,6 +71,33 @@ func rebuild() -> void:
 
     _last_signature = _signature()
     _build_count += 1
+    refresh_flow()
+
+
+## 배선마다 지금 신호가 흐르는지에 따라 색을 바꾼다.
+func refresh_flow() -> void:
+    if _circuit == null:
+        return
+    var links := _circuit.links()
+    var multimesh := _node.multimesh
+    for i in mini(links.size(), multimesh.instance_count):
+        multimesh.set_instance_color(i, LIVE_COLOUR if is_live(links[i]) else IDLE_COLOUR)
+
+
+## 이 배선에 지금 신호가 흐르는가.
+func is_live(link: Array) -> bool:
+    var source := _circuit.part_at(link[0])
+    if source == null:
+        return false
+    return source.output_at(link[2]).is_present()
+
+
+func live_count() -> int:
+    var live := 0
+    for link: Array in _circuit.links():
+        if is_live(link):
+            live += 1
+    return live
 
 
 func wire_count() -> int:

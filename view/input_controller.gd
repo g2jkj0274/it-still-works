@@ -32,10 +32,11 @@ const PLACEABLE: Array[int] = [
     BlockType.ACTUATOR,
     BlockType.REPEATER,
     BlockType.BOX,
+    BlockType.BRANCH,
 ]
 const SELECT_ACTIONS: Array = [
     &"select_1", &"select_2", &"select_3", &"select_4",
-    &"select_5", &"select_6", &"select_7", &"select_8",
+    &"select_5", &"select_6", &"select_7", &"select_8", &"select_9",
 ]
 
 ## 키를 누르고 있을 때 한 걸음마다 두는 간격(틱).
@@ -50,6 +51,16 @@ const REPEATER_PRESETS: Array = [
     [RepeaterPart.MODE_FOREVER, 0, 10],
 ]
 
+## 갈림길을 놓을 때 고를 수 있는 판정들. [판정 방식, 견줄 수].
+const BRANCH_PRESETS: Array = [
+    [BranchPart.MODE_TRUTH, 0],
+    [BranchPart.MODE_GREATER_EQUAL, 1],
+    [BranchPart.MODE_GREATER_EQUAL, 10],
+    [BranchPart.MODE_LESS, 3],
+    [BranchPart.MODE_AND, 0],
+    [BranchPart.MODE_OR, 0],
+]
+
 var _simulation: Simulation
 var _selected: int = BlockType.WOOD
 var _next_move_tick: int = 0
@@ -57,6 +68,7 @@ var _target: BlockTarget = null
 var _detector_target: int = DetectorPart.TARGET_PLAYER
 var _repeater_preset: int = 0
 var _box_shape: int = BoxPart.SHAPE_SQUARE
+var _branch_preset: int = 0
 var _link_source: Vector3i = Vector3i.ZERO
 var _has_link_source: bool = false
 
@@ -129,6 +141,10 @@ func box_shape() -> int:
     return _box_shape
 
 
+func branch_preset() -> int:
+    return _branch_preset
+
+
 ## 지금 고른 부품의 설정을 다음 것으로 넘긴다.
 func cycle_part_setting() -> void:
     if _selected == BlockType.REPEATER:
@@ -136,6 +152,9 @@ func cycle_part_setting() -> void:
         return
     if _selected == BlockType.BOX:
         _box_shape = (_box_shape + 1) % BoxPart.SHAPE_COUNT
+        return
+    if _selected == BlockType.BRANCH:
+        _branch_preset = (_branch_preset + 1) % BRANCH_PRESETS.size()
         return
     _detector_target = (_detector_target + 1) % DetectorPart.TARGET_COUNT
 
@@ -153,6 +172,9 @@ func part_settings() -> PackedInt32Array:
         return PackedInt32Array([preset[0], preset[1], preset[2]])
     if _selected == BlockType.BOX:
         return PackedInt32Array([_box_shape])
+    if _selected == BlockType.BRANCH:
+        var preset: Array = BRANCH_PRESETS[_branch_preset]
+        return PackedInt32Array([preset[0], preset[1]])
     return PackedInt32Array()
 
 
@@ -230,6 +252,7 @@ static func install_actions() -> void:
     _install(&"select_6", [KEY_6])
     _install(&"select_7", [KEY_7])
     _install(&"select_8", [KEY_8])
+    _install(&"select_9", [KEY_9])
     _install(ACTION_LINK, [KEY_R])
     _install(ACTION_TARGET, [KEY_T])
 

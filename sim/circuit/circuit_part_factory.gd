@@ -25,4 +25,6 @@ static func _bare(part_type: int, at: Vector3i) -> CircuitPart:
         return RepeaterPart.create(at)
     if part_type == BlockType.BOX:
         return BoxPart.create(at)
+    if part_type == BlockType.BRANCH:
+        return BranchPart.create(at)
     return null

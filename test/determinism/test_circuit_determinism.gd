@@ -15,10 +15,11 @@ const REPEATER := Vector3i(34, 29, 2)
 const LAMP_ACTUATOR := Vector3i(33, 29, 2)
 const LAMP_DOOR := Vector3i(32, 29, 2)
 const BOX := Vector3i(34, 31, 2)
+const BRANCH := Vector3i(33, 31, 2)
 
 ## 아래 시나리오를 SEED 로 TOTAL_TICKS 만큼 돌렸을 때의 상태 해시.
 ## Godot 4.7.2 / 서로 다른 프로세스 3회 실행에서 동일함을 확인하고 고정했다.
-const GOLDEN_HASH := "98c7d20d9da8eccc3f778585f5f5d086543ec920ffd3961dd50a6ffc65586a61"
+const GOLDEN_HASH := "9841d785b145c7ac107f379eb2ef493d01eba8c9fa585c19e48c0ba1f59821ec"
 
 ## 같은 실행이 끝났을 때 문이 어떤 상태인지. 해시보다 읽기 쉽다.
 const GOLDEN_DOOR := BlockType.DOOR_CLOSED
@@ -39,6 +40,11 @@ func _scenario() -> Array:
         [13, PlacePartCommand.create(BOX, BlockType.BOX,
             PackedInt32Array([BoxPart.SHAPE_SQUARE]))],
         [15, ConnectPartsCommand.create(DETECTOR, BOX)],
+        [17, PlacePartCommand.create(BRANCH, BlockType.BRANCH,
+            PackedInt32Array([BranchPart.MODE_TRUTH, 0]))],
+        [19, ConnectPartsCommand.create(BOX, BRANCH)],
+        [21, ConnectPartsCommand.create(BRANCH, LAMP_ACTUATOR, BranchPart.PORT_TRUE)],
+        [23, ConnectPartsCommand.create(BRANCH, ACTUATOR, BranchPart.PORT_FALSE)],
         [12, MoveCharacterCommand.create(Vector3i(0, -1, 0))],
         [18, MoveCharacterCommand.create(Vector3i(1, 0, 0))],
         [24, MoveCharacterCommand.create(Vector3i(1, 0, 0))],
@@ -63,6 +69,7 @@ func _run_until(ticks: int, seed_value: int = SEED, scenario: Array = []) -> Sim
     sim.state.inventory.add(BlockType.ACTUATOR, 4)
     sim.state.inventory.add(BlockType.REPEATER, 4)
     sim.state.inventory.add(BlockType.BOX, 4)
+    sim.state.inventory.add(BlockType.BRANCH, 4)
 
     for entry: Array in (scenario if not scenario.is_empty() else _scenario()):
         sim.submit_at(entry[1] as SimCommand, int(entry[0]))
@@ -86,7 +93,7 @@ func test_replay_is_stable_across_many_runs() -> void:
 
 func test_the_circuit_is_actually_built() -> void:
     var played := _run()
-    assert_int(played.state.circuit.part_count()).is_equal(5)
+    assert_int(played.state.circuit.part_count()).is_equal(6)
     assert_bool(BlockType.is_door(played.state.grid.get_block(DOOR))).is_true()
 
 
@@ -119,6 +126,7 @@ func test_hash_is_independent_of_step_granularity() -> void:
     fine.state.inventory.add(BlockType.ACTUATOR, 4)
     fine.state.inventory.add(BlockType.REPEATER, 4)
     fine.state.inventory.add(BlockType.BOX, 4)
+    fine.state.inventory.add(BlockType.BRANCH, 4)
     for entry: Array in _scenario():
         fine.submit_at(entry[1] as SimCommand, int(entry[0]))
     for i in TOTAL_TICKS:
