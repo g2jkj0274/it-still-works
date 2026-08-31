@@ -40,4 +40,6 @@ static func create_by_type(type: StringName) -> SimCommand:
         return ConnectPartsCommand.new()
     if type == DisconnectPartsCommand.TYPE:
         return DisconnectPartsCommand.new()
+    if type == EatCommand.TYPE:
+        return EatCommand.new()
     return null

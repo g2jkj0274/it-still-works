@@ -35,6 +35,9 @@ var vitals: Vitals
 ## 지금 나와 있는 위협들.
 var threats: ThreatField
 
+## 밭에 심긴 작물들.
+var crops: CropField
+
 var _values: Dictionary[StringName, int] = {}
 
 
@@ -46,6 +49,7 @@ func _init(p_rng: SimRng = null) -> void:
     circuit = Circuit.new()
     vitals = Vitals.new()
     threats = ThreatField.new()
+    crops = CropField.new()
 
 
 func set_value(key: StringName, value: int) -> void:
@@ -116,6 +120,7 @@ func to_hash_fields() -> Array:
     fields.append_array(circuit.to_hash_fields())
     fields.append_array(vitals.to_hash_fields())
     fields.append_array(threats.to_hash_fields())
+    fields.append_array(crops.to_hash_fields())
     for key in sorted_keys():
         fields.append(["value." + String(key), _values[key]])
     return fields

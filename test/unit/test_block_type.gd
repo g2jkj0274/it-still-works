@@ -21,6 +21,7 @@ func test_all_types_are_distinct_and_contiguous() -> void:
         BlockType.EMPTY, BlockType.GROUND, BlockType.STONE, BlockType.WOOD,
         BlockType.DOOR_CLOSED, BlockType.DOOR_OPEN, BlockType.DETECTOR, BlockType.ACTUATOR,
         BlockType.REPEATER, BlockType.BOX, BlockType.BRANCH,
+        BlockType.FIELD, BlockType.CROP,
     ]
     assert_int(types.size()).is_equal(BlockType.COUNT)
     types.sort()

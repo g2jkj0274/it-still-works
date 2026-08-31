@@ -29,6 +29,8 @@ const ACTUATOR := Color(0.96, 0.70, 0.76)
 const REPEATER := Color(0.84, 0.92, 0.66)
 const BOX := Color(0.76, 0.68, 0.95)
 const BRANCH := Color(0.98, 0.72, 0.56)
+const FIELD := Color(0.72, 0.60, 0.66)
+const CROP := Color(0.96, 0.98, 0.74)
 
 const CHARACTER_SKIN := Color(0.98, 0.86, 0.74)
 const CHARACTER_BODY := Color(0.72, 0.86, 0.94)
@@ -54,6 +56,8 @@ const _BLOCKS: Dictionary[int, Color] = {
     BlockType.REPEATER: REPEATER,
     BlockType.BOX: BOX,
     BlockType.BRANCH: BRANCH,
+    BlockType.FIELD: FIELD,
+    BlockType.CROP: CROP,
 }
 
 
