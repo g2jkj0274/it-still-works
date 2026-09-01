@@ -13,6 +13,8 @@ const THICKNESS := 0.08
 ## 왜 거짓인지는 말하지 않는다. 흐르는지 아닌지만 보여준다.
 const LIVE_COLOUR := Palette.WIRE_LIVE
 const IDLE_COLOUR := Palette.WIRE_IDLE
+const FALSE_LIVE_COLOUR := Palette.WIRE_FALSE_LIVE
+const FALSE_IDLE_COLOUR := Palette.WIRE_FALSE_IDLE
 
 var _circuit: Circuit
 var _node: MultiMeshInstance3D
@@ -81,7 +83,15 @@ func refresh_flow() -> void:
     var links := _circuit.links()
     var multimesh := _node.multimesh
     for i in mini(links.size(), multimesh.instance_count):
-        multimesh.set_instance_color(i, LIVE_COLOUR if is_live(links[i]) else IDLE_COLOUR)
+        multimesh.set_instance_color(i, colour_of(links[i]))
+
+
+## 배선 하나의 색. 어느 출구에서 나가는지와 지금 흐르는지로 정해진다.
+func colour_of(link: Array) -> Color:
+    var live := is_live(link)
+    if int(link[2]) == BranchPart.PORT_FALSE:
+        return FALSE_LIVE_COLOUR if live else FALSE_IDLE_COLOUR
+    return LIVE_COLOUR if live else IDLE_COLOUR
 
 
 ## 이 배선에 지금 신호가 흐르는가.

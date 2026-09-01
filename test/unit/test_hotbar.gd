@@ -75,3 +75,45 @@ func test_hotbar_never_writes_to_the_inventory() -> void:
     for i in 5:
         hotbar.sync()
     assert_int(inventory.count_of(BlockType.WOOD)).is_equal(2)
+
+
+func _wide_hotbar() -> Hotbar:
+    var controller: InputController = auto_free(InputController.new())
+    add_child(controller)
+    return _hotbar(Inventory.new(), controller)
+
+
+func test_every_slot_lands_inside_the_screen() -> void:
+    var hotbar := _wide_hotbar()
+    assert_bool(hotbar.all_slots_visible()).is_true()
+
+
+func test_the_slots_are_centred() -> void:
+    var hotbar := _wide_hotbar()
+    var first := hotbar.slot_rect(0)
+    var last := hotbar.slot_rect(hotbar.slot_count() - 1)
+    var screen := Vector2(hotbar.get_viewport().get_visible_rect().size)
+    # 왼쪽 여백과 오른쪽 여백이 같아야 가운데다.
+    assert_float(absf(first.position.x - (screen.x - last.end.x))).is_less(1.0)
+
+
+func test_slots_do_not_overlap() -> void:
+    var hotbar := _wide_hotbar()
+    for slot in hotbar.slot_count() - 1:
+        assert_float(hotbar.slot_rect(slot).end.x).is_less_equal(
+            hotbar.slot_rect(slot + 1).position.x + 0.001)
+
+
+func test_the_row_sits_above_the_bottom_edge() -> void:
+    var hotbar := _wide_hotbar()
+    var screen := Vector2(hotbar.get_viewport().get_visible_rect().size)
+    assert_float(hotbar.slot_rect(0).end.y).is_less(screen.y)
+
+
+func test_the_row_is_laid_out_again_on_every_sync() -> void:
+    # 처음 한 번만 재면 창이 자리를 잡기 전이라 어긋난다.
+    var hotbar := _wide_hotbar()
+    var before := hotbar.slot_rect(0)
+    hotbar.sync()
+    assert_bool(hotbar.slot_rect(0).is_equal_approx(before)).is_true()
+    assert_bool(hotbar.all_slots_visible()).is_true()

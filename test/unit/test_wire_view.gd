@@ -100,3 +100,34 @@ func test_the_untaken_way_out_of_a_branch_reads_as_idle() -> void:
 
     assert_int(view.wire_count()).is_equal(2)
     assert_int(view.live_count()).is_equal(1)
+
+
+func _branch_circuit() -> Circuit:
+    var circuit := Circuit.new()
+    var branch := BranchPart.create(A)
+    branch.configure(PackedInt32Array([BranchPart.MODE_TRUTH, 0]))
+    circuit.add_part(branch)
+    circuit.add_part(ActuatorPart.create(B))
+    circuit.link(A, B, BranchPart.PORT_TRUE)
+    circuit.link(A, B, BranchPart.PORT_FALSE)
+    return circuit
+
+
+func test_the_two_ways_out_are_drawn_in_different_colours() -> void:
+    var circuit := _branch_circuit()
+    var view := _view(circuit)
+    var links := circuit.links()
+    assert_int(links.size()).is_equal(2)
+    assert_bool(view.colour_of(links[0]).is_equal_approx(view.colour_of(links[1]))).is_false()
+
+
+func test_a_flowing_wire_is_brighter_than_a_still_one() -> void:
+    var circuit := _branch_circuit()
+    var view := _view(circuit)
+    var branch := circuit.part_at(A) as BranchPart
+    branch.compute(WorldState.new(SimRng.new(1)), [SignalValue.of_bool(true)])
+    branch.commit()
+
+    for link: Array in circuit.links():
+        var expected_live := int(link[2]) == BranchPart.PORT_TRUE
+        assert_bool(view.is_live(link)).is_equal(expected_live)

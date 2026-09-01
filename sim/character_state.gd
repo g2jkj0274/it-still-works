@@ -18,6 +18,12 @@ const SUBUNITS := 1000
 ## 한 틱에 나아가는 거리. 1000 을 나누어떨어뜨려야 칸 경계에 정확히 선다.
 const WALK_SPEED := 250
 
+## 대각선으로 건널 때의 축별 속도.
+##
+## 대각선은 곧은 걸음보다 먼 거리다. 축별 속도를 낮춰 두 걸음의 빠르기를
+## 비슷하게 맞춘다. 이것도 1000 을 나누어떨어뜨려야 칸 경계에 정확히 선다.
+const DIAGONAL_WALK_SPEED := 200
+
 ## 떨어질 때의 속도. 걷기보다 빨라야 무게가 느껴진다.
 const FALL_SPEED := 500
 
@@ -76,13 +82,22 @@ func advance() -> void:
     if not is_moving():
         return
 
-    var speed := FALL_SPEED if move_target.z < sub_position.z else WALK_SPEED
     var remaining := move_target - sub_position
+    var speed := _speed_for(remaining)
     sub_position += Vector3i(
         clampi(remaining.x, -speed, speed),
         clampi(remaining.y, -speed, speed),
         clampi(remaining.z, -speed, speed),
     )
+
+
+## 지금 남은 거리에 맞는 속도. 떨어질 때가 가장 빠르고 대각선이 가장 느리다.
+func _speed_for(remaining: Vector3i) -> int:
+    if remaining.z < 0:
+        return FALL_SPEED
+    if remaining.x != 0 and remaining.y != 0:
+        return DIAGONAL_WALK_SPEED
+    return WALK_SPEED
 
 
 func head_position() -> Vector3i:

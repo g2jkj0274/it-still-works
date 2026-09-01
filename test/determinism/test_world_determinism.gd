@@ -6,12 +6,15 @@ extends GdUnitTestSuite
 ## 이 테스트가 깨지면 결정론이 깨진 것이고 lockstep 멀티플레이 가능성이 사라진다.
 
 const SEED := 20250901
-const TOTAL_TICKS := 110
+const TOTAL_TICKS := 150
 
 const NORTH := Vector3i(0, -1, 0)
 const SOUTH := Vector3i(0, 1, 0)
 const EAST := Vector3i(1, 0, 0)
 const WEST := Vector3i(-1, 0, 0)
+const NORTH_WEST := Vector3i(-1, -1, 0)
+const SOUTH_EAST := Vector3i(1, 1, 0)
+const NORTH_EAST := Vector3i(1, -1, 0)
 
 ## 아래 시나리오를 SEED 로 TOTAL_TICKS 만큼 돌렸을 때의 상태 해시.
 ## Godot 4.7.2 / 서로 다른 프로세스 3회 실행에서 동일함을 확인하고 고정했다.
@@ -28,14 +31,15 @@ const WEST := Vector3i(-1, 0, 0)
 ##   생존 지표와 위협이 상태에 추가됨
 ##   밭과 작물이 상태에 추가됨
 ##   프로토타입 판정용 시작 지급이 켜져 인벤토리 초기값이 바뀜
+##   대각선 걸음이 생겨 시나리오 끝에 대각선 이동을 넣고 총 틱 수를 110 → 150 으로 늘림
 ##
 ## 이 값이 깨졌다면 시뮬레이션 동작이 바뀐 것이다. 값을 고쳐 통과시키지 말고
 ## 무엇이 바뀌었는지 먼저 밝힌다.
-const GOLDEN_HASH := "5e58107819cdc59ecf8e5b5020a681e80dd2792ec1fa06df491ab28802d29b35"
+const GOLDEN_HASH := "67999d1d10e880ec98dbb7d922727e9146cdf7b177756707995a156685c3a3f9"
 
 ## 같은 실행이 끝났을 때 캐릭터가 서 있는 칸.
 ## 해시보다 읽기 쉬워서 이동 규칙이 어긋났을 때 원인을 빨리 좁혀준다.
-const GOLDEN_POSITION := Vector3i(32, 32, 2)
+const GOLDEN_POSITION := Vector3i(32, 30, 2)
 
 
 ## 실행마다 새로 만든다. 명령 객체는 큐가 틱과 순서를 새겨 넣으므로 재사용하지 않는다.
@@ -43,8 +47,10 @@ const GOLDEN_POSITION := Vector3i(32, 32, 2)
 ## 한 걸음이 여러 틱에 걸치므로 명령 간격을 걸음보다 넓게 둔다. 좁으면 걷는 중에
 ## 들어온 명령이 무시되어 시나리오가 실제로 아무 데도 가지 않는다.
 ##
-## 재료가 있어야 놓을 수 있으므로 먼저 부수고 그 재료로 놓는다. 빈손으로
-## 시작하는 것이 이 게임의 시작이다.
+## 재료가 있어야 놓을 수 있으므로 먼저 부수고 그 재료로 놓는다.
+##
+## 끝에서 대각선 걸음을 몇 번 넣는다. 대각선은 축별 속도가 달라 곧은 걸음과
+## 걸리는 틱이 다르다. 그 차이까지 못박아 둔다.
 func _scenario() -> Array:
     return [
         [0, BreakBlockCommand.create(Vector3i(32, 31, 1))],
@@ -64,6 +70,10 @@ func _scenario() -> Array:
         [84, PlaceBlockCommand.create(Vector3i(32, 32, 2), BlockType.GROUND)],
         [90, MoveCharacterCommand.create(SOUTH)],
         [96, BreakBlockCommand.create(Vector3i(32, 32, 2))],
+        [104, MoveCharacterCommand.create(NORTH_WEST)],
+        [112, MoveCharacterCommand.create(SOUTH_EAST)],
+        [120, MoveCharacterCommand.create(NORTH_EAST)],
+        [128, MoveCharacterCommand.create(NORTH_WEST)],
     ]
 
 

@@ -37,8 +37,12 @@ const CHARACTER_BODY := Color(0.72, 0.86, 0.94)
 const THREAT := Color(0.82, 0.68, 0.86)
 
 const HIGHLIGHT := Color(1.0, 1.0, 1.0, 0.32)
+## 배선 색. 갈림길의 참 쪽과 거짓 쪽을 나눠 보여준다.
+## 밝으면 지금 신호가 흐르는 것이고 흐리면 흐르지 않는 것이다.
 const WIRE_LIVE := Color(1.0, 0.92, 0.60)
 const WIRE_IDLE := Color(0.72, 0.72, 0.70)
+const WIRE_FALSE_LIVE := Color(0.62, 0.86, 1.0)
+const WIRE_FALSE_IDLE := Color(0.58, 0.66, 0.74)
 
 const SKY_DAY := Color(0.71, 0.87, 0.95)
 const SKY_NIGHT := Color(0.24, 0.28, 0.44)

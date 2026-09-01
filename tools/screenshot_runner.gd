@@ -168,6 +168,12 @@ func _evaluate(without_subject: Image) -> void:
     if not ScreenshotCheck.subject_visible(_with_subject, without_subject, _subject_rect()):
         _fail(name, "캐릭터가 있어야 할 자리에 아무것도 그려지지 않았다")
 
+    # 밀려나 보이지 않는 칸이 있으면 무엇을 눌러야 하는지 알 수 없다.
+    if not _main.hotbar().all_slots_visible():
+        _fail(name, "핫바 %d칸 중 화면 밖으로 밀려난 것이 있다" % _main.hotbar().slot_count())
+    if not _main.part_hint().fully_visible():
+        _fail(name, "부품 설명이 화면 밖으로 밀려났다")
+
     if problems.is_empty():
         _report.append("  OK   %s  (색 %d종, 밝기 %.2f, 어둠 %.2f)" % [
             name,
