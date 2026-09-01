@@ -353,3 +353,41 @@ func test_wiring_from_something_else_ignores_the_exit() -> void:
     controller.submit_link()
     sim.advance(2)
     assert_bool(sim.state.circuit.is_linked(detector, actuator, 0)).is_true()
+
+
+func test_two_keys_together_make_a_screen_corner() -> void:
+    assert_bool(InputController.combine(ScreenDirections.UP + ScreenDirections.RIGHT)
+        == ScreenDirections.UP_RIGHT).is_true()
+    assert_bool(InputController.combine(ScreenDirections.DOWN + ScreenDirections.LEFT)
+        == ScreenDirections.DOWN_LEFT).is_true()
+
+
+func test_facing_keys_cancel_each_other() -> void:
+    assert_bool(InputController.combine(ScreenDirections.UP + ScreenDirections.DOWN)
+        == Vector2i.ZERO).is_true()
+    assert_bool(InputController.combine(ScreenDirections.LEFT + ScreenDirections.RIGHT)
+        == Vector2i.ZERO).is_true()
+
+
+func test_three_keys_still_give_one_way() -> void:
+    var mixed := ScreenDirections.UP + ScreenDirections.LEFT + ScreenDirections.RIGHT
+    assert_bool(InputController.combine(mixed) == ScreenDirections.UP).is_true()
+
+
+func test_every_screen_way_reaches_a_different_grid_way() -> void:
+    var controller := _controller(_sim())
+    var seen: Array = []
+    for screen in ScreenDirections.SCREEN_ORDER:
+        var grid := controller.grid_for_screen(screen)
+        assert_bool(MovementRules.is_direction(grid)).is_true()
+        assert_bool(seen.has(grid)).is_false()
+        seen.append(grid)
+    assert_int(seen.size()).is_equal(MovementRules.DIRECTIONS.size())
+
+
+func test_combined_keys_walk_along_the_grid_axes() -> void:
+    # 조합키가 축 방향에 물려 있어야 여덟 쪽이 모두 열린다.
+    var controller := _controller(_sim())
+    for screen in [ScreenDirections.UP_RIGHT, ScreenDirections.UP_LEFT,
+            ScreenDirections.DOWN_RIGHT, ScreenDirections.DOWN_LEFT]:
+        assert_bool(MovementRules.is_diagonal(controller.grid_for_screen(screen))).is_false()

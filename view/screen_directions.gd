@@ -10,15 +10,26 @@ extends RefCounted
 ## 카메라에서 직접 뽑으므로 시점을 돌리면 조작도 따라 돈다.
 ##
 ## 걸을 수 있는 방향이 여덟이라 아이소메트릭에서도 화면과 나란해진다. 요가 45도일
-## 때 대각선 네 방향이 화면의 위아래좌우와 정확히 맞아떨어지고, 요가 0도면 축
-## 네 방향이 맞는다. 어느 쪽이든 여기서 고르는 것은 "화면에서 가장 그 쪽인 방향"이다.
+## 때 격자 대각선 네 개가 화면의 위아래좌우와 맞고, 격자 축 네 개가 화면 대각선과
+## 맞는다. 요가 0도면 그 둘이 뒤바뀐다.
+##
+## 어느 쪽이든 여기서 고르는 것은 "화면에서 가장 그 쪽을 향하는 격자 방향"이다.
+## 그래서 시점을 돌려도 키와 화면이 어긋나지 않는다.
 
 const RIGHT := Vector2i(1, 0)
 const UP := Vector2i(0, 1)
 const LEFT := Vector2i(-1, 0)
 const DOWN := Vector2i(0, -1)
 
-const SCREEN_ORDER: Array[Vector2i] = [RIGHT, UP, LEFT, DOWN]
+const UP_RIGHT := Vector2i(1, 1)
+const UP_LEFT := Vector2i(-1, 1)
+const DOWN_RIGHT := Vector2i(1, -1)
+const DOWN_LEFT := Vector2i(-1, -1)
+
+## 화면에서 갈 수 있는 여덟 쪽. 키 하나로 넷, 두 개를 겹쳐 눌러 나머지 넷.
+const SCREEN_ORDER: Array[Vector2i] = [
+    RIGHT, UP, LEFT, DOWN, UP_RIGHT, UP_LEFT, DOWN_RIGHT, DOWN_LEFT,
+]
 
 
 ## [param screen] 쪽으로 가려면 격자에서 어느 방향인가.

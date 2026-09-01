@@ -32,6 +32,7 @@ const NORTH_EAST := Vector3i(1, -1, 0)
 ##   밭과 작물이 상태에 추가됨
 ##   프로토타입 판정용 시작 지급이 켜져 인벤토리 초기값이 바뀜
 ##   대각선 걸음이 생겨 시나리오 끝에 대각선 이동을 넣고 총 틱 수를 110 → 150 으로 늘림
+##   (끝 해시는 대각선 속도에 둔감하다. 걸음 도중을 재는 GOLDEN_MID_HASH 가 그것을 맡는다)
 ##
 ## 이 값이 깨졌다면 시뮬레이션 동작이 바뀐 것이다. 값을 고쳐 통과시키지 말고
 ## 무엇이 바뀌었는지 먼저 밝힌다.
@@ -77,12 +78,25 @@ func _scenario() -> Array:
     ]
 
 
+## 대각선 걸음이 한창인 틱. 걸음이 몇 틱에 걸치는지가 여기서 드러난다.
+##
+## 끝 상태만 재면 걸음 속도를 바꿔도 해시가 그대로다. 명령 사이가 넉넉해
+## 어느 속도로도 제때 도착하기 때문이다. 걸음 도중을 함께 못박아야 타이밍이
+## 지켜진다.
+const MID_TICK := 104 + 2
+const GOLDEN_MID_HASH := "416633f26b0d2569c06bdeef8a24858f302e938e3c88215613a334035de92d10"
+
+
 func _run(seed_value: int = SEED, scenario: Array = []) -> Simulation:
+    return _run_until(TOTAL_TICKS, seed_value, scenario)
+
+
+func _run_until(ticks: int, seed_value: int = SEED, scenario: Array = []) -> Simulation:
     var sim := Simulation.new(seed_value)
     IslandBuilder.populate(sim.state)
     for entry: Array in (scenario if not scenario.is_empty() else _scenario()):
         sim.submit_at(entry[1] as SimCommand, int(entry[0]))
-    sim.advance(TOTAL_TICKS)
+    sim.advance(ticks)
     return sim
 
 
@@ -152,6 +166,15 @@ func test_serialized_command_stream_replays_identically() -> void:
 
 func test_golden_hash_is_unchanged() -> void:
     assert_str(_replay()).is_equal(GOLDEN_HASH)
+
+
+func test_golden_hash_partway_through_a_corner_step() -> void:
+    assert_str(_run_until(MID_TICK).state_hash()).is_equal(GOLDEN_MID_HASH)
+
+
+func test_the_character_is_between_cells_at_that_moment() -> void:
+    # 걸음 도중이 아니면 이 검사가 타이밍을 지키지 못한다.
+    assert_bool(_run_until(MID_TICK).state.character.is_moving()).is_true()
 
 
 func test_golden_character_position_is_unchanged() -> void:

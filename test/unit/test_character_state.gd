@@ -18,15 +18,18 @@ func test_walk_and_fall_speeds_divide_a_cell_evenly() -> void:
     # 나누어떨어져야 칸 경계에 정확히 내려앉는다. 남으면 위치가 조금씩 밀린다.
     assert_int(CharacterState.SUBUNITS % CharacterState.WALK_SPEED).is_equal(0)
     assert_int(CharacterState.SUBUNITS % CharacterState.FALL_SPEED).is_equal(0)
-    assert_int(CharacterState.SUBUNITS % CharacterState.DIAGONAL_WALK_SPEED).is_equal(0)
 
 
-func test_crossing_a_corner_is_slower_per_axis_than_a_straight_step() -> void:
-    # 대각선은 먼 거리다. 축별 속도를 낮춰 두 걸음의 빠르기를 비슷하게 맞춘다.
-    assert_int(CharacterState.DIAGONAL_WALK_SPEED).is_less(CharacterState.WALK_SPEED)
+func test_a_corner_takes_the_same_time_as_a_straight_step() -> void:
+    # 월드에서는 대각선이 더 먼 거리지만, 아이소메트릭 투영이 화면 세로를 눌러
+    # 두 걸음의 화면 길이를 같게 만든다. 눈에 보이는 빠르기를 맞추려면 시간도
+    # 같아야 한다. 근거는 test_screen_directions 가 실제 카메라로 확인한다.
+    assert_int(CharacterState.DIAGONAL_WALK_SPEED).is_equal(CharacterState.WALK_SPEED)
+    assert_int(CharacterState.DIAGONAL_WALK_TICKS).is_equal(
+        CharacterState.SUBUNITS / CharacterState.WALK_SPEED)
 
 
-func test_a_diagonal_walk_lands_exactly_on_the_cell() -> void:
+func test_a_diagonal_walk_takes_the_planned_number_of_ticks() -> void:
     var character := CharacterState.new()
     character.place_at(Vector3i(0, 0, 0))
     character.walk_to(Vector3i(1, 1, 0))
@@ -36,7 +39,16 @@ func test_a_diagonal_walk_lands_exactly_on_the_cell() -> void:
         character.advance()
         ticks += 1
 
-    assert_int(ticks).is_equal(CharacterState.SUBUNITS / CharacterState.DIAGONAL_WALK_SPEED)
+    assert_int(ticks).is_equal(CharacterState.DIAGONAL_WALK_TICKS)
+
+
+func test_a_diagonal_walk_lands_exactly_on_the_cell() -> void:
+    # 속도가 한 칸을 나누어떨어뜨리지 않아도 된다. 마지막 틱은 남은 만큼만 간다.
+    var character := CharacterState.new()
+    character.place_at(Vector3i(0, 0, 0))
+    character.walk_to(Vector3i(1, 1, 0))
+    for i in 100:
+        character.advance()
     assert_bool(character.sub_position == CharacterState.sub_of(Vector3i(1, 1, 0))).is_true()
 
 
