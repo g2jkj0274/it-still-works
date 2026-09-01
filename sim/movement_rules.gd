@@ -80,20 +80,42 @@ static func resolve_walk(grid: VoxelGrid, feet: Vector3i, dir: Vector3i) -> Vect
 
 ## 대각선 걸음.
 ##
-## 양옆이 모두 열려 있어야 지나간다. 한쪽이라도 막혀 있으면 모서리를 뚫고
-## 지나가는 꼴이 된다.
+## **양옆이 모두 열려 있어야 지나간다.** 한쪽이라도 막혀 있으면 벽 모서리를
+## 뚫고 지나가는 꼴이 된다. 이것은 화면에 어떻게 보이는지와 무관한 격자의
+## 문제다. 시점을 돌려도 대각선은 대각선이다.
 ##
-## 대각선으로는 턱을 오르지 않는다. 같은 높이로만 건넌다. 떨어지는 것은
-## 시뮬레이션이 뒤이어 처리한다.
+## 곧은 걸음과 마찬가지로 한 칸 턱은 오른다. 오를 때도 양옆이 열려 있어야 한다.
 static func _resolve_diagonal(grid: VoxelGrid, feet: Vector3i, dir: Vector3i) -> Vector3i:
-    if not can_occupy(grid, feet + Vector3i(dir.x, 0, 0)):
-        return feet
-    if not can_occupy(grid, feet + Vector3i(0, dir.y, 0)):
+    var target := feet + dir
+
+    # 같은 높이로 건널 수 있는 자리면, 스치는 양옆만 확인하면 된다.
+    if can_occupy(grid, target):
+        if not _sides_open(grid, feet, dir, 0):
+            return feet
+        return _landing(grid, feet, target)
+
+    # 갈 자리가 막혀 있다. 한 칸 턱이면 오른다.
+    # 옆이 막혀서 못 가는 경우까지 여기로 흘러들면 모서리 규칙이 새어 나간다.
+    if not grid.is_free(feet + VoxelGrid.UP * CharacterState.HEIGHT):
         return feet
 
-    var target := feet + dir
-    if not can_occupy(grid, target):
+    var raised := target + VoxelGrid.UP
+    if _sides_open(grid, feet, dir, 1) and can_occupy(grid, raised):
+        return _landing(grid, feet, raised)
+    return feet
+
+
+## 대각선으로 건널 때 스치는 양옆 두 칸이 모두 비어 있는가.
+## [param lift] 는 몇 칸 위에서 보는지다. 턱을 오를 때는 한 칸 위를 본다.
+static func _sides_open(grid: VoxelGrid, feet: Vector3i, dir: Vector3i, lift: int) -> bool:
+    var raised := feet + VoxelGrid.UP * lift
+    if not can_occupy(grid, raised + Vector3i(dir.x, 0, 0)):
+        return false
+    return can_occupy(grid, raised + Vector3i(0, dir.y, 0))
+
+
+## 딛을 곳이 없는 칸으로는 나가지 않는다.
+static func _landing(grid: VoxelGrid, feet: Vector3i, destination: Vector3i) -> Vector3i:
+    if not is_supported(grid, settle(grid, destination)):
         return feet
-    if not is_supported(grid, settle(grid, target)):
-        return feet
-    return target
+    return destination

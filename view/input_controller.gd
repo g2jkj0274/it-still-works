@@ -8,7 +8,8 @@ extends Node
 ##
 ## 상태를 읽기는 한다. 어느 칸에 놓을지 정하려면 캐릭터가 어디를 보는지 알아야 한다.
 ##
-## 이동 키는 화면 기준이다. W 는 화면 위쪽이다. 화면과 격자 사이의 회전은
+## 이동 키는 화면 기준이다. W 는 화면 위쪽이다. 두 키를 겹쳐 누르면 그 사이
+## 쪽으로 가므로 여덟 쪽 모두 갈 수 있다. 화면과 격자 사이의 회전은
 ## ScreenDirections 가 카메라에서 뽑는다. 시점을 돌리면 조작도 따라 돈다.
 
 ## 이동 동작과 화면 방향. 딕셔너리가 아니라 순서 있는 배열이다.
@@ -21,11 +22,18 @@ const MOVE_ACTIONS: Array = [
 ]
 
 ## 카메라가 없을 때 쓸 자리. 헤드리스에서도 이동은 되어야 한다.
+##
+## 요 45도에서 실제로 나오는 배치와 같다. 화면 위아래좌우가 격자 대각선이고,
+## 화면 대각선이 격자 축이다.
 const FALLBACK_DIRECTIONS: Dictionary[Vector2i, Vector3i] = {
-    ScreenDirections.UP: Vector3i(0, -1, 0),
-    ScreenDirections.DOWN: Vector3i(0, 1, 0),
-    ScreenDirections.RIGHT: Vector3i(1, 0, 0),
-    ScreenDirections.LEFT: Vector3i(-1, 0, 0),
+    ScreenDirections.UP: Vector3i(-1, -1, 0),
+    ScreenDirections.DOWN: Vector3i(1, 1, 0),
+    ScreenDirections.RIGHT: Vector3i(1, -1, 0),
+    ScreenDirections.LEFT: Vector3i(-1, 1, 0),
+    ScreenDirections.UP_RIGHT: Vector3i(0, -1, 0),
+    ScreenDirections.UP_LEFT: Vector3i(-1, 0, 0),
+    ScreenDirections.DOWN_RIGHT: Vector3i(1, 0, 0),
+    ScreenDirections.DOWN_LEFT: Vector3i(0, 1, 0),
 }
 
 const ACTION_PLACE := &"place_block"
@@ -394,12 +402,28 @@ func _facing_cell() -> Vector3i:
 func _poll_movement(current_tick: int) -> void:
     if current_tick < _next_move_tick:
         return
-    for entry: Array in MOVE_ACTIONS:
-        if not Input.is_action_pressed(entry[0]):
-            continue
-        submit_move_screen(entry[1])
-        _next_move_tick = current_tick + REPEAT_TICKS
+
+    var screen := pressed_screen_direction()
+    if screen == Vector2i.ZERO:
         return
+    submit_move_screen(screen)
+    _next_move_tick = current_tick + REPEAT_TICKS
+
+
+## 지금 눌린 이동 키를 하나의 화면 방향으로 모은다.
+##
+## 두 키를 겹쳐 누르면 그 사이 쪽으로 간다. 마주 보는 두 키는 서로 지운다.
+func pressed_screen_direction() -> Vector2i:
+    var screen := Vector2i.ZERO
+    for entry: Array in MOVE_ACTIONS:
+        if Input.is_action_pressed(entry[0]):
+            screen += entry[1]
+    return combine(screen)
+
+
+## 모은 값을 여덟 쪽 가운데 하나로 다듬는다.
+static func combine(screen: Vector2i) -> Vector2i:
+    return Vector2i(signi(screen.x), signi(screen.y))
 
 
 func _poll_actions() -> void:
