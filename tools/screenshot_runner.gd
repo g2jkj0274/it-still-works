@@ -173,6 +173,8 @@ func _evaluate(without_subject: Image) -> void:
         _fail(name, "핫바 %d칸 중 화면 밖으로 밀려난 것이 있다" % _main.hotbar().slot_count())
     if not _main.part_hint().fully_visible():
         _fail(name, "부품 설명이 화면 밖으로 밀려났다")
+    if not _main.part_hint().is_single_line():
+        _fail(name, "부품 설명이 가로 한 줄이 아니다")
 
     if problems.is_empty():
         _report.append("  OK   %s  (색 %d종, 밝기 %.2f, 어둠 %.2f)" % [
