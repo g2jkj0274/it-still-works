@@ -98,6 +98,7 @@ var _box_shape: int = BoxPart.SHAPE_SQUARE
 var _branch_preset: int = 0
 var _link_source: Vector3i = Vector3i.ZERO
 var _has_link_source: bool = false
+var _link_port: int = BranchPart.PORT_TRUE
 var _help_shown: bool = false
 
 
@@ -162,8 +163,35 @@ func toggle_help() -> void:
     help_toggled.emit(_help_shown)
 
 
+## 갈림길에서 배선이 나갈 출구. 참 쪽이거나 거짓 쪽이다.
+func link_port() -> int:
+    return _link_port
+
+
+## 화면에 보일 출구 이름.
+func link_port_name() -> String:
+    return "참" if _link_port == BranchPart.PORT_TRUE else "거짓"
+
+
+func cycle_link_port() -> void:
+    _link_port = BranchPart.PORT_FALSE if _link_port == BranchPart.PORT_TRUE else BranchPart.PORT_TRUE
+
+
+## 지금 갈림길을 출발점으로 잡고 배선을 잇는 중인가.
+##
+## 이때는 T 가 설정이 아니라 출구를 바꾼다. 출구는 이을 때에만 뜻이 있다.
+func wiring_from_branch() -> bool:
+    if not _has_link_source or _simulation == null:
+        return false
+    var source := _simulation.state.circuit.part_at(_link_source)
+    return source != null and source.kind() == BlockType.BRANCH
+
+
 ## 지금 고른 것의 설정을 다음 것으로 넘긴다.
 func cycle_part_setting() -> void:
+    if wiring_from_branch():
+        cycle_link_port()
+        return
     if _selected == BlockType.REPEATER:
         _repeater_preset = (_repeater_preset + 1) % REPEATER_PRESETS.size()
         return
@@ -301,7 +329,8 @@ func submit_link() -> void:
         return
 
     if _link_source != cell:
-        _simulation.submit(ConnectPartsCommand.create(_link_source, cell))
+        var port := _link_port if wiring_from_branch() else 0
+        _simulation.submit(ConnectPartsCommand.create(_link_source, cell, port))
     clear_link_source()
 
 

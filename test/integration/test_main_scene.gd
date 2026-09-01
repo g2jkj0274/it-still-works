@@ -308,3 +308,65 @@ func _aim_at(cell: Vector3i) -> BlockTarget:
     target.cell = cell
     target.normal = VoxelGrid.UP
     return target
+
+
+func test_the_hotbar_fits_on_the_screen() -> void:
+    var main := _main()
+    main.hotbar().sync()
+    assert_bool(main.hotbar().all_slots_visible()).is_true()
+
+
+func test_the_explanation_fits_on_the_screen() -> void:
+    var main := _main()
+    main.input_controller().select_block(BlockType.BRANCH)
+    main.part_hint().sync()
+    assert_bool(main.part_hint().fully_visible()).is_true()
+
+
+func test_pressing_up_moves_straight_up_the_screen() -> void:
+    # 8방향이 되면서 화면 위가 실제로 위가 되었다.
+    var main := _main()
+    var start := main.character_view().target_position()
+    var before := main.camera().unproject_position(start)
+
+    main.input_controller().submit_move_screen(ScreenDirections.UP)
+    _advance(main, 12)
+
+    var after := main.camera().unproject_position(main.character_view().target_position())
+    assert_float(after.y).is_less(before.y)
+    # 옆으로는 거의 흐르지 않아야 한다.
+    assert_float(absf(after.x - before.x)).is_less(1.0)
+
+
+func test_pressing_right_moves_straight_across_the_screen() -> void:
+    var main := _main()
+    var before := main.camera().unproject_position(main.character_view().target_position())
+
+    main.input_controller().submit_move_screen(ScreenDirections.RIGHT)
+    _advance(main, 12)
+
+    var after := main.camera().unproject_position(main.character_view().target_position())
+    assert_float(after.x).is_greater(before.x)
+    assert_float(absf(after.y - before.y)).is_less(1.0)
+
+
+func test_the_camera_keeps_its_diamond_angle() -> void:
+    assert_float(_main().camera().yaw_degrees()).is_equal_approx(45.0, 0.001)
+
+
+func test_wiring_from_a_branch_shows_which_way_out() -> void:
+    var main := _main()
+    var branch: Vector3i = main.simulation.state.character.cell() + Vector3i(2, 0, 0)
+    var part := BranchPart.create(branch)
+    part.configure(PackedInt32Array([BranchPart.MODE_TRUTH, 0]))
+    main.simulation.state.circuit.add_part(part)
+
+    var controller := main.input_controller()
+    controller.set_target(_aim_at(branch))
+    controller.submit_link()
+    main.part_hint().sync()
+
+    assert_str(main.part_hint().text()).contains("참")
+    controller.cycle_part_setting()
+    main.part_hint().sync()
+    assert_str(main.part_hint().text()).contains("거짓")

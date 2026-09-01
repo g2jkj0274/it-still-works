@@ -24,16 +24,26 @@ func _with_ledge(height: int) -> VoxelGrid:
     return grid
 
 
-func test_four_walking_directions_are_horizontal_units() -> void:
-    assert_int(MovementRules.DIRECTIONS.size()).is_equal(4)
+func test_eight_walking_directions_are_horizontal() -> void:
+    assert_int(MovementRules.DIRECTIONS.size()).is_equal(8)
+    var seen: Array = []
     for dir: Vector3i in MovementRules.DIRECTIONS:
         assert_int(dir.z).is_equal(0)
-        assert_int(absi(dir.x) + absi(dir.y)).is_equal(1)
+        assert_int(absi(dir.x)).is_less_equal(1)
+        assert_int(absi(dir.y)).is_less_equal(1)
+        assert_bool(dir == Vector3i.ZERO).is_false()
+        assert_bool(seen.has(dir)).is_false()
         assert_bool(MovementRules.is_direction(dir)).is_true()
+        seen.append(dir)
 
 
-func test_diagonal_and_vertical_are_not_directions() -> void:
-    for dir in [Vector3i(1, 1, 0), Vector3i(0, 0, 1), Vector3i.ZERO, Vector3i(2, 0, 0)]:
+func test_diagonals_are_told_apart_from_straight_steps() -> void:
+    assert_bool(MovementRules.is_diagonal(Vector3i(1, 1, 0))).is_true()
+    assert_bool(MovementRules.is_diagonal(Vector3i(1, 0, 0))).is_false()
+
+
+func test_vertical_and_oversized_steps_are_not_directions() -> void:
+    for dir in [Vector3i(0, 0, 1), Vector3i.ZERO, Vector3i(2, 0, 0), Vector3i(1, 1, 1)]:
         assert_bool(MovementRules.is_direction(dir)).is_false()
 
 
@@ -70,7 +80,48 @@ func test_walking_moves_one_cell_in_each_direction() -> void:
 func test_non_direction_does_not_move() -> void:
     var grid := _flat()
     var start := Vector3i(4, 4, 1)
+    assert_bool(MovementRules.resolve_walk(grid, start, Vector3i(2, 0, 0)) == start).is_true()
+
+
+func test_a_diagonal_step_crosses_both_axes() -> void:
+    var grid := _flat()
+    var start := Vector3i(4, 4, 1)
+    assert_bool(MovementRules.resolve_walk(grid, start, Vector3i(1, 1, 0)) == Vector3i(5, 5, 1)).is_true()
+
+
+func test_a_diagonal_needs_both_sides_open() -> void:
+    # 한쪽이 막혀 있으면 모서리를 뚫고 지나가는 꼴이 된다.
+    var grid := _flat()
+    var start := Vector3i(4, 4, 1)
+    grid.set_block(Vector3i(5, 4, 1), BlockType.STONE)
     assert_bool(MovementRules.resolve_walk(grid, start, Vector3i(1, 1, 0)) == start).is_true()
+
+
+func test_a_diagonal_is_refused_when_the_other_side_is_blocked() -> void:
+    var grid := _flat()
+    var start := Vector3i(4, 4, 1)
+    grid.set_block(Vector3i(4, 5, 1), BlockType.STONE)
+    assert_bool(MovementRules.resolve_walk(grid, start, Vector3i(1, 1, 0)) == start).is_true()
+
+
+func test_a_diagonal_is_refused_when_the_corner_itself_is_blocked() -> void:
+    var grid := _flat()
+    var start := Vector3i(4, 4, 1)
+    grid.set_block(Vector3i(5, 5, 1), BlockType.STONE)
+    assert_bool(MovementRules.resolve_walk(grid, start, Vector3i(1, 1, 0)) == start).is_true()
+
+
+func test_diagonals_do_not_climb_ledges() -> void:
+    # 대각선으로는 턱을 오르지 않는다. 같은 높이로만 건넌다.
+    var grid := _with_ledge(1)
+    var start := Vector3i(4, 4, 1)
+    assert_bool(MovementRules.resolve_walk(grid, start, Vector3i(-1, 1, 0)) == start).is_true()
+
+
+func test_a_diagonal_into_the_void_is_refused() -> void:
+    var grid := _flat()
+    var corner := Vector3i(PLATFORM - 1, PLATFORM - 1, 1)
+    assert_bool(MovementRules.resolve_walk(grid, corner, Vector3i(1, 1, 0)) == corner).is_true()
 
 
 func test_two_tall_wall_blocks_the_step() -> void:

@@ -270,3 +270,86 @@ func test_pointing_at_nothing_cancels_the_wiring() -> void:
     controller.submit_link()
     assert_bool(controller.has_link_source()).is_false()
     assert_int(sim.state.circuit.link_count()).is_equal(0)
+
+
+func _branch_at(sim: Simulation, cell: Vector3i) -> BranchPart:
+    var part := BranchPart.create(cell)
+    part.configure(PackedInt32Array([BranchPart.MODE_TRUTH, 0]))
+    sim.state.circuit.add_part(part)
+    return part
+
+
+func test_the_exit_starts_on_the_true_side() -> void:
+    var controller := _controller(_sim())
+    assert_int(controller.link_port()).is_equal(BranchPart.PORT_TRUE)
+    assert_str(controller.link_port_name()).is_equal("참")
+
+
+func test_the_exit_switches_and_comes_back() -> void:
+    var controller := _controller(_sim())
+    controller.cycle_link_port()
+    assert_int(controller.link_port()).is_equal(BranchPart.PORT_FALSE)
+    assert_str(controller.link_port_name()).is_equal("거짓")
+    controller.cycle_link_port()
+    assert_int(controller.link_port()).is_equal(BranchPart.PORT_TRUE)
+
+
+func test_the_setting_key_switches_the_exit_while_wiring_from_a_branch() -> void:
+    var sim := _sim()
+    var controller := _controller(sim)
+    var branch := Vector3i(32, 31, 2)
+    _branch_at(sim, branch)
+
+    controller.set_target(_target_on(branch, VoxelGrid.UP))
+    controller.submit_link()
+    assert_bool(controller.wiring_from_branch()).is_true()
+
+    controller.cycle_part_setting()
+    assert_int(controller.link_port()).is_equal(BranchPart.PORT_FALSE)
+
+
+func test_the_setting_key_still_changes_settings_when_not_wiring() -> void:
+    var controller := _controller(_sim())
+    controller.select_block(BlockType.BOX)
+    var before := controller.box_shape()
+    controller.cycle_part_setting()
+    assert_int(controller.box_shape()).is_not_equal(before)
+    assert_int(controller.link_port()).is_equal(BranchPart.PORT_TRUE)
+
+
+func test_a_wire_leaves_by_the_chosen_exit() -> void:
+    var sim := _sim()
+    var controller := _controller(sim)
+    var branch := Vector3i(32, 31, 2)
+    var actuator := Vector3i(33, 31, 2)
+    _branch_at(sim, branch)
+    sim.state.circuit.add_part(ActuatorPart.create(actuator))
+
+    controller.set_target(_target_on(branch, VoxelGrid.UP))
+    controller.submit_link()
+    controller.cycle_part_setting()
+    controller.set_target(_target_on(actuator, VoxelGrid.UP))
+    controller.submit_link()
+    sim.advance(2)
+
+    assert_bool(sim.state.circuit.is_linked(branch, actuator, BranchPart.PORT_FALSE)).is_true()
+    assert_bool(sim.state.circuit.is_linked(branch, actuator, BranchPart.PORT_TRUE)).is_false()
+
+
+func test_wiring_from_something_else_ignores_the_exit() -> void:
+    var sim := _sim()
+    var controller := _controller(sim)
+    var detector := Vector3i(32, 31, 2)
+    var actuator := Vector3i(33, 31, 2)
+    sim.state.circuit.add_part(DetectorPart.create(detector, DetectorPart.TARGET_PLAYER))
+    sim.state.circuit.add_part(ActuatorPart.create(actuator))
+
+    controller.cycle_link_port()
+    controller.set_target(_target_on(detector, VoxelGrid.UP))
+    controller.submit_link()
+    assert_bool(controller.wiring_from_branch()).is_false()
+
+    controller.set_target(_target_on(actuator, VoxelGrid.UP))
+    controller.submit_link()
+    sim.advance(2)
+    assert_bool(sim.state.circuit.is_linked(detector, actuator, 0)).is_true()

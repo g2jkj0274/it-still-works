@@ -70,7 +70,7 @@ func test_a_second_command_still_turns_the_character() -> void:
 func test_invalid_direction_changes_nothing() -> void:
     var state := _state()
     var facing := state.character.facing
-    MoveCharacterCommand.create(Vector3i(1, 1, 0)).apply(state)
+    MoveCharacterCommand.create(Vector3i(2, 0, 0)).apply(state)
     assert_bool(state.character.is_moving()).is_false()
     assert_bool(state.character.facing == facing).is_true()
 

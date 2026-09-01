@@ -18,6 +18,26 @@ func test_walk_and_fall_speeds_divide_a_cell_evenly() -> void:
     # 나누어떨어져야 칸 경계에 정확히 내려앉는다. 남으면 위치가 조금씩 밀린다.
     assert_int(CharacterState.SUBUNITS % CharacterState.WALK_SPEED).is_equal(0)
     assert_int(CharacterState.SUBUNITS % CharacterState.FALL_SPEED).is_equal(0)
+    assert_int(CharacterState.SUBUNITS % CharacterState.DIAGONAL_WALK_SPEED).is_equal(0)
+
+
+func test_crossing_a_corner_is_slower_per_axis_than_a_straight_step() -> void:
+    # 대각선은 먼 거리다. 축별 속도를 낮춰 두 걸음의 빠르기를 비슷하게 맞춘다.
+    assert_int(CharacterState.DIAGONAL_WALK_SPEED).is_less(CharacterState.WALK_SPEED)
+
+
+func test_a_diagonal_walk_lands_exactly_on_the_cell() -> void:
+    var character := CharacterState.new()
+    character.place_at(Vector3i(0, 0, 0))
+    character.walk_to(Vector3i(1, 1, 0))
+
+    var ticks := 0
+    while character.is_moving() and ticks < 100:
+        character.advance()
+        ticks += 1
+
+    assert_int(ticks).is_equal(CharacterState.SUBUNITS / CharacterState.DIAGONAL_WALK_SPEED)
+    assert_bool(character.sub_position == CharacterState.sub_of(Vector3i(1, 1, 0))).is_true()
 
 
 func test_cell_and_subunit_conversion_round_trips() -> void:
