@@ -45,13 +45,38 @@ const TREE_HEIGHT := 3
 ## 캐릭터가 처음 서는 칸.
 const SPAWN := Vector3i(32, 32, GROUND_TOP_Z + 1)
 
+## 시작할 때 손에 무언가를 쥐여 줄 것인가.
+##
+## 원래 이 게임은 빈손으로 시작한다. 첫 블록은 손으로 부숴 얻는다.
+## 그런데 부품을 만들 방법이 아직 없어서, 지금은 회로를 시험해 볼 길이 없다.
+## **제작이 생기면 이 값을 false 로 되돌린다.**
+const GIVE_STARTING_KIT := true
+
+const STARTING_PARTS := 20
+const STARTING_BLOCKS := 64
+const STARTING_CROPS := 8
+
 
 ## 격자에 섬을 배치하고 캐릭터를 시작 위치에 세운다.
 static func populate(state: WorldState) -> void:
     build(state.grid)
+    if GIVE_STARTING_KIT:
+        stock_starting_kit(state.inventory)
     state.spawn = SPAWN
     state.character.place_at(SPAWN)
     state.character.facing = Vector3i(0, 1, 0)
+
+
+## 판정에 필요한 것을 미리 쥐여 준다.
+static func stock_starting_kit(inventory: Inventory) -> void:
+    for block_type in [BlockType.GROUND, BlockType.STONE, BlockType.WOOD]:
+        inventory.add(block_type, STARTING_BLOCKS)
+    for part_type in [
+        BlockType.DOOR_CLOSED, BlockType.FIELD, BlockType.DETECTOR,
+        BlockType.ACTUATOR, BlockType.REPEATER, BlockType.BOX, BlockType.BRANCH,
+    ]:
+        inventory.add(part_type, STARTING_PARTS)
+    inventory.add(BlockType.CROP, STARTING_CROPS)
 
 
 static func build(grid: VoxelGrid) -> void:

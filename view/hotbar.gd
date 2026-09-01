@@ -1,32 +1,30 @@
 class_name Hotbar
 extends CanvasLayer
 
-## 손에 든 재료를 화면 아래에 보여준다.
+## 손에 든 것을 화면 아래에 보여준다.
 ##
 ## 인벤토리와 입력을 읽기만 한다. 여기서 개수를 고치지 않는다.
-## 재료 이름은 게임 말로만 적는다. 프로그래밍 용어는 화면에 나오지 않는다.
+## 이름은 게임 말로만 적는다. 프로그래밍 용어는 화면에 나오지 않는다.
+##
+## 한 칸에 누를 숫자 · 이름 · 개수를 함께 적는다. 고른 칸은 밝고 크게,
+## 나머지는 흐리게 보인다.
 
-const SLOT_SIZE := Vector2(76, 42)
-const SLOT_GAP := 8.0
-const BOTTOM_MARGIN := 24.0
+const SLOT_SIZE := Vector2(92, 58)
+const SLOT_GAP := 6.0
+const BOTTOM_MARGIN := 20.0
 
-const CHOSEN_COLOUR := Color(1.0, 1.0, 1.0, 0.92)
-const IDLE_COLOUR := Color(1.0, 1.0, 1.0, 0.45)
-const TEXT_COLOUR := Color(0.13, 0.16, 0.20)
+## 고른 칸이 위로 솟는 높이.
+const CHOSEN_LIFT := 6.0
 
-const _NAMES: Dictionary[int, String] = {
-    BlockType.GROUND: "흙",
-    BlockType.STONE: "돌",
-    BlockType.WOOD: "나무",
-    BlockType.DOOR_CLOSED: "문",
-    BlockType.DETECTOR: "눈",
-    BlockType.ACTUATOR: "손",
-    BlockType.REPEATER: "되풀이",
-    BlockType.BOX: "상자",
-    BlockType.BRANCH: "갈림길",
-    BlockType.FIELD: "밭",
-    BlockType.CROP: "작물",
-}
+const CHOSEN_TINT := Color(1.0, 1.0, 1.0, 1.0)
+const IDLE_TINT := Color(1.0, 1.0, 1.0, 0.55)
+
+const TEXT_COLOUR := Color(0.12, 0.14, 0.18)
+const EMPTY_TEXT_COLOUR := Color(0.42, 0.44, 0.48)
+const CHOSEN_BORDER := Color(0.15, 0.17, 0.22)
+
+## 숫자 키 표시. 열째 칸은 0 이다.
+const _KEY_LABELS: PackedStringArray = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
 
 var _inventory: Inventory
 var _controller: InputController
@@ -36,9 +34,9 @@ var _labels: Array[Label] = []
 var _selected_slot: int = 0
 
 
-## 화면에 보일 재료 이름.
+## 화면에 보일 이름.
 static func name_of(block_type: int) -> String:
-    return _NAMES.get(block_type, "?")
+    return PartWords.name_of(block_type)
 
 
 func _ready() -> void:
@@ -54,11 +52,11 @@ func _ready() -> void:
     _row.mouse_filter = Control.MOUSE_FILTER_IGNORE
     anchor.add_child(_row)
 
-    for block_type in InputController.PLACEABLE:
-        _add_slot(block_type)
+    for slot in InputController.PLACEABLE.size():
+        _add_slot(slot, InputController.PLACEABLE[slot])
 
     _row.position = Vector2(
-        -(_row.get_combined_minimum_size().x) * 0.5,
+        -_row.get_combined_minimum_size().x * 0.5,
         -SLOT_SIZE.y - BOTTOM_MARGIN,
     )
 
@@ -68,14 +66,10 @@ func bind(inventory: Inventory, controller: InputController) -> void:
     _controller = controller
 
 
-## 인벤토리와 선택 상태를 읽어 화면을 맞춘다.
+## 인벤토리와 고른 칸을 읽어 화면을 맞춘다.
 func sync() -> void:
     if _inventory == null:
         return
-
-    for slot in InputController.PLACEABLE.size():
-        var block_type: int = InputController.PLACEABLE[slot]
-        _labels[slot].text = "%s  %d" % [name_of(block_type), _inventory.count_of(block_type)]
 
     _selected_slot = 0
     if _controller != null:
@@ -83,8 +77,19 @@ func sync() -> void:
         if chosen >= 0:
             _selected_slot = chosen
 
-    for slot in _panels.size():
-        _panels[slot].modulate = CHOSEN_COLOUR if slot == _selected_slot else IDLE_COLOUR
+    for slot in InputController.PLACEABLE.size():
+        var block_type: int = InputController.PLACEABLE[slot]
+        var held := _inventory.count_of(block_type)
+
+        _labels[slot].text = "%s  %s\n%d" % [_KEY_LABELS[slot], name_of(block_type), held]
+        _labels[slot].add_theme_color_override(
+            "font_color", TEXT_COLOUR if held > 0 else EMPTY_TEXT_COLOUR)
+
+        var is_chosen := slot == _selected_slot
+        _panels[slot].modulate = CHOSEN_TINT if is_chosen else IDLE_TINT
+        _panels[slot].position.y = -CHOSEN_LIFT if is_chosen else 0.0
+        _style_of(slot).border_width_bottom = 4 if is_chosen else 0
+        _style_of(slot).border_width_top = 4 if is_chosen else 0
 
 
 func slot_count() -> int:
@@ -101,11 +106,23 @@ func selected_slot() -> int:
     return _selected_slot
 
 
-func _add_slot(block_type: int) -> void:
+## 고른 칸이 눈에 띄게 표시되어 있는가.
+func slot_is_marked(slot: int) -> bool:
+    if slot < 0 or slot >= _panels.size():
+        return false
+    return _style_of(slot).border_width_bottom > 0
+
+
+func _style_of(slot: int) -> StyleBoxFlat:
+    return _panels[slot].get_theme_stylebox("panel") as StyleBoxFlat
+
+
+func _add_slot(slot: int, block_type: int) -> void:
     var style := StyleBoxFlat.new()
-    style.bg_color = WorldView.colour_of(block_type)
+    style.bg_color = Palette.of_block(block_type)
     style.set_corner_radius_all(6)
-    style.set_content_margin_all(8)
+    style.set_content_margin_all(6)
+    style.border_color = CHOSEN_BORDER
 
     var panel := PanelContainer.new()
     panel.name = "Slot_" + BlockType.name_of(block_type)

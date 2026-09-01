@@ -13,7 +13,7 @@ const START_TICK := DayCycle.DAY_TICKS - 40
 const RUN_TICKS := 400
 
 ## Godot 4.7.2 / 서로 다른 프로세스 3회 실행에서 동일함을 확인하고 고정했다.
-const GOLDEN_HASH := "af068fea55513573633a52f3e58f828407575f52cba5d9b41b9a9c9a18ebc4c9"
+const GOLDEN_HASH := "bef3c9ea9e255247941d334ef6c81599746f69d815f5e00d3d67e316af417bd9"
 
 
 func _scenario() -> Array:

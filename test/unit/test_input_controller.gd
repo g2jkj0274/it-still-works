@@ -20,18 +20,69 @@ func _sim() -> Simulation:
     return sim
 
 
-func test_move_actions_map_to_the_four_directions() -> void:
+func test_move_actions_cover_the_four_screen_directions() -> void:
+    var screens: Array = []
+    for entry: Array in InputController.MOVE_ACTIONS:
+        var screen: Vector2i = entry[1]
+        assert_bool(ScreenDirections.SCREEN_ORDER.has(screen)).is_true()
+        assert_bool(screens.has(screen)).is_false()
+        screens.append(screen)
+    assert_int(screens.size()).is_equal(4)
+
+
+func test_unknown_action_maps_to_no_screen_direction() -> void:
+    assert_bool(InputController.screen_for_action(&"nope") == Vector2i.ZERO).is_true()
+
+
+func test_without_a_camera_the_keys_still_move() -> void:
+    # 헤드리스에서도 이동은 되어야 한다. 카메라가 없으면 고정 배치로 물러난다.
+    var controller := _controller(_sim())
     var directions: Array = []
     for entry: Array in InputController.MOVE_ACTIONS:
-        var dir: Vector3i = entry[1]
-        assert_bool(MovementRules.is_direction(dir)).is_true()
-        assert_bool(directions.has(dir)).is_false()
-        directions.append(dir)
+        var grid := controller.grid_for_screen(entry[1])
+        assert_bool(MovementRules.is_direction(grid)).is_true()
+        assert_bool(directions.has(grid)).is_false()
+        directions.append(grid)
     assert_int(directions.size()).is_equal(4)
 
 
-func test_unknown_action_maps_to_no_direction() -> void:
-    assert_bool(InputController.direction_for_action(&"nope") == Vector3i.ZERO).is_true()
+func test_opposite_keys_give_opposite_directions() -> void:
+    var controller := _controller(_sim())
+    var up := controller.grid_for_screen(ScreenDirections.UP)
+    var down := controller.grid_for_screen(ScreenDirections.DOWN)
+    var left := controller.grid_for_screen(ScreenDirections.LEFT)
+    var right := controller.grid_for_screen(ScreenDirections.RIGHT)
+    assert_bool(up == -down).is_true()
+    assert_bool(left == -right).is_true()
+
+
+func test_the_help_starts_hidden_and_toggles() -> void:
+    var controller := _controller(_sim())
+    assert_bool(controller.help_shown()).is_false()
+    controller.toggle_help()
+    assert_bool(controller.help_shown()).is_true()
+    controller.toggle_help()
+    assert_bool(controller.help_shown()).is_false()
+
+
+func test_only_parts_with_choices_report_a_setting() -> void:
+    var controller := _controller(_sim())
+    controller.select_block(BlockType.WOOD)
+    assert_bool(controller.has_part_setting()).is_false()
+
+    for part_type in InputController.PARTS_WITH_SETTINGS:
+        controller.select_block(part_type)
+        assert_bool(controller.has_part_setting()).is_true()
+        assert_str(controller.part_setting_name()).is_not_empty()
+        assert_str(controller.part_setting_name()).is_not_equal("?")
+
+
+func test_the_setting_name_follows_the_choice() -> void:
+    var controller := _controller(_sim())
+    controller.select_block(BlockType.BOX)
+    var first := controller.part_setting_name()
+    controller.cycle_part_setting()
+    assert_str(controller.part_setting_name()).is_not_equal(first)
 
 
 func test_submitting_a_move_only_queues_a_command() -> void:

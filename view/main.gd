@@ -30,6 +30,8 @@ var _wire_view: WireView
 var _sky_view: SkyView
 var _threat_view: ThreatView
 var _vitals_bar: VitalsBar
+var _part_hint: PartHint
+var _help_overlay: HelpOverlay
 var _hotbar: Hotbar
 var _last_usec: int = 0
 
@@ -108,6 +110,14 @@ func vitals_bar() -> VitalsBar:
     return _vitals_bar
 
 
+func part_hint() -> PartHint:
+    return _part_hint
+
+
+func help_overlay() -> HelpOverlay:
+    return _help_overlay
+
+
 ## 시뮬레이션 상태를 읽어 화면을 맞춘다. 시뮬레이션은 건드리지 않는다.
 func sync_views() -> void:
     _world_view.sync()
@@ -116,6 +126,7 @@ func sync_views() -> void:
     _threat_view.sync()
     _sky_view.apply(simulation.current_tick())
     _hotbar.sync()
+    _part_hint.sync()
     _vitals_bar.sync()
     _camera.follow(_character_view.target_position(), CAMERA_FOLLOW)
 
@@ -183,6 +194,8 @@ func _build_input() -> void:
     _input.name = "Input"
     add_child(_input)
     _input.bind(simulation)
+    _input.bind_camera(_camera)
+    _input.help_toggled.connect(_on_help_toggled)
 
     _hotbar = Hotbar.new()
     _hotbar.name = "Hotbar"
@@ -196,22 +209,20 @@ func _build_input() -> void:
     _vitals_bar.bind(simulation.state.vitals)
     _vitals_bar.sync()
 
+    _part_hint = PartHint.new()
+    _part_hint.name = "PartHint"
+    add_child(_part_hint)
+    _part_hint.bind(_input)
+    _part_hint.sync()
 
+
+## 조작 안내는 기본으로 숨긴다. H 로 켜고 끈다.
 func _build_hint() -> void:
-    var label := Label.new()
-    label.name = "Hint"
-    label.text = "이동  W A S D
-마우스로 결령
-놓기  E
-부수기  Q
-재료  1 흙  2 돌  3 나무  4 문  5 눈  6 손  7 되풀이  8 상자  9 갈림길  0 밭
-먹기  F
-잎기  R 두 번
-눈이 볼 것  T"
-    label.position = Vector2(16, 16)
-    label.add_theme_color_override("font_color", Color(0.15, 0.18, 0.22))
+    _help_overlay = HelpOverlay.new()
+    _help_overlay.name = "Help"
+    add_child(_help_overlay)
+    _help_overlay.set_shown(_input.help_shown())
 
-    var layer := CanvasLayer.new()
-    layer.name = "Hud"
-    layer.add_child(label)
-    add_child(layer)
+
+func _on_help_toggled(shown: bool) -> void:
+    _help_overlay.set_shown(shown)

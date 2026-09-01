@@ -100,14 +100,18 @@ func test_falling_returns_the_player_to_the_start() -> void:
 
 
 func test_falling_costs_half_of_what_was_carried() -> void:
+    # 시작 지급이 켜져 있을 수 있으므로 쓰러지기 직전 개수에서 재어 본다.
     var sim := _sim()
     sim.state.inventory.add(BlockType.WOOD, 8)
     sim.state.inventory.add(BlockType.STONE, 3)
+    var wood := sim.state.inventory.count_of(BlockType.WOOD)
+    var stone := sim.state.inventory.count_of(BlockType.STONE)
+
     sim.state.vitals.damage(Vitals.MAX_HEALTH)
     sim.advance(2)
 
-    assert_int(sim.state.inventory.count_of(BlockType.WOOD)).is_equal(4)
-    assert_int(sim.state.inventory.count_of(BlockType.STONE)).is_equal(1)
+    assert_int(sim.state.inventory.count_of(BlockType.WOOD)).is_equal(wood / 2)
+    assert_int(sim.state.inventory.count_of(BlockType.STONE)).is_equal(stone / 2)
 
 
 func test_what_was_built_survives_a_fall() -> void:
