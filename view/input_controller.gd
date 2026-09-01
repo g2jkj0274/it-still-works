@@ -7,23 +7,39 @@ extends Node
 ## 언제 반영될지는 시뮬레이션이 틱 단위로 정한다.
 ##
 ## 상태를 읽기는 한다. 어느 칸에 놓을지 정하려면 캐릭터가 어디를 보는지 알아야 한다.
+##
+## 이동 키는 화면 기준이다. W 는 화면 위쪽이다. 화면과 격자 사이의 회전은
+## ScreenDirections 가 카메라에서 뽑는다. 시점을 돌리면 조작도 따라 돈다.
 
-## 이동 동작과 격자 방향. 딕셔너리가 아니라 순서 있는 배열이다.
+## 이동 동작과 화면 방향. 딕셔너리가 아니라 순서 있는 배열이다.
 ## 두 방향이 동시에 눌렸을 때 어느 쪽이 이기는지가 실행마다 달라지면 안 된다.
 const MOVE_ACTIONS: Array = [
-    [&"move_north", Vector3i(0, -1, 0)],
-    [&"move_south", Vector3i(0, 1, 0)],
-    [&"move_east", Vector3i(1, 0, 0)],
-    [&"move_west", Vector3i(-1, 0, 0)],
+    [&"move_up", ScreenDirections.UP],
+    [&"move_down", ScreenDirections.DOWN],
+    [&"move_left", ScreenDirections.LEFT],
+    [&"move_right", ScreenDirections.RIGHT],
 ]
+
+## 카메라가 없을 때 쓸 자리. 헤드리스에서도 이동은 되어야 한다.
+const FALLBACK_DIRECTIONS: Dictionary[Vector2i, Vector3i] = {
+    ScreenDirections.UP: Vector3i(0, -1, 0),
+    ScreenDirections.DOWN: Vector3i(0, 1, 0),
+    ScreenDirections.RIGHT: Vector3i(1, 0, 0),
+    ScreenDirections.LEFT: Vector3i(-1, 0, 0),
+}
 
 const ACTION_PLACE := &"place_block"
 const ACTION_BREAK := &"break_block"
 const ACTION_LINK := &"link_parts"
 const ACTION_TARGET := &"cycle_target"
 const ACTION_EAT := &"eat"
+const ACTION_HELP := &"toggle_help"
+const ACTION_ZOOM_IN := &"zoom_in"
+const ACTION_ZOOM_OUT := &"zoom_out"
+const ACTION_TURN_LEFT := &"turn_left"
+const ACTION_TURN_RIGHT := &"turn_right"
 
-## 손에 쥘 수 있는 재료. 고를 수 있는 순서대로.
+## 손에 쥘 수 있는 것. 고를 수 있는 차례대로.
 const PLACEABLE: Array[int] = [
     BlockType.GROUND,
     BlockType.STONE,
@@ -36,9 +52,15 @@ const PLACEABLE: Array[int] = [
     BlockType.BRANCH,
     BlockType.FIELD,
 ]
+
+## 설정을 고를 수 있는 부품들.
+const PARTS_WITH_SETTINGS: Array[int] = [
+    BlockType.DETECTOR, BlockType.REPEATER, BlockType.BOX, BlockType.BRANCH,
+]
+
 const SELECT_ACTIONS: Array = [
-    &"select_1", &"select_2", &"select_3", &"select_4",
-    &"select_5", &"select_6", &"select_7", &"select_8", &"select_9", &"select_0",
+    &"select_1", &"select_2", &"select_3", &"select_4", &"select_5",
+    &"select_6", &"select_7", &"select_8", &"select_9", &"select_0",
 ]
 
 ## 키를 누르고 있을 때 한 걸음마다 두는 간격(틱).
@@ -63,7 +85,10 @@ const BRANCH_PRESETS: Array = [
     [BranchPart.MODE_OR, 0],
 ]
 
+signal help_toggled(shown: bool)
+
 var _simulation: Simulation
+var _camera: Camera3D
 var _selected: int = BlockType.WOOD
 var _next_move_tick: int = 0
 var _target: BlockTarget = null
@@ -73,17 +98,32 @@ var _box_shape: int = BoxPart.SHAPE_SQUARE
 var _branch_preset: int = 0
 var _link_source: Vector3i = Vector3i.ZERO
 var _has_link_source: bool = false
+var _help_shown: bool = false
 
 
 func bind(simulation: Simulation) -> void:
     _simulation = simulation
 
 
-static func direction_for_action(action: StringName) -> Vector3i:
+## 이동 방향을 뽑을 카메라. 없으면 고정 배치로 물러난다.
+func bind_camera(camera: Camera3D) -> void:
+    _camera = camera
+
+
+static func screen_for_action(action: StringName) -> Vector2i:
     for entry: Array in MOVE_ACTIONS:
         if entry[0] == action:
             return entry[1]
-    return Vector3i.ZERO
+    return Vector2i.ZERO
+
+
+## 화면 방향에 해당하는 격자 방향.
+func grid_for_screen(screen: Vector2i) -> Vector3i:
+    if _camera != null:
+        var direction := ScreenDirections.grid_for(_camera, screen)
+        if direction != Vector3i.ZERO:
+            return direction
+    return FALLBACK_DIRECTIONS.get(screen, Vector3i.ZERO)
 
 
 func selected_block() -> int:
@@ -94,40 +134,6 @@ func select_block(block_type: int) -> void:
     if not PLACEABLE.has(block_type):
         return
     _selected = block_type
-
-
-func submit_move(direction: Vector3i) -> void:
-    if _simulation == null:
-        return
-    _simulation.submit(MoveCharacterCommand.create(direction))
-
-
-## 시선이 가리키는 칸을 알려준다. 표현 레이어가 매 프레임 갱신한다.
-func set_target(target: BlockTarget) -> void:
-    _target = target
-
-
-func clear_target() -> void:
-    _target = null
-
-
-func has_target() -> bool:
-    return _target != null and _target.hit
-
-
-## 부술 칸. 가리키는 곳이 없으면 바라보는 앞 칸으로 물러난다.
-## 마우스 없이 키만으로도 놀 수 있어야 한다.
-func break_cell() -> Vector3i:
-    if has_target():
-        return _target.cell
-    return _facing_cell()
-
-
-## 놓을 칸. 가리키는 블록의 맞은 면 바깥이다.
-func place_cell() -> Vector3i:
-    if has_target():
-        return _target.place_cell()
-    return _facing_cell()
 
 
 ## 감지기가 무엇을 볼지. 놓기 전에 고른다.
@@ -147,7 +153,16 @@ func branch_preset() -> int:
     return _branch_preset
 
 
-## 지금 고른 부품의 설정을 다음 것으로 넘긴다.
+func help_shown() -> bool:
+    return _help_shown
+
+
+func toggle_help() -> void:
+    _help_shown = not _help_shown
+    help_toggled.emit(_help_shown)
+
+
+## 지금 고른 것의 설정을 다음 것으로 넘긴다.
 func cycle_part_setting() -> void:
     if _selected == BlockType.REPEATER:
         _repeater_preset = (_repeater_preset + 1) % REPEATER_PRESETS.size()
@@ -161,23 +176,66 @@ func cycle_part_setting() -> void:
     _detector_target = (_detector_target + 1) % DetectorPart.TARGET_COUNT
 
 
-func cycle_detector_target() -> void:
-    _detector_target = (_detector_target + 1) % DetectorPart.TARGET_COUNT
+## 지금 고른 것에 설정이 있는가. 화면에 무엇을 보일지 정할 때 쓴다.
+func has_part_setting() -> bool:
+    return PARTS_WITH_SETTINGS.has(_selected)
 
 
-## 지금 고른 부품을 놓을 때 함께 넘길 설정값.
+## 지금 고른 설정을 화면에 보일 말로.
+func part_setting_name() -> String:
+    match _selected:
+        BlockType.DETECTOR:
+            return PartWords.target_name(_detector_target)
+        BlockType.REPEATER:
+            return PartWords.repeater_setting_name(_repeater_preset)
+        BlockType.BOX:
+            return PartWords.shape_name(_box_shape)
+        BlockType.BRANCH:
+            return PartWords.branch_setting_name(_branch_preset)
+        _:
+            return ""
+
+
+## 지금 고른 것을 놓을 때 함께 넘길 설정값.
 func part_settings() -> PackedInt32Array:
     if _selected == BlockType.DETECTOR:
         return PackedInt32Array([_detector_target])
     if _selected == BlockType.REPEATER:
-        var preset: Array = REPEATER_PRESETS[_repeater_preset]
-        return PackedInt32Array([preset[0], preset[1], preset[2]])
+        var repeater: Array = REPEATER_PRESETS[_repeater_preset]
+        return PackedInt32Array([repeater[0], repeater[1], repeater[2]])
     if _selected == BlockType.BOX:
         return PackedInt32Array([_box_shape])
     if _selected == BlockType.BRANCH:
-        var preset: Array = BRANCH_PRESETS[_branch_preset]
-        return PackedInt32Array([preset[0], preset[1]])
+        var branch: Array = BRANCH_PRESETS[_branch_preset]
+        return PackedInt32Array([branch[0], branch[1]])
     return PackedInt32Array()
+
+
+## 시선이 가리키는 칸을 알려준다. 표현 레이어가 매 프레임 갱신한다.
+func set_target(target: BlockTarget) -> void:
+    _target = target
+
+
+func clear_target() -> void:
+    _target = null
+
+
+func has_target() -> bool:
+    return _target != null and _target.hit
+
+
+## 부술 칸. 가리키는 곳이 없으면 바라보는 앞 칸으로 물러난다.
+func break_cell() -> Vector3i:
+    if has_target():
+        return _target.cell
+    return _facing_cell()
+
+
+## 놓을 칸. 가리키는 것의 맞은 면 바깥이다.
+func place_cell() -> Vector3i:
+    if has_target():
+        return _target.place_cell()
+    return _facing_cell()
 
 
 func has_link_source() -> bool:
@@ -190,6 +248,41 @@ func link_source() -> Vector3i:
 
 func clear_link_source() -> void:
     _has_link_source = false
+
+
+## 화면 방향으로 한 걸음 접수한다.
+func submit_move_screen(screen: Vector2i) -> void:
+    submit_move(grid_for_screen(screen))
+
+
+func submit_move(direction: Vector3i) -> void:
+    if _simulation == null or direction == Vector3i.ZERO:
+        return
+    _simulation.submit(MoveCharacterCommand.create(direction))
+
+
+func submit_place() -> void:
+    if _simulation == null:
+        return
+
+    var cell := place_cell()
+    if BlockType.is_part(_selected):
+        _simulation.submit(PlacePartCommand.create(cell, _selected, part_settings()))
+        return
+    _simulation.submit(PlaceBlockCommand.create(cell, _selected))
+
+
+func submit_break() -> void:
+    if _simulation == null:
+        return
+    _simulation.submit(BreakBlockCommand.create(break_cell()))
+
+
+## 작물을 먹는다. 배가 찬다.
+func submit_eat() -> void:
+    if _simulation == null:
+        return
+    _simulation.submit(EatCommand.create())
 
 
 ## 부품 둘을 배선으로 잇는다. 처음 누르면 출발점, 다음에 누르면 도착점이다.
@@ -212,60 +305,38 @@ func submit_link() -> void:
     clear_link_source()
 
 
-## 작물을 먹는다. 포만도가 찬다.
-func submit_eat() -> void:
-    if _simulation == null:
-        return
-    _simulation.submit(EatCommand.create())
-
-
-func submit_place() -> void:
-    if _simulation == null:
-        return
-
-    var cell := place_cell()
-    if BlockType.is_part(_selected):
-        _simulation.submit(PlacePartCommand.create(cell, _selected, part_settings()))
-        return
-    _simulation.submit(PlaceBlockCommand.create(cell, _selected))
-
-
-func submit_break() -> void:
-    if _simulation == null:
-        return
-    _simulation.submit(BreakBlockCommand.create(break_cell()))
-
-
 ## 눌린 키를 읽어 명령을 만든다. 표현 레이어의 프레임 루프에서 부른다.
 func poll(current_tick: int) -> void:
     if _simulation == null:
         return
     _poll_selection()
     _poll_movement(current_tick)
-    _poll_blocks()
+    _poll_actions()
+    _poll_camera()
 
 
 ## 키 배치를 InputMap 에 등록한다. 이미 있으면 손대지 않는다.
 static func install_actions() -> void:
-    _install(&"move_north", [KEY_W, KEY_UP])
-    _install(&"move_south", [KEY_S, KEY_DOWN])
-    _install(&"move_east", [KEY_D, KEY_RIGHT])
-    _install(&"move_west", [KEY_A, KEY_LEFT])
+    _install(&"move_up", [KEY_W, KEY_UP])
+    _install(&"move_down", [KEY_S, KEY_DOWN])
+    _install(&"move_left", [KEY_A, KEY_LEFT])
+    _install(&"move_right", [KEY_D, KEY_RIGHT])
+
     _install(ACTION_PLACE, [KEY_E])
     _install(ACTION_BREAK, [KEY_Q])
-    _install(&"select_1", [KEY_1])
-    _install(&"select_2", [KEY_2])
-    _install(&"select_3", [KEY_3])
-    _install(&"select_4", [KEY_4])
-    _install(&"select_5", [KEY_5])
-    _install(&"select_6", [KEY_6])
-    _install(&"select_7", [KEY_7])
-    _install(&"select_8", [KEY_8])
-    _install(&"select_9", [KEY_9])
-    _install(&"select_0", [KEY_0])
-    _install(ACTION_EAT, [KEY_F])
     _install(ACTION_LINK, [KEY_R])
     _install(ACTION_TARGET, [KEY_T])
+    _install(ACTION_EAT, [KEY_F])
+    _install(ACTION_HELP, [KEY_H, KEY_F1])
+    _install(ACTION_TURN_LEFT, [KEY_BRACKETLEFT])
+    _install(ACTION_TURN_RIGHT, [KEY_BRACKETRIGHT])
+
+    var keys: Array = [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_0]
+    for i in SELECT_ACTIONS.size():
+        _install(SELECT_ACTIONS[i], [keys[i]])
+
+    _install_wheel(ACTION_ZOOM_IN, MOUSE_BUTTON_WHEEL_UP)
+    _install_wheel(ACTION_ZOOM_OUT, MOUSE_BUTTON_WHEEL_DOWN)
 
 
 static func _install(action: StringName, keys: Array) -> void:
@@ -278,6 +349,15 @@ static func _install(action: StringName, keys: Array) -> void:
         InputMap.action_add_event(action, event)
 
 
+static func _install_wheel(action: StringName, button: MouseButton) -> void:
+    if InputMap.has_action(action):
+        return
+    InputMap.add_action(action)
+    var event := InputEventMouseButton.new()
+    event.button_index = button
+    InputMap.action_add_event(action, event)
+
+
 func _facing_cell() -> Vector3i:
     return _simulation.state.character.facing_cell()
 
@@ -288,12 +368,12 @@ func _poll_movement(current_tick: int) -> void:
     for entry: Array in MOVE_ACTIONS:
         if not Input.is_action_pressed(entry[0]):
             continue
-        submit_move(entry[1])
+        submit_move_screen(entry[1])
         _next_move_tick = current_tick + REPEAT_TICKS
         return
 
 
-func _poll_blocks() -> void:
+func _poll_actions() -> void:
     if Input.is_action_just_pressed(ACTION_PLACE):
         submit_place()
     if Input.is_action_just_pressed(ACTION_BREAK):
@@ -304,6 +384,21 @@ func _poll_blocks() -> void:
         cycle_part_setting()
     if Input.is_action_just_pressed(ACTION_EAT):
         submit_eat()
+    if Input.is_action_just_pressed(ACTION_HELP):
+        toggle_help()
+
+
+func _poll_camera() -> void:
+    if _camera == null or not _camera.has_method("zoom_by"):
+        return
+    if Input.is_action_just_pressed(ACTION_ZOOM_IN):
+        _camera.call("zoom_by", -1)
+    if Input.is_action_just_pressed(ACTION_ZOOM_OUT):
+        _camera.call("zoom_by", 1)
+    if Input.is_action_just_pressed(ACTION_TURN_LEFT):
+        _camera.call("turn_by", -1)
+    if Input.is_action_just_pressed(ACTION_TURN_RIGHT):
+        _camera.call("turn_by", 1)
 
 
 func _poll_selection() -> void:

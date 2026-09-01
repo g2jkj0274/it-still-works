@@ -150,3 +150,161 @@ func test_out_of_reach_targets_are_refused() -> void:
     far.hit = true
     far.cell = Vector3i(2, 2, 1)
     assert_bool(far.is_usable(main.simulation.state.character.cell())).is_false()
+
+
+func test_the_player_starts_with_parts_to_try() -> void:
+    # 제작이 아직 없으므로 판정용으로 지급한다.
+    var main := _main()
+    for part_type in InputController.PLACEABLE:
+        assert_int(main.simulation.state.inventory.count_of(part_type)).is_greater(0)
+
+
+func test_the_hotbar_shows_a_name_and_a_count_for_every_slot() -> void:
+    var main := _main()
+    main.hotbar().sync()
+    assert_int(main.hotbar().slot_count()).is_equal(InputController.PLACEABLE.size())
+
+    for slot in main.hotbar().slot_count():
+        var block_type: int = InputController.PLACEABLE[slot]
+        var line := main.hotbar().slot_text(slot)
+        assert_str(line).contains(PartWords.name_of(block_type))
+        assert_str(line).contains(str(main.simulation.state.inventory.count_of(block_type)))
+
+
+func test_only_the_chosen_slot_is_marked() -> void:
+    var main := _main()
+    main.input_controller().select_block(BlockType.DETECTOR)
+    main.hotbar().sync()
+
+    var chosen := InputController.PLACEABLE.find(BlockType.DETECTOR)
+    assert_int(main.hotbar().selected_slot()).is_equal(chosen)
+    for slot in main.hotbar().slot_count():
+        assert_bool(main.hotbar().slot_is_marked(slot)).is_equal(slot == chosen)
+
+
+func test_the_chosen_thing_explains_itself() -> void:
+    var main := _main()
+    main.input_controller().select_block(BlockType.DETECTOR)
+    main.part_hint().sync()
+
+    var line := main.part_hint().text()
+    assert_str(line).contains("감지기")
+    assert_str(line).contains("잇기")
+
+
+func test_the_explanation_follows_the_choice() -> void:
+    var main := _main()
+    main.input_controller().select_block(BlockType.DETECTOR)
+    main.part_hint().sync()
+    var before := main.part_hint().text()
+
+    main.input_controller().select_block(BlockType.ACTUATOR)
+    main.part_hint().sync()
+    assert_str(main.part_hint().text()).is_not_equal(before)
+    assert_str(main.part_hint().text()).contains("작동기")
+
+
+func test_the_help_starts_hidden_and_answers_the_key() -> void:
+    var main := _main()
+    assert_bool(main.help_overlay().is_shown()).is_false()
+
+    main.input_controller().toggle_help()
+    assert_bool(main.help_overlay().is_shown()).is_true()
+
+    main.input_controller().toggle_help()
+    assert_bool(main.help_overlay().is_shown()).is_false()
+
+
+func test_the_help_names_every_thing_a_player_must_press() -> void:
+    var help := _main().help_overlay().text()
+    for key in ["W A S D", "E", "Q", "R", "T", "F", "H"]:
+        assert_str(help).contains(key)
+
+
+func test_the_camera_starts_close_enough_to_place_parts() -> void:
+    var main := _main()
+    assert_float(main.camera().view_size()).is_equal_approx(
+        IsometricCamera.DEFAULT_VIEW_SIZE, 0.001)
+    assert_float(main.camera().view_size()).is_less(20.0)
+
+
+func test_the_camera_pulls_in_and_pushes_out() -> void:
+    var main := _main()
+    var start := main.camera().view_size()
+
+    main.camera().zoom_by(-2)
+    assert_float(main.camera().view_size()).is_less(start)
+
+    main.camera().zoom_by(4)
+    assert_float(main.camera().view_size()).is_greater(start)
+
+
+func test_zoom_stays_within_bounds() -> void:
+    var main := _main()
+    main.camera().zoom_by(-100)
+    assert_float(main.camera().view_size()).is_equal_approx(IsometricCamera.MIN_VIEW_SIZE, 0.001)
+    main.camera().zoom_by(100)
+    assert_float(main.camera().view_size()).is_equal_approx(IsometricCamera.MAX_VIEW_SIZE, 0.001)
+
+
+func test_walking_keys_follow_the_camera() -> void:
+    var main := _main()
+    var before := main.input_controller().grid_for_screen(ScreenDirections.UP)
+    main.camera().turn_by(2)
+    assert_bool(main.input_controller().grid_for_screen(ScreenDirections.UP) == before).is_false()
+
+
+func test_pressing_up_moves_the_character_up_the_screen() -> void:
+    var main := _main()
+    var start := main.character_view().target_position()
+    var before := main.camera().unproject_position(start)
+
+    main.input_controller().submit_move_screen(ScreenDirections.UP)
+    _advance(main, 10)
+
+    var after := main.camera().unproject_position(main.character_view().target_position())
+    # 화면 좌표는 아래가 양수다. 위로 갔다면 y 가 줄어든다.
+    assert_float(after.y).is_less(before.y)
+
+
+func test_a_player_can_build_an_automatic_door() -> void:
+    # 완료 조건. 사람이 손에 든 것만으로 자동문을 세울 수 있어야 한다.
+    var main := _main()
+    var here: Vector3i = main.simulation.state.character.cell()
+    # 감지기는 사람이 가까이 있어야 본다. 세 칸 안에 들어오도록 붙여 짓는다.
+    var door := here + Vector3i(2, 0, 0)
+    var actuator := here + Vector3i(2, 1, 0)
+    var detector := here + Vector3i(2, 2, 0)
+
+    var controller := main.input_controller()
+    controller.select_block(BlockType.DOOR_CLOSED)
+    controller.set_target(_aim_at(door - VoxelGrid.UP))
+    controller.submit_place()
+    _advance(main, 2)
+
+    controller.select_block(BlockType.ACTUATOR)
+    controller.set_target(_aim_at(actuator - VoxelGrid.UP))
+    controller.submit_place()
+    _advance(main, 2)
+
+    controller.select_block(BlockType.DETECTOR)
+    controller.set_target(_aim_at(detector - VoxelGrid.UP))
+    controller.submit_place()
+    _advance(main, 2)
+
+    controller.set_target(_aim_at(detector))
+    controller.submit_link()
+    controller.set_target(_aim_at(actuator))
+    controller.submit_link()
+    _advance(main, 4)
+
+    assert_bool(main.simulation.state.circuit.is_linked(detector, actuator)).is_true()
+    assert_int(main.simulation.state.grid.get_block(door)).is_equal(BlockType.DOOR_OPEN)
+
+
+func _aim_at(cell: Vector3i) -> BlockTarget:
+    var target := BlockTarget.new()
+    target.hit = true
+    target.cell = cell
+    target.normal = VoxelGrid.UP
+    return target
