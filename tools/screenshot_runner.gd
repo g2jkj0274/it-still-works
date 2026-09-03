@@ -70,7 +70,9 @@ func _build_steps() -> Array:
         ["05_break", _break],
         ["06_build_tower", _build_tower],
         ["07_auto_door", _build_auto_door],
-        ["08_night", _fall_of_night],
+        ["08_choose", _choose_the_auto_door],
+        ["09_bundle", _bundle_the_auto_door],
+        ["10_night", _fall_of_night],
     ]
 
 
@@ -125,6 +127,53 @@ func _build_auto_door() -> void:
     _main.simulation.submit_at(
         PlacePartCommand.create(detector, BlockType.DETECTOR, PackedInt32Array([DetectorPart.TARGET_PLAYER])), start + 4)
     _main.simulation.submit_at(ConnectPartsCommand.create(detector, actuator), start + 6)
+
+
+## 자동문을 이룬 두 부품을 고른다. 고른 표시가 화면에 나오는지 본다.
+func _choose_the_auto_door() -> void:
+    var controller := _main.input_controller()
+    for cell in _auto_door_parts():
+        controller.set_target(_target_at(cell))
+        controller.toggle_chosen()
+    # 마지막에 고른 칸을 값이 나가는 자리로 삼아 색이 갈리는지 본다.
+    controller.cycle_role()
+    controller.cycle_role()
+
+    # 고른 칸이 실제로 표시되는지는 그림만 봐서는 가려질 수 있다. 수로 확인한다.
+    _main.bundle_marks().sync()
+    var marked := _main.bundle_marks().marked_count()
+    if marked != _auto_door_parts().size():
+        _fail("08_choose", "고른 칸 %d개 중 %d개만 표시됐다" % [
+            _auto_door_parts().size(), marked])
+
+
+## 고른 것을 묶어 한 칸에 다시 놓는다. 스펙 §4.3, §6 의 마지막 검증 단계다.
+func _bundle_the_auto_door() -> void:
+    var controller := _main.input_controller()
+    var spot: Vector3i = _auto_door_parts()[0]
+
+    controller.submit_bundle()
+    _main.simulation.step()
+    controller.refresh_held_bundle()
+    controller.cycle_held_bundle()
+
+    # 방금 비워진 작동기 자리에 그대로 놓는다. 문 옆이라 다시 여닫힌다.
+    controller.set_target(_target_at(spot - VoxelGrid.UP))
+    controller.submit_place()
+
+
+## 07 단계가 놓은 작동기와 감지기의 자리.
+func _auto_door_parts() -> Array[Vector3i]:
+    var here: Vector3i = _main.simulation.state.character.cell()
+    return [here + Vector3i(3, 0, 0), here + Vector3i(4, 0, 0)]
+
+
+func _target_at(cell: Vector3i) -> BlockTarget:
+    var target := BlockTarget.new()
+    target.hit = true
+    target.cell = cell
+    target.normal = VoxelGrid.UP
+    return target
 
 
 ## 밤으로 건너뛴다. 어두워지고 위협이 나오는지 본다.

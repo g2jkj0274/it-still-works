@@ -31,12 +31,19 @@ const BOX := Color(0.76, 0.68, 0.95)
 const BRANCH := Color(0.98, 0.72, 0.56)
 const FIELD := Color(0.72, 0.60, 0.66)
 const CROP := Color(0.96, 0.98, 0.74)
+const BUNDLE := Color(0.56, 0.93, 0.78)
 
 const CHARACTER_SKIN := Color(0.98, 0.86, 0.74)
 const CHARACTER_BODY := Color(0.72, 0.86, 0.94)
 const THREAT := Color(0.82, 0.68, 0.86)
 
 const HIGHLIGHT := Color(1.0, 1.0, 1.0, 0.32)
+
+## 묶으려고 고른 칸 표시. 값이 드나드는 자리는 배선 색과 짝을 맞춘다.
+## 밝은 지면 위에 얹히므로 흰 것은 보이지 않는다. 고른 칸은 톤을 낮춰 잡는다.
+const MARK_CHOSEN := Color(0.52, 0.55, 0.68, 0.48)
+const MARK_ENTRY := Color(0.98, 0.82, 0.34, 0.48)
+const MARK_EXIT := Color(0.42, 0.72, 0.98, 0.48)
 ## 배선 색. 갈림길의 참 쪽과 거짓 쪽을 나눠 보여준다.
 ## 밝으면 지금 신호가 흐르는 것이고 흐리면 흐르지 않는 것이다.
 const WIRE_LIVE := Color(1.0, 0.92, 0.60)
@@ -62,6 +69,7 @@ const _BLOCKS: Dictionary[int, Color] = {
     BlockType.BRANCH: BRANCH,
     BlockType.FIELD: FIELD,
     BlockType.CROP: CROP,
+    BlockType.BUNDLE: BUNDLE,
 }
 
 

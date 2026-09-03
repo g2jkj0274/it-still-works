@@ -29,6 +29,9 @@ var spawn: Vector3i = Vector3i.ZERO
 ## 월드에 놓인 회로.
 var circuit: Circuit
 
+## 이 월드에서 만들어진 묶음 설계도들.
+var bundles: BundleLibrary
+
 ## 생존 지표.
 var vitals: Vitals
 
@@ -47,6 +50,7 @@ func _init(p_rng: SimRng = null) -> void:
     character = CharacterState.new()
     inventory = Inventory.new()
     circuit = Circuit.new()
+    bundles = BundleLibrary.new()
     vitals = Vitals.new()
     threats = ThreatField.new()
     crops = CropField.new()
@@ -118,6 +122,7 @@ func to_hash_fields() -> Array:
     ]
     fields.append_array(inventory.to_hash_fields())
     fields.append_array(circuit.to_hash_fields())
+    fields.append_array(bundles.to_hash_fields())
     fields.append_array(vitals.to_hash_fields())
     fields.append_array(threats.to_hash_fields())
     fields.append_array(crops.to_hash_fields())

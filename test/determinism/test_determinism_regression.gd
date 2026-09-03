@@ -23,7 +23,8 @@ const TOTAL_TICKS := 20
 ##   갈림길 부품이 늘고 감지기가 조건을 만족할 때만 신호를 내도록 바뀜
 ##   생존 지표와 위협이 상태에 추가됨
 ##   밭과 작물이 상태에 추가됨
-const GOLDEN_HASH := "c06a866dcfa64648b0f368afe284247e6b7c83412f6a8b49bc26162994ead61a"
+##   묶음 부품이 늘어 블록 종류가 하나 늘고, 묶음 설계도 목록이 상태에 추가됨
+const GOLDEN_HASH := "f11101f4fa00de167c34bb0e4c4a7ae2631e7318c33bc6ea1a53c784ef3d7df5"
 
 ## 실행마다 새로 만든다. 명령 객체는 큐가 틱과 순서를 새겨 넣으므로 재사용하지 않는다.
 func _scenario() -> Array:

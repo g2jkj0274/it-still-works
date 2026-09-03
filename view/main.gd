@@ -25,6 +25,7 @@ var _world_view: WorldView
 var _character_view: CharacterView
 var _camera: IsometricCamera
 var _highlight: BlockHighlight
+var _bundle_marks: BundleMarks
 var _input: InputController
 var _wire_view: WireView
 var _sky_view: SkyView
@@ -90,6 +91,10 @@ func block_highlight() -> BlockHighlight:
     return _highlight
 
 
+func bundle_marks() -> BundleMarks:
+    return _bundle_marks
+
+
 func hotbar() -> Hotbar:
     return _hotbar
 
@@ -123,6 +128,7 @@ func sync_views() -> void:
     _world_view.sync()
     _character_view.sync(CHARACTER_FOLLOW)
     _wire_view.sync()
+    _bundle_marks.sync()
     _threat_view.sync()
     _sky_view.apply(simulation.current_tick())
     _hotbar.sync()
@@ -187,6 +193,10 @@ func _build_views() -> void:
     _highlight.name = "Highlight"
     add_child(_highlight)
 
+    _bundle_marks = BundleMarks.new()
+    _bundle_marks.name = "BundleMarks"
+    add_child(_bundle_marks)
+
 
 func _build_input() -> void:
     InputController.install_actions()
@@ -195,6 +205,7 @@ func _build_input() -> void:
     add_child(_input)
     _input.bind(simulation)
     _input.bind_camera(_camera)
+    _bundle_marks.bind(_input)
     _input.help_toggled.connect(_on_help_toggled)
 
     _hotbar = Hotbar.new()

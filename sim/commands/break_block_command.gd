@@ -34,7 +34,11 @@ func apply(state: WorldState) -> void:
 
     state.grid.set_block(position, BlockType.EMPTY)
     if gives_material:
-        state.inventory.add(BlockType.material_of(broken), 1)
+        # 묶음은 종류가 아니라 번호로 돌아온다. 안에 든 것이 저마다 다르다.
+        if part is BundlePart:
+            state.inventory.add_bundle((part as BundlePart).bundle_id, 1)
+        else:
+            state.inventory.add(BlockType.material_of(broken), 1)
 
     # 부품을 걷어내면 거기 이어진 배선도 함께 사라진다.
     state.circuit.remove_part(position)

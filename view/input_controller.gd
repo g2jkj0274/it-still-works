@@ -11,6 +11,10 @@ extends Node
 ## 이동 키는 화면 기준이다. W 는 화면 위쪽이다. 두 키를 겹쳐 누르면 그 사이
 ## 쪽으로 가므로 여덟 쪽 모두 갈 수 있다. 화면과 격자 사이의 회전은
 ## ScreenDirections 가 카메라에서 뽑는다. 시점을 돌리면 조작도 따라 돈다.
+##
+## 묶기는 손이 여러 번 간다. V 로 칸을 고르고, B 로 값이 드나들 자리를 정하고,
+## G 로 묶는다. 묶은 것은 N 으로 손에 쥔다. 고른 차례가 그대로 드나드는
+## 차례가 되므로 고른 순서를 그대로 들고 있는다.
 
 ## 이동 동작과 화면 방향. 딕셔너리가 아니라 순서 있는 배열이다.
 ## 두 방향이 동시에 눌렸을 때 어느 쪽이 이기는지가 실행마다 달라지면 안 된다.
@@ -46,6 +50,10 @@ const ACTION_ZOOM_IN := &"zoom_in"
 const ACTION_ZOOM_OUT := &"zoom_out"
 const ACTION_TURN_LEFT := &"turn_left"
 const ACTION_TURN_RIGHT := &"turn_right"
+const ACTION_CHOOSE := &"choose_for_bundle"
+const ACTION_TERMINAL := &"cycle_terminal"
+const ACTION_BUNDLE := &"make_bundle"
+const ACTION_HOLD_BUNDLE := &"hold_bundle"
 
 ## 손에 쥘 수 있는 것. 고를 수 있는 차례대로.
 const PLACEABLE: Array[int] = [
@@ -59,11 +67,18 @@ const PLACEABLE: Array[int] = [
     BlockType.BOX,
     BlockType.BRANCH,
     BlockType.FIELD,
+    BlockType.BUNDLE,
 ]
+
+## 고른 칸이 묶음에서 맡을 몫.
+const ROLE_PLAIN := 0
+const ROLE_ENTRY := 1
+const ROLE_EXIT := 2
+const ROLE_COUNT := 3
 
 ## 설정을 고를 수 있는 부품들.
 const PARTS_WITH_SETTINGS: Array[int] = [
-    BlockType.DETECTOR, BlockType.REPEATER, BlockType.BOX, BlockType.BRANCH,
+    BlockType.DETECTOR, BlockType.REPEATER, BlockType.BOX, BlockType.BRANCH, BlockType.BUNDLE,
 ]
 
 const SELECT_ACTIONS: Array = [
@@ -108,6 +123,15 @@ var _link_source: Vector3i = Vector3i.ZERO
 var _has_link_source: bool = false
 var _link_port: int = BranchPart.PORT_TRUE
 var _help_shown: bool = false
+
+## 묶으려고 고른 칸들. 고른 차례 그대로다.
+var _chosen: Array[Vector3i] = []
+
+## 고른 칸이 저마다 맡은 몫. [member _chosen] 과 나란히 간다.
+var _roles: PackedInt32Array = PackedInt32Array()
+
+## 지금 손에 쥔 묶음 번호. 아무것도 안 쥐었으면 -1.
+var _held_bundle: int = -1
 
 
 func bind(simulation: Simulation) -> void:
@@ -200,6 +224,9 @@ func cycle_part_setting() -> void:
     if wiring_from_branch():
         cycle_link_port()
         return
+    if _selected == BlockType.BUNDLE:
+        cycle_held_bundle()
+        return
     if _selected == BlockType.REPEATER:
         _repeater_preset = (_repeater_preset + 1) % REPEATER_PRESETS.size()
         return
@@ -228,6 +255,8 @@ func part_setting_name() -> String:
             return PartWords.shape_name(_box_shape)
         BlockType.BRANCH:
             return PartWords.branch_setting_name(_branch_preset)
+        BlockType.BUNDLE:
+            return PartWords.bundle_name(_held_bundle)
         _:
             return ""
 
@@ -244,6 +273,8 @@ func part_settings() -> PackedInt32Array:
     if _selected == BlockType.BRANCH:
         var branch: Array = BRANCH_PRESETS[_branch_preset]
         return PackedInt32Array([branch[0], branch[1]])
+    if _selected == BlockType.BUNDLE:
+        return PackedInt32Array([_held_bundle])
     return PackedInt32Array()
 
 
@@ -302,6 +333,8 @@ func submit_place() -> void:
         return
 
     var cell := place_cell()
+    if _selected == BlockType.BUNDLE and _held_bundle < 0:
+        return
     if BlockType.is_part(_selected):
         _simulation.submit(PlacePartCommand.create(cell, _selected, part_settings()))
         return
@@ -342,10 +375,132 @@ func submit_link() -> void:
     clear_link_source()
 
 
+## 묶으려고 고른 칸들. 고른 차례 그대로다.
+func chosen_cells() -> Array[Vector3i]:
+    return _chosen.duplicate()
+
+
+## 그 칸이 묶음에서 맡은 몫.
+func role_of(cell: Vector3i) -> int:
+    var at := _chosen.find(cell)
+    if at < 0:
+        return ROLE_PLAIN
+    return _roles[at]
+
+
+## 값이 들어오는 자리들. 고른 차례가 곧 배선이 닿는 차례다.
+func bundle_entries() -> Array[Vector3i]:
+    return _cells_with_role(ROLE_ENTRY)
+
+
+## 값이 나가는 자리들. 고른 차례가 곧 출구 번호다.
+func bundle_exits() -> Array[Vector3i]:
+    return _cells_with_role(ROLE_EXIT)
+
+
+## 지금 묶으려고 고르는 중인가.
+func is_choosing() -> bool:
+    return not _chosen.is_empty()
+
+
+func clear_chosen() -> void:
+    _chosen.clear()
+    _roles.clear()
+
+
+## 겨냥한 칸을 고르거나 놓는다. 부품이 없는 칸은 고를 수 없다.
+func toggle_chosen() -> void:
+    if _simulation == null:
+        return
+
+    var cell := break_cell()
+    var at := _chosen.find(cell)
+    if at >= 0:
+        _chosen.remove_at(at)
+        _roles.remove_at(at)
+        return
+
+    if not _simulation.state.circuit.has_part(cell):
+        return
+    _chosen.append(cell)
+    _roles.append(ROLE_PLAIN)
+
+
+## 겨냥한 칸이 맡을 몫을 다음 것으로 넘긴다. 고르지 않은 칸에는 몫이 없다.
+func cycle_role() -> void:
+    var at := _chosen.find(break_cell())
+    if at < 0:
+        return
+    _roles[at] = (_roles[at] + 1) % ROLE_COUNT
+
+
+## 고른 것을 하나의 묶음으로 압축한다.
+func submit_bundle() -> void:
+    if _simulation == null or _chosen.is_empty():
+        return
+    _simulation.submit(BundlePartsCommand.create(_chosen, bundle_entries(), bundle_exits()))
+    clear_chosen()
+
+
+## 지금 손에 쥔 묶음 번호. 아무것도 안 쥐었으면 -1.
+func held_bundle() -> int:
+    return _held_bundle
+
+
+## 손에 든 묶음들의 번호. 늘 오름차순이다.
+func owned_bundles() -> PackedInt32Array:
+    var owned := PackedInt32Array()
+    if _simulation == null:
+        return owned
+    var inventory := _simulation.state.inventory
+    for id in inventory.bundle_slots():
+        if inventory.count_of_bundle(id) > 0:
+            owned.append(id)
+    return owned
+
+
+## 묶음을 손에 쥔다. 이미 쥐고 있으면 다음 묶음으로 넘어간다.
+func cycle_held_bundle() -> void:
+    var owned := owned_bundles()
+    if owned.is_empty():
+        _held_bundle = -1
+        _selected = BlockType.BUNDLE
+        return
+
+    if _selected != BlockType.BUNDLE:
+        _selected = BlockType.BUNDLE
+        if owned.has(_held_bundle):
+            return
+        _held_bundle = owned[0]
+        return
+
+    var at := owned.find(_held_bundle)
+    _held_bundle = owned[(at + 1) % owned.size()]
+
+
+## 쥐고 있던 묶음이 사라졌으면 손을 비우거나 남은 것으로 옮긴다.
+##
+## 묶는 것은 명령이라 한 틱 뒤에야 손에 들어온다. 그때 저절로 쥐게 하려는 것이다.
+func refresh_held_bundle() -> void:
+    var owned := owned_bundles()
+    if owned.has(_held_bundle):
+        return
+    _held_bundle = owned[0] if not owned.is_empty() else -1
+
+
+func _cells_with_role(role: int) -> Array[Vector3i]:
+    var cells: Array[Vector3i] = []
+    for i in _chosen.size():
+        if _roles[i] == role:
+            cells.append(_chosen[i])
+    return cells
+
+
 ## 눌린 키를 읽어 명령을 만든다. 표현 레이어의 프레임 루프에서 부른다.
 func poll(current_tick: int) -> void:
     if _simulation == null:
         return
+    refresh_held_bundle()
     _poll_selection()
     _poll_movement(current_tick)
     _poll_actions()
@@ -367,6 +522,10 @@ static func install_actions() -> void:
     _install(ACTION_HELP, [KEY_H, KEY_F1])
     _install(ACTION_TURN_LEFT, [KEY_BRACKETLEFT])
     _install(ACTION_TURN_RIGHT, [KEY_BRACKETRIGHT])
+    _install(ACTION_CHOOSE, [KEY_V])
+    _install(ACTION_TERMINAL, [KEY_B])
+    _install(ACTION_BUNDLE, [KEY_G])
+    _install(ACTION_HOLD_BUNDLE, [KEY_N])
 
     var keys: Array = [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_0]
     for i in SELECT_ACTIONS.size():
@@ -439,6 +598,14 @@ func _poll_actions() -> void:
         submit_eat()
     if Input.is_action_just_pressed(ACTION_HELP):
         toggle_help()
+    if Input.is_action_just_pressed(ACTION_CHOOSE):
+        toggle_chosen()
+    if Input.is_action_just_pressed(ACTION_TERMINAL):
+        cycle_role()
+    if Input.is_action_just_pressed(ACTION_BUNDLE):
+        submit_bundle()
+    if Input.is_action_just_pressed(ACTION_HOLD_BUNDLE):
+        cycle_held_bundle()
 
 
 func _poll_camera() -> void:
@@ -454,7 +621,8 @@ func _poll_camera() -> void:
         _camera.call("turn_by", 1)
 
 
+## 숫자 키는 열 개뿐이다. 그 너머의 것은 제 키로 고른다. 묶음은 N 이다.
 func _poll_selection() -> void:
-    for i in PLACEABLE.size():
+    for i in mini(PLACEABLE.size(), SELECT_ACTIONS.size()):
         if Input.is_action_just_pressed(SELECT_ACTIONS[i]):
             select_block(PLACEABLE[i])

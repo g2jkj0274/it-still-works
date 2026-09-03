@@ -99,11 +99,29 @@ func is_linked(from: Vector3i, to: Vector3i, port: int = 0) -> bool:
 ##
 ## 모든 부품이 지금 흐르는 신호만 보고 다음 신호를 정한 뒤, 한꺼번에 반영한다.
 ## 그래서 신호가 한 틱에 한 부품씩만 나아간다.
-func tick(state: WorldState) -> void:
+##
+## [param external] 은 배선이 아니라 바깥에서 들어오는 신호다. 묶음이 자기
+## 안쪽 회로를 돌릴 때 쓴다. 항목은 [닿는 칸, 신호] 이고 순서가 있다.
+func tick(state: WorldState, external: Array = []) -> void:
+    tick_compute(state, external)
+    tick_commit()
+    tick_act(state)
+
+
+## 계산만 한다. 부품이 내보내는 신호는 아직 바뀌지 않는다.
+func tick_compute(state: WorldState, external: Array = []) -> void:
     for part in _parts:
-        part.compute(state, _incoming(part.position))
+        part.compute(state, _incoming(part.position, external))
+
+
+## 계산해 둔 신호를 한꺼번에 내보낸다.
+func tick_commit() -> void:
     for part in _parts:
         part.commit()
+
+
+## 세상을 바꾼다.
+func tick_act(state: WorldState) -> void:
     for part in _parts:
         part.act(state)
 
@@ -118,9 +136,15 @@ func to_hash_fields() -> Array:
     return fields
 
 
-## [param pos] 로 들어오는 신호들. 배선 차례대로다.
-func _incoming(pos: Vector3i) -> Array:
+## [param pos] 로 들어오는 신호들.
+##
+## 바깥에서 들어오는 것이 먼저고 배선을 타고 오는 것이 그 다음이다.
+## 둘 다 순서가 정해져 있어야 실행마다 같은 쪽이 이긴다.
+func _incoming(pos: Vector3i, external: Array = []) -> Array:
     var values: Array = []
+    for entry: Array in external:
+        if entry[0] == pos:
+            values.append(entry[1])
     for link: Array in _links:
         if link[1] != pos:
             continue
@@ -130,21 +154,22 @@ func _incoming(pos: Vector3i) -> Array:
     return values
 
 
-func _part_before(left: CircuitPart, right: CircuitPart) -> bool:
-    return _cell_before(left.position, right.position)
-
-
-func _link_before(left: Array, right: Array) -> bool:
-    if left[0] != right[0]:
-        return _cell_before(left[0], right[0])
-    if left[1] != right[1]:
-        return _cell_before(left[1], right[1])
-    return left[2] < right[2]
-
-
-func _cell_before(left: Vector3i, right: Vector3i) -> bool:
+## 칸의 정해진 차례. 순회 순서가 흔들리지 않게 한 곳에서만 정한다.
+static func cell_before(left: Vector3i, right: Vector3i) -> bool:
     if left.x != right.x:
         return left.x < right.x
     if left.y != right.y:
         return left.y < right.y
     return left.z < right.z
+
+
+func _part_before(left: CircuitPart, right: CircuitPart) -> bool:
+    return cell_before(left.position, right.position)
+
+
+func _link_before(left: Array, right: Array) -> bool:
+    if left[0] != right[0]:
+        return cell_before(left[0], right[0])
+    if left[1] != right[1]:
+        return cell_before(left[1], right[1])
+    return left[2] < right[2]
