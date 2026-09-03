@@ -87,11 +87,21 @@ func refresh_flow() -> void:
 
 
 ## 배선 하나의 색. 어느 출구에서 나가는지와 지금 흐르는지로 정해진다.
+##
+## 참과 거짓으로 갈리는 것은 갈림길뿐이다. 묶음도 출구가 여럿일 수 있지만
+## 그 출구들은 참·거짓이 아니라 저마다 다른 값이 나오는 구멍이다.
 func colour_of(link: Array) -> Color:
     var live := is_live(link)
-    if int(link[2]) == BranchPart.PORT_FALSE:
+    if _is_false_exit(link):
         return FALSE_LIVE_COLOUR if live else FALSE_IDLE_COLOUR
     return LIVE_COLOUR if live else IDLE_COLOUR
+
+
+func _is_false_exit(link: Array) -> bool:
+    if int(link[2]) != BranchPart.PORT_FALSE:
+        return false
+    var source := _circuit.part_at(link[0])
+    return source != null and source.kind() == BlockType.BRANCH
 
 
 ## 이 배선에 지금 신호가 흐르는가.

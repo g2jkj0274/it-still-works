@@ -132,6 +132,12 @@ func _measure() -> Vector2:
 
 ## 고른 것의 이름과 한 줄 설명. 설정이 있으면 그것도 붙인다.
 static func line_for(controller: InputController) -> String:
+    if controller.is_choosing():
+        return "묶는 중 — 고른 칸 %d, 들어오는 자리 %d, 나가는 자리 %d.  B 로 자리를 정하고 G 로 묶는다" % [
+            controller.chosen_cells().size(),
+            controller.bundle_entries().size(),
+            controller.bundle_exits().size(),
+        ]
     if controller.wiring_from_branch():
         return "잇는 중 — %s 쪽으로 나간다.  T 로 바꾸고, 이을 부품에 R" % [
             controller.link_port_name()]

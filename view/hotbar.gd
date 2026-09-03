@@ -30,8 +30,8 @@ const TEXT_COLOUR := Color(0.12, 0.14, 0.18)
 const EMPTY_TEXT_COLOUR := Color(0.42, 0.44, 0.48)
 const CHOSEN_BORDER := Color(0.15, 0.17, 0.22)
 
-## 숫자 키 표시. 열째 칸은 0 이다.
-const _KEY_LABELS: PackedStringArray = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
+## 누를 키 표시. 열째 칸은 0 이고, 숫자 너머의 것은 제 키로 고른다.
+const _KEY_LABELS: PackedStringArray = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "N"]
 
 var _inventory: Inventory
 var _controller: InputController
@@ -79,9 +79,9 @@ func sync() -> void:
 
     for slot in InputController.PLACEABLE.size():
         var block_type: int = InputController.PLACEABLE[slot]
-        var held := _inventory.count_of(block_type)
+        var held := _count_of(block_type)
 
-        _labels[slot].text = "%s  %s\n%d" % [_KEY_LABELS[slot], name_of(block_type), held]
+        _labels[slot].text = "%s  %s\n%d" % [_KEY_LABELS[slot], _label_of(block_type), held]
         _labels[slot].add_theme_color_override(
             "font_color", TEXT_COLOUR if held > 0 else EMPTY_TEXT_COLOUR)
 
@@ -90,6 +90,24 @@ func sync() -> void:
         _style_of(slot).border_width_bottom = 4 if is_chosen else 0
         _style_of(slot).border_width_top = 4 if is_chosen else 0
         _panels[slot].position.y = _row_top() - (CHOSEN_LIFT if is_chosen else 0.0)
+
+
+## 그 칸에 적을 이름. 묶음은 어느 것을 쥐고 있는지까지 적는다.
+func _label_of(block_type: int) -> String:
+    if block_type != BlockType.BUNDLE:
+        return name_of(block_type)
+    var held := _controller.held_bundle() if _controller != null else -1
+    if held < 0:
+        return name_of(block_type)
+    return "%s %s" % [name_of(block_type), PartWords.bundle_name(held)]
+
+
+## 그 칸에 적을 개수. 묶음은 번호마다 따로 센다.
+func _count_of(block_type: int) -> int:
+    if block_type != BlockType.BUNDLE:
+        return _inventory.count_of(block_type)
+    var held := _controller.held_bundle() if _controller != null else -1
+    return _inventory.count_of_bundle(held)
 
 
 func slot_count() -> int:

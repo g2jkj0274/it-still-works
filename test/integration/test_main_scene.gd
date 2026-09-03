@@ -156,7 +156,17 @@ func test_the_player_starts_with_parts_to_try() -> void:
     # 제작이 아직 없으므로 판정용으로 지급한다.
     var main := _main()
     for part_type in InputController.PLACEABLE:
+        if BlockType.is_uniquely_made(part_type):
+            continue
         assert_int(main.simulation.state.inventory.count_of(part_type)).is_greater(0)
+
+
+func test_the_player_starts_with_no_bundle() -> void:
+    # 묶음은 지급하지 못한다. 안에 무엇이 들었는지를 사람이 정하는 것이 묶음이다.
+    # 쥐여 주려면 회로를 대신 지어 주는 셈이 된다.
+    var main := _main()
+    assert_int(main.simulation.state.inventory.bundle_slots()).is_equal(0)
+    assert_int(main.simulation.state.bundles.count()).is_equal(0)
 
 
 func test_the_hotbar_shows_a_name_and_a_count_for_every_slot() -> void:

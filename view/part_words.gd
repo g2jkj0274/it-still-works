@@ -52,6 +52,9 @@ const _SHAPES: Dictionary[int, String] = {
     BoxPart.SHAPE_SMALL: "작은",
 }
 
+## 고른 칸이 묶음에서 맡는 몫.
+const _ROLES: PackedStringArray = ["보통", "들어오는 자리", "나가는 자리"]
+
 const _REPEATER_SETTINGS: PackedStringArray = ["세 번", "열 번", "조건이 맞는 동안", "끝없이"]
 
 const _BRANCH_SETTINGS: PackedStringArray = [
@@ -79,6 +82,19 @@ static func repeater_setting_name(preset: int) -> String:
     if preset < 0 or preset >= _REPEATER_SETTINGS.size():
         return "?"
     return _REPEATER_SETTINGS[preset]
+
+
+## 손에 쥔 묶음을 부르는 말. 번호는 사람이 세는 대로 1 부터다.
+static func bundle_name(bundle_id: int) -> String:
+    if bundle_id < 0:
+        return "없음"
+    return "%d번" % (bundle_id + 1)
+
+
+static func role_name(role: int) -> String:
+    if role < 0 or role >= _ROLES.size():
+        return "?"
+    return _ROLES[role]
 
 
 static func branch_setting_name(preset: int) -> String:
