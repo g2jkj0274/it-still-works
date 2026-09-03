@@ -7,7 +7,8 @@ extends SimCommand
 ## 블록과는 다른 명령을 쓴다.
 ##
 ## 부품의 설정은 놓을 때 정한다. 놓고 나서 바꾸지 못한다. 설정값의 뜻은
-## 부품마다 다르다. 감지기는 무엇을 볼지, 되풀이는 어떻게 돌지다.
+## 부품마다 다르다. 감지기는 무엇을 볼지, 되풀이는 어떻게 돌지, 묶음은 어느
+## 설계도인지다.
 
 const TYPE := &"place_part"
 
@@ -40,14 +41,21 @@ func apply(state: WorldState) -> void:
     if state.circuit.has_part(position):
         return
 
-    var part := CircuitPartFactory.create(part_type, position, settings)
+    var part := CircuitPartFactory.create(part_type, position, settings, state.bundles)
     if part == null:
         return
-    if not state.inventory.take(part_type, 1):
+    if not _pay(state, part):
         return
 
     state.grid.set_block(position, part_type)
     state.circuit.add_part(part)
+
+
+## 손에 든 것에서 하나를 뺀다. 묶음은 번호마다 따로 센다.
+func _pay(state: WorldState, part: CircuitPart) -> bool:
+    if part is BundlePart:
+        return state.inventory.take_bundle((part as BundlePart).bundle_id, 1)
+    return state.inventory.take(part_type, 1)
 
 
 func _has_solid_neighbour(grid: VoxelGrid) -> bool:

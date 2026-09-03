@@ -45,11 +45,15 @@ const FIELD := 11
 ## 거둔 작물. 먹을 거리다.
 const CROP := 12
 
-const COUNT := 13
+## 묶음. 회로 하나를 통째로 압축해 담은 부품. 안은 밖에서 보이지 않는다.
+const BUNDLE := 13
+
+const COUNT := 14
 
 const _NAMES: PackedStringArray = [
     "empty", "ground", "stone", "wood",
     "door_closed", "door_open", "detector", "actuator", "repeater", "box", "branch", "field", "crop",
+    "bundle",
 ]
 
 
@@ -73,7 +77,17 @@ static func is_door(type: int) -> bool:
 
 ## 회로 부품인가.
 static func is_part(type: int) -> bool:
-    return type == DETECTOR or type == ACTUATOR or type == REPEATER or type == BOX or type == BRANCH
+    if type == DETECTOR or type == ACTUATOR or type == REPEATER:
+        return true
+    return type == BOX or type == BRANCH or type == BUNDLE
+
+
+## 종류 번호만으로는 어느 것인지 가려지지 않는 부품인가.
+##
+## 묶음은 안에 무엇이 들었는지가 저마다 다르다. 그래서 종류별로 세는 칸에
+## 담을 수 없고 묶음 번호마다 따로 센다.
+static func is_uniquely_made(type: int) -> bool:
+    return type == BUNDLE
 
 
 static func opened_door() -> int:

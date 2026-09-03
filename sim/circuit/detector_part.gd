@@ -9,6 +9,9 @@ extends CircuitPart
 ## 내지 않는다. 회로에서 "실행된다"는 곧 "신호가 있다"이고, 값은 그 위에 실린다.
 ##
 ## 모든 대상이 이제 실제로 동작한다.
+##
+## 무엇을 보는지는 놓인 칸이 아니라 [member CircuitPart.anchor] 에서 잰다.
+## 묶음 안에 들어가면 묶음이 놓인 칸에서 본다.
 
 const TARGET_PLAYER := 0
 const TARGET_THREAT := 1
@@ -77,7 +80,7 @@ func _ripe_crop_is_near(state: WorldState) -> bool:
     for cell in state.crops.cells():
         if not state.crops.is_mature(cell):
             continue
-        var offset := cell - position
+        var offset := cell - anchor
         if offset.x * offset.x + offset.y * offset.y + offset.z * offset.z <= SENSE_RADIUS * SENSE_RADIUS:
             return true
     return false
@@ -90,7 +93,7 @@ func _ripe_crop_is_near(state: WorldState) -> bool:
 func _nearest_threat_distance(state: WorldState) -> int:
     var nearest := -1
     for threat in state.threats.threats():
-        var offset := threat.position - position
+        var offset := threat.position - anchor
         var squared := offset.x * offset.x + offset.y * offset.y + offset.z * offset.z
         if squared > SENSE_RADIUS * SENSE_RADIUS:
             continue
@@ -101,5 +104,5 @@ func _nearest_threat_distance(state: WorldState) -> int:
 
 
 func _player_is_near(state: WorldState) -> bool:
-    var offset := state.character.cell() - position
+    var offset := state.character.cell() - anchor
     return offset.x * offset.x + offset.y * offset.y + offset.z * offset.z <= SENSE_RADIUS * SENSE_RADIUS

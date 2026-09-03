@@ -19,7 +19,9 @@ const BRANCH := Vector3i(33, 31, 2)
 
 ## 아래 시나리오를 SEED 로 TOTAL_TICKS 만큼 돌렸을 때의 상태 해시.
 ## Godot 4.7.2 / 서로 다른 프로세스 3회 실행에서 동일함을 확인하고 고정했다.
-const GOLDEN_HASH := "8dd1327c525b36d6e41121c53b91f3683a465d3acee9b8bc14e2f7a68eb8fe6e"
+##
+## 갱신 이력: 묶음 부품이 늘어 블록 종류가 하나 늘고, 묶음 설계도 목록이 상태에 추가됨
+const GOLDEN_HASH := "88fddf6bcc4d948854688700f22fa833dbc7568539ad4a330e69ec59ff979cfe"
 
 ## 같은 실행이 끝났을 때 문이 어떤 상태인지. 해시보다 읽기 쉽다.
 const GOLDEN_DOOR := BlockType.DOOR_CLOSED

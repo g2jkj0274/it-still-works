@@ -13,7 +13,9 @@ const START_TICK := DayCycle.DAY_TICKS - 40
 const RUN_TICKS := 400
 
 ## Godot 4.7.2 / 서로 다른 프로세스 3회 실행에서 동일함을 확인하고 고정했다.
-const GOLDEN_HASH := "bef3c9ea9e255247941d334ef6c81599746f69d815f5e00d3d67e316af417bd9"
+##
+## 갱신 이력: 묶음 부품이 늘어 블록 종류가 하나 늘고, 묶음 설계도 목록이 상태에 추가됨
+const GOLDEN_HASH := "f326b0ace479ee2234f5083680897da0d1c8adfbe0408de32356bdf135fccf3b"
 
 
 func _scenario() -> Array:

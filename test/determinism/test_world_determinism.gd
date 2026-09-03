@@ -33,10 +33,11 @@ const NORTH_EAST := Vector3i(1, -1, 0)
 ##   프로토타입 판정용 시작 지급이 켜져 인벤토리 초기값이 바뀜
 ##   대각선 걸음이 생겨 시나리오 끝에 대각선 이동을 넣고 총 틱 수를 110 → 150 으로 늘림
 ##   (끝 해시는 대각선 속도에 둔감하다. 걸음 도중을 재는 GOLDEN_MID_HASH 가 그것을 맡는다)
+##   묶음 부품이 늘어 블록 종류가 하나 늘고, 묶음 설계도 목록이 상태에 추가됨
 ##
 ## 이 값이 깨졌다면 시뮬레이션 동작이 바뀐 것이다. 값을 고쳐 통과시키지 말고
 ## 무엇이 바뀌었는지 먼저 밝힌다.
-const GOLDEN_HASH := "67999d1d10e880ec98dbb7d922727e9146cdf7b177756707995a156685c3a3f9"
+const GOLDEN_HASH := "e1156cc0b516e2bbce438f1267160c5e7f41bbb17f07aea6622eefd3c0f62e14"
 
 ## 같은 실행이 끝났을 때 캐릭터가 서 있는 칸.
 ## 해시보다 읽기 쉬워서 이동 규칙이 어긋났을 때 원인을 빨리 좁혀준다.
@@ -84,7 +85,7 @@ func _scenario() -> Array:
 ## 어느 속도로도 제때 도착하기 때문이다. 걸음 도중을 함께 못박아야 타이밍이
 ## 지켜진다.
 const MID_TICK := 104 + 2
-const GOLDEN_MID_HASH := "416633f26b0d2569c06bdeef8a24858f302e938e3c88215613a334035de92d10"
+const GOLDEN_MID_HASH := "2b4a473c55e7f16236aab01ba7da9dc28c7a2c6ec6bd451e44ec5917cbebae6d"
 
 
 func _run(seed_value: int = SEED, scenario: Array = []) -> Simulation:
