@@ -51,10 +51,18 @@ const WIRE_IDLE := Color(0.72, 0.72, 0.70)
 const WIRE_FALSE_LIVE := Color(0.62, 0.86, 1.0)
 const WIRE_FALSE_IDLE := Color(0.58, 0.66, 0.74)
 
-const SKY_DAY := Color(0.71, 0.87, 0.95)
-const SKY_NIGHT := Color(0.24, 0.28, 0.44)
-const AMBIENT_DAY := Color(0.86, 0.90, 0.95)
-const AMBIENT_NIGHT := Color(0.30, 0.34, 0.50)
+## 하늘빛과 햇빛의 세기는 팔레트가 아니라 [SkyView] 가 정한다.
+##
+## 여기 적힌 것은 빛의 **빛깔**이다. 세기까지 여기서 정하면 색을 고르는 일과
+## 노출을 맞추는 일이 한 상수에 섞인다.
+##
+## 낮 빛깔을 낮춰 잡은 것은 이유가 있다. 이보다 밝으면 볕 든 지면이 흰색으로
+## 날아가 블록 경계도 팔레트의 칸별 변주도 보이지 않는다. 실제로 재어 보고
+## 볕 든 흙이 팔레트에 적힌 제 색으로 나오는 지점을 골랐다.
+const SKY_DAY := Color(0.66, 0.82, 0.92)
+const SKY_NIGHT := Color(0.17, 0.20, 0.32)
+const AMBIENT_DAY := Color(0.43, 0.46, 0.52)
+const AMBIENT_NIGHT := Color(0.16, 0.18, 0.27)
 
 const _BLOCKS: Dictionary[int, Color] = {
     BlockType.GROUND: GROUND,

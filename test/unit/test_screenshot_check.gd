@@ -33,6 +33,36 @@ func test_dark_but_lit_screen_is_not_black() -> void:
     assert_array(problems).not_contains([ScreenshotCheck.PROBLEM_BLACK])
 
 
+func test_a_washed_out_screen_is_reported() -> void:
+    # 검은 화면의 반대쪽이다. 볕이 색을 씻어내도 아무것도 보이지 않는다.
+    var problems := ScreenshotCheck.problems(_filled(Color.WHITE))
+    assert_array(problems).contains([ScreenshotCheck.PROBLEM_BLOWN])
+
+
+func test_a_bright_but_coloured_screen_is_not_washed_out() -> void:
+    var problems := ScreenshotCheck.problems(_noisy())
+    assert_array(problems).not_contains([ScreenshotCheck.PROBLEM_BLOWN])
+
+
+func test_a_few_white_highlights_are_allowed() -> void:
+    # 흰 것이 흰 것으로 보이는 만큼은 남겨 둔다.
+    var image := _noisy()
+    for y in H / 8:
+        for x in W:
+            image.set_pixel(x, y, Color.WHITE)
+    assert_float(ScreenshotCheck.blown_ratio(image)).is_less(ScreenshotCheck.MAX_BLOWN_RATIO)
+    assert_array(ScreenshotCheck.problems(image)).not_contains([ScreenshotCheck.PROBLEM_BLOWN])
+
+
+func test_most_of_the_screen_going_white_is_not_allowed() -> void:
+    var image := _noisy()
+    for y in H * 3 / 4:
+        for x in W:
+            image.set_pixel(x, y, Color.WHITE)
+    assert_float(ScreenshotCheck.blown_ratio(image)).is_greater(ScreenshotCheck.MAX_BLOWN_RATIO)
+    assert_array(ScreenshotCheck.problems(image)).contains([ScreenshotCheck.PROBLEM_BLOWN])
+
+
 func test_uniform_screen_is_reported() -> void:
     var problems := ScreenshotCheck.problems(_filled(Color(0.4, 0.5, 0.6)))
     assert_array(problems).contains([ScreenshotCheck.PROBLEM_UNIFORM])

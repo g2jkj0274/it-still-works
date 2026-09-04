@@ -8,6 +8,7 @@ extends RefCounted
 
 const PROBLEM_BLACK := "검은 화면"
 const PROBLEM_UNIFORM := "단색 화면"
+const PROBLEM_BLOWN := "날아간 화면"
 
 ## 이보다 어두우면 아무것도 그려지지 않은 것으로 본다.
 const MIN_LUMINANCE := 0.05
@@ -17,6 +18,15 @@ const MAX_DOMINANT_RATIO := 0.95
 
 ## 이보다 색 종류가 적으면 단색 화면으로 본다.
 const MIN_DISTINCT_COLOURS := 8
+
+## 세 갈래 모두 꽉 찬 픽셀. 이보다 넓게 퍼지면 볕이 색을 씻어낸 것으로 본다.
+##
+## 검은 화면의 반대쪽이다. 너무 어두우면 아무것도 안 보이고, 너무 밝아도
+## 아무것도 안 보인다. 흰 것이 흰 것으로 보이는 만큼은 남겨 둔다.
+const MAX_BLOWN_RATIO := 0.20
+
+## 이 위로는 꽉 찬 것으로 친다. 8비트 한 칸 차이는 세지 않는다.
+const BLOWN_LEVEL := 0.995
 
 ## 표본 간격. 전 픽셀을 보면 느리고, 이상 감지에는 표본으로 충분하다.
 const SAMPLE_STEP := 4
@@ -34,7 +44,27 @@ static func problems(image: Image) -> PackedStringArray:
         found.append(PROBLEM_BLACK)
     if dominant_ratio(image) > MAX_DOMINANT_RATIO or distinct_colours(image) < MIN_DISTINCT_COLOURS:
         found.append(PROBLEM_UNIFORM)
+    if blown_ratio(image) > MAX_BLOWN_RATIO:
+        found.append(PROBLEM_BLOWN)
     return found
+
+
+## 세 갈래가 모두 꽉 차 버린 픽셀의 비율.
+##
+## 여기까지 간 픽셀은 원래 무슨 색이었는지 알 수 없다. 팔레트가 칸마다 주는
+## 명도 변주도 함께 사라진다.
+static func blown_ratio(image: Image) -> float:
+    var blown := 0
+    var samples := 0
+    for y in range(0, image.get_height(), SAMPLE_STEP):
+        for x in range(0, image.get_width(), SAMPLE_STEP):
+            samples += 1
+            var pixel := image.get_pixel(x, y)
+            if pixel.r >= BLOWN_LEVEL and pixel.g >= BLOWN_LEVEL and pixel.b >= BLOWN_LEVEL:
+                blown += 1
+    if samples == 0:
+        return 0.0
+    return float(blown) / samples
 
 
 static func average_luminance(image: Image) -> float:

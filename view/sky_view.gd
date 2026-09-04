@@ -12,8 +12,15 @@ const NIGHT_SKY := Palette.SKY_NIGHT
 const DAY_AMBIENT := Palette.AMBIENT_DAY
 const NIGHT_AMBIENT := Palette.AMBIENT_NIGHT
 
-const DAY_LIGHT := 1.1
-const NIGHT_LIGHT := 0.20
+## 햇빛 세기.
+##
+## 1.1 이던 것을 낮췄다. 그 값에서는 화면의 74%가 순백으로 날아가 지면이
+## 종이처럼 보였고, 초록으로 보이던 것은 그림자뿐이었다.
+##
+## 지금 값은 눈이 아니라 재어서 골랐다. 볕 든 흙이 팔레트에 적힌 제 색
+## (0.64, 0.84, 0.58) 그대로 화면에 나오는 지점이다. 볕이 색을 씻어내지 않는다.
+const DAY_LIGHT := 0.42
+const NIGHT_LIGHT := 0.10
 
 ## 해가 지고 뜨는 데 걸리는 틱. 갑자기 캄캄해지지 않는다.
 const TWILIGHT_TICKS := 15 * Simulation.TICK_RATE
