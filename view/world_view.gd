@@ -8,6 +8,9 @@ extends Node3D
 ##
 ## 속에 묻힌 블록은 그리지 않는다. 이웃 여섯 칸이 모두 단단하면 어차피 보이지 않는다.
 ## 종류마다 MultiMesh 하나를 써서 수천 칸을 한 번에 낸다.
+##
+## 생김새는 종류마다 다르다. [BlockMeshes] 가 정한다. 색만으로는 파스텔 열 종을
+## 가르기 어렵고, 문은 열린 것과 닫힌 것이 아예 같은 색이다.
 
 var _grid: VoxelGrid
 var _layers: Dictionary[int, MultiMeshInstance3D] = {}
@@ -95,11 +98,13 @@ func _base_colour(node: MultiMeshInstance3D) -> Color:
 func _make_layer(block_type: int) -> MultiMeshInstance3D:
     var material := StandardMaterial3D.new()
     material.albedo_color = Color.WHITE
+    # 칸의 색(인스턴스)과 면의 밝기(정점)가 곱해져 한 면의 색이 된다.
     material.vertex_color_use_as_albedo = true
+    # 감는 방향이 어긋나도 안이 비쳐 보이지 않게 한다. 빛은 법선을 따른다.
+    material.cull_mode = BaseMaterial3D.CULL_DISABLED
 
-    var mesh := BoxMesh.new()
-    mesh.size = Vector3.ONE * SimViewCoords.CELL_SIZE
-    mesh.material = material
+    var mesh := BlockMeshes.for_block(block_type)
+    mesh.surface_set_material(0, material)
 
     var multimesh := MultiMesh.new()
     multimesh.transform_format = MultiMesh.TRANSFORM_3D

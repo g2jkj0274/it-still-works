@@ -35,6 +35,7 @@ const BUNDLE := Color(0.56, 0.93, 0.78)
 
 const CHARACTER_SKIN := Color(0.98, 0.86, 0.74)
 const CHARACTER_BODY := Color(0.72, 0.86, 0.94)
+const CHARACTER_LEGS := Color(0.62, 0.68, 0.82)
 const THREAT := Color(0.82, 0.68, 0.86)
 
 const HIGHLIGHT := Color(1.0, 1.0, 1.0, 0.32)
@@ -59,6 +60,28 @@ const WIRE_FALSE_IDLE := Color(0.58, 0.66, 0.74)
 ## 낮 빛깔을 낮춰 잡은 것은 이유가 있다. 이보다 밝으면 볕 든 지면이 흰색으로
 ## 날아가 블록 경계도 팔레트의 칸별 변주도 보이지 않는다. 실제로 재어 보고
 ## 볕 든 흙이 팔레트에 적힌 제 색으로 나오는 지점을 골랐다.
+## 섬을 둘러싼 물. 하늘보다 조금 짙어 물가가 눈에 보인다.
+const SEA := Color(0.56, 0.78, 0.90)
+
+## 땅에 깔린 풀·꽃·잔돌의 빛깔.
+##
+## 바깥에서 가져온 모델은 제 색을 달고 온다. 그대로 두면 톤이 흩어지므로
+## **모양만 받고 색은 여기서 준다.** 색을 한 곳에 모아 둔다는 규칙은
+## 가져온 것에도 그대로 적용된다.
+const COVER_GRASS := Color(0.76, 0.90, 0.58)
+const COVER_LEAF := Color(0.62, 0.84, 0.66)
+const COVER_FLOWER_YELLOW := Color(0.99, 0.92, 0.62)
+const COVER_FLOWER_PURPLE := Color(0.84, 0.74, 0.96)
+const COVER_FLOWER_RED := Color(0.98, 0.74, 0.74)
+const COVER_ROCK := Color(0.76, 0.78, 0.82)
+const COVER_MUSHROOM := Color(0.96, 0.78, 0.72)
+
+## 땅에 깔리는 것들의 빛깔 전부. 톤 검사가 훑는다.
+const COVER_COLOURS: Array[Color] = [
+    COVER_GRASS, COVER_LEAF, COVER_FLOWER_YELLOW, COVER_FLOWER_PURPLE,
+    COVER_FLOWER_RED, COVER_ROCK, COVER_MUSHROOM,
+]
+
 const SKY_DAY := Color(0.66, 0.82, 0.92)
 const SKY_NIGHT := Color(0.17, 0.20, 0.32)
 const AMBIENT_DAY := Color(0.43, 0.46, 0.52)
