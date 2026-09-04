@@ -41,6 +41,7 @@ var _help_overlay: HelpOverlay
 var _hotbar: Hotbar
 var _notice: Notice
 var _first_steps: FirstSteps
+var _sound_board: SoundBoard
 var _last_usec: int = 0
 
 
@@ -157,6 +158,8 @@ func sync_views() -> void:
     _part_hint.sync()
     _vitals_bar.sync()
     _camera.follow(_character_view.target_position(), CAMERA_FOLLOW)
+    _sound_board.forget()
+    _sound_board.sync()
     _first_steps.check()
 
 
@@ -252,6 +255,12 @@ func _build_views() -> void:
 
 
 func _build_input() -> void:
+    # 소리판을 먼저 세운다. 입력이 붙는 신호가 이것을 부른다.
+    _sound_board = SoundBoard.new()
+    _sound_board.name = "SoundBoard"
+    add_child(_sound_board)
+    _sound_board.bind(simulation)
+
     InputController.install_actions()
     _input = InputController.new()
     _input.name = "Input"
@@ -260,6 +269,7 @@ func _build_input() -> void:
     _input.bind_camera(_camera)
     _bundle_marks.bind(_input)
     _input.help_toggled.connect(_on_help_toggled)
+    _input.crafted.connect(_sound_board.note_crafted)
     _input.save_requested.connect(save_game)
     _input.load_requested.connect(load_game)
 
@@ -302,6 +312,7 @@ func _build_hint() -> void:
     _first_steps.name = "FirstSteps"
     add_child(_first_steps)
     _first_steps.bind(simulation, _notice)
+    _sound_board.bind(simulation)
 
 
 func notice() -> Notice:
@@ -310,6 +321,10 @@ func notice() -> Notice:
 
 func first_steps() -> FirstSteps:
     return _first_steps
+
+
+func sound_board() -> SoundBoard:
+    return _sound_board
 
 
 ## 판을 적어 둔다. 명령을 만지는 일이 아니라 파일을 만지는 일이라 여기서 한다.
@@ -357,6 +372,7 @@ func adopt_simulation() -> void:
     _vitals_bar.bind(state.vitals)
 
     _first_steps.bind(simulation, _notice)
+    _sound_board.bind(simulation)
     _input.bind(simulation)
     _input.clear_chosen()
     _input.clear_link_source()
