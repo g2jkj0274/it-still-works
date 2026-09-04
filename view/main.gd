@@ -29,6 +29,7 @@ var _bundle_marks: BundleMarks
 var _input: InputController
 var _wire_view: WireView
 var _sky_view: SkyView
+var _sea_view: SeaView
 var _threat_view: ThreatView
 var _vitals_bar: VitalsBar
 var _part_hint: PartHint
@@ -107,6 +108,10 @@ func sky_view() -> SkyView:
     return _sky_view
 
 
+func sea_view() -> SeaView:
+    return _sea_view
+
+
 func threat_view() -> ThreatView:
     return _threat_view
 
@@ -157,6 +162,10 @@ func _build_environment() -> void:
     _sky_view = SkyView.new()
     _sky_view.name = "Sky"
     add_child(_sky_view)
+
+    _sea_view = SeaView.new()
+    _sea_view.name = "Sea"
+    add_child(_sea_view)
 
 
 func _build_views() -> void:

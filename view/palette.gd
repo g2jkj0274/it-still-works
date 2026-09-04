@@ -35,6 +35,7 @@ const BUNDLE := Color(0.56, 0.93, 0.78)
 
 const CHARACTER_SKIN := Color(0.98, 0.86, 0.74)
 const CHARACTER_BODY := Color(0.72, 0.86, 0.94)
+const CHARACTER_LEGS := Color(0.62, 0.68, 0.82)
 const THREAT := Color(0.82, 0.68, 0.86)
 
 const HIGHLIGHT := Color(1.0, 1.0, 1.0, 0.32)
@@ -59,6 +60,9 @@ const WIRE_FALSE_IDLE := Color(0.58, 0.66, 0.74)
 ## 낮 빛깔을 낮춰 잡은 것은 이유가 있다. 이보다 밝으면 볕 든 지면이 흰색으로
 ## 날아가 블록 경계도 팔레트의 칸별 변주도 보이지 않는다. 실제로 재어 보고
 ## 볕 든 흙이 팔레트에 적힌 제 색으로 나오는 지점을 골랐다.
+## 섬을 둘러싼 물. 하늘보다 조금 짙어 물가가 눈에 보인다.
+const SEA := Color(0.56, 0.78, 0.90)
+
 const SKY_DAY := Color(0.66, 0.82, 0.92)
 const SKY_NIGHT := Color(0.17, 0.20, 0.32)
 const AMBIENT_DAY := Color(0.43, 0.46, 0.52)

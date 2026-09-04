@@ -73,6 +73,8 @@ func _build_steps() -> Array:
         ["08_choose", _choose_the_auto_door],
         ["09_bundle", _bundle_the_auto_door],
         ["10_night", _fall_of_night],
+        ["11_parts", _line_up_the_parts],
+        ["12_island", _pull_back_to_the_shore],
     ]
 
 
@@ -181,6 +183,39 @@ func _fall_of_night() -> void:
     _main.simulation.advance(DayCycle.DAY_TICKS - _main.simulation.current_tick() + 20)
 
 
+## 부품을 나란히 늘어놓고 가까이 본다.
+##
+## 파스텔은 폭이 좁아 색만으로는 종류가 흐려진다. 생김새로 갈리는지는 멀리서
+## 보아서는 알 수 없으므로 이 단계만 카메라를 당긴다.
+func _line_up_the_parts() -> void:
+    var state: Object = _main.simulation.state
+    var centre: Vector3i = state.character.cell() + Vector3i(2, -2, 0)
+
+    # 낮으로 되돌린다. 밤 화면에서는 형태가 아니라 어둠이 보인다.
+    state.tick = 0
+
+    # 키 큰 것을 뒤에 둔다. 앞의 것이 뒤의 것을 가리면 견줄 수가 없다.
+    var kinds: Array[int] = [
+        BlockType.DOOR_CLOSED, BlockType.DOOR_OPEN, BlockType.DETECTOR,
+        BlockType.ACTUATOR, BlockType.REPEATER, BlockType.BOX,
+        BlockType.BRANCH, BlockType.BUNDLE, BlockType.FIELD,
+    ]
+    for i in kinds.size():
+        var cell := centre + Vector3i(i % 3 - 1, i / 3 - 1, 0)
+        state.grid.set_block(cell - VoxelGrid.UP, BlockType.GROUND)
+        state.grid.set_block(cell, kinds[i])
+
+    _main.camera().zoom_by(-20)
+    _main.world_view().rebuild()
+
+
+## 멀리 물러나 물가를 본다.
+##
+## 지금까지는 섬 끝이 허공으로 끊겨 어디가 뭍이고 어디가 바깥인지 알 수 없었다.
+func _pull_back_to_the_shore() -> void:
+    _main.camera().zoom_by(40)
+
+
 func _begin_step() -> void:
     var action: Callable = _steps[_index][1]
     action.call()
@@ -235,9 +270,15 @@ func _evaluate(without_subject: Image) -> void:
 
 
 ## 캐릭터가 화면 어디에 있어야 하는지 계산해 그 둘레만 본다.
+##
+## 상자는 시점을 당긴 만큼 함께 줄인다. 멀리 물러나면 캐릭터가 작아지는데
+## 상자가 그대로면 빈 땅만 잔뜩 세게 되어 "안 그려졌다"고 잘못 판정한다.
 func _subject_rect() -> Rect2i:
-    var centre := _main.camera().unproject_position(_main.character_view().target_position())
-    return Rect2i(Vector2i(centre) - SUBJECT_BOX / 2, SUBJECT_BOX)
+    var camera := _main.camera()
+    var centre := camera.unproject_position(_main.character_view().target_position())
+    var scale := IsometricCamera.DEFAULT_VIEW_SIZE / camera.view_size()
+    var box := Vector2i(Vector2(SUBJECT_BOX) * scale).maxi(16)
+    return Rect2i(Vector2i(centre) - box / 2, box)
 
 
 func _fail(step_name: String, reason: String) -> void:

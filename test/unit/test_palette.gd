@@ -23,9 +23,26 @@ func test_block_colours_are_pastel() -> void:
 
 
 func test_creature_colours_are_pastel() -> void:
-    for colour in [Palette.CHARACTER_SKIN, Palette.CHARACTER_BODY, Palette.THREAT]:
+    for colour in [
+        Palette.CHARACTER_SKIN, Palette.CHARACTER_BODY, Palette.CHARACTER_LEGS,
+        Palette.THREAT,
+    ]:
         assert_float(colour.v).is_greater_equal(Palette.MIN_VALUE)
         assert_float(colour.s).is_less_equal(Palette.MAX_SATURATION)
+
+
+func test_the_sky_and_the_sea_stay_pastel() -> void:
+    # 화면에서 가장 넓은 자리를 차지하는 색들이다. 톤이 여기서 어긋나면 다 어긋난다.
+    for colour in [Palette.SKY_DAY, Palette.SEA]:
+        assert_float(colour.v).is_greater_equal(Palette.MIN_VALUE)
+        assert_float(colour.s).is_less_equal(Palette.MAX_SATURATION)
+
+
+func test_the_sea_is_told_apart_from_the_ground() -> void:
+    # 물가가 보이지 않으면 섬이 섬으로 보이지 않는다.
+    var sea := Palette.SEA
+    var ground := Palette.of_block(BlockType.GROUND)
+    assert_float(Vector3(sea.r - ground.r, sea.g - ground.g, sea.b - ground.b).length()).is_greater(0.12)
 
 
 func test_neighbouring_blocks_do_not_look_identical() -> void:

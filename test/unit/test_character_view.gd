@@ -69,7 +69,38 @@ func test_the_head_sits_on_top_of_the_body() -> void:
 
 
 func test_the_whole_body_fits_in_two_cells() -> void:
+    # 몸통이 아니라 발끝에서 머리끝까지를 잰다.
     var view := _view(_at(Vector3i(0, 0, 1)))
-    var top := view.head_height() + view.head_radius()
-    var bottom := view.body_height() - CharacterView.BODY_HEIGHT * 0.5
-    assert_float(top - bottom).is_less_equal(CharacterState.HEIGHT * SimViewCoords.CELL_SIZE)
+    assert_float(view.highest_point() - view.lowest_point()).is_less_equal(
+        CharacterState.HEIGHT * SimViewCoords.CELL_SIZE)
+
+
+func test_the_body_turns_the_way_the_character_looks() -> void:
+    # 겨냥한 곳이 없으면 바라보는 앞 칸에 놓인다. 어느 쪽을 보는지 보여야 한다.
+    var north := _view(_at(Vector3i(4, 4, 2), Vector3i(0, -1, 0)))
+    var east := _view(_at(Vector3i(4, 4, 2), Vector3i(1, 0, 0)))
+
+    # 격자의 y 는 Godot 의 z 다. 축 바꿈은 표현 레이어의 몫이다.
+    assert_float(north.facing_direction().z).is_less(-0.9)
+    assert_float(east.facing_direction().x).is_greater(0.9)
+
+
+func test_turning_on_the_spot_is_shown() -> void:
+    var character := _at(Vector3i(4, 4, 2), Vector3i(0, 1, 0))
+    var view := _view(character)
+    var before := view.facing_direction()
+
+    character.facing = Vector3i(-1, 0, 0)
+    view.sync(1.0)
+    assert_bool(view.facing_direction().is_equal_approx(before)).is_false()
+
+
+func test_a_standing_still_character_keeps_its_last_facing() -> void:
+    # 방향이 비면 마지막으로 보던 쪽을 그대로 둔다. 갑자기 홱 돌면 안 된다.
+    var character := _at(Vector3i(4, 4, 2), Vector3i(1, 0, 0))
+    var view := _view(character)
+    var before := view.facing_direction()
+
+    character.facing = Vector3i.ZERO
+    view.sync(1.0)
+    assert_bool(view.facing_direction().is_equal_approx(before)).is_true()
