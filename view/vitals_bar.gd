@@ -2,10 +2,17 @@ class_name VitalsBar
 extends CanvasLayer
 
 ## 체력과 포만도를 화면 위쪽에 보여준다. 지표를 읽기만 한다.
+##
+## 이름을 적는다. 빨간 막대와 주황 막대만으로는 주황이 배라는 것을 알 길이 없다.
 
 const BAR_SIZE := Vector2(180, 14)
 const BAR_GAP := 6.0
-const MARGIN := Vector2(16, 16)
+
+## 낮밤 띠가 위를 차지하므로 그 아래에서 시작한다.
+const MARGIN := Vector2(16, 56)
+
+const LABELS: PackedStringArray = ["체력", "배"]
+const LABEL_COLOUR := Color(0.16, 0.18, 0.22)
 
 const HEALTH_COLOUR := Color(0.86, 0.42, 0.44)
 const FULLNESS_COLOUR := Color(0.86, 0.72, 0.38)
@@ -69,4 +76,12 @@ func _add_bar(anchor: Control, row: int, colour: Color) -> ColorRect:
     fill.size = BAR_SIZE
     fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
     anchor.add_child(fill)
+
+    var label := Label.new()
+    label.text = LABELS[row] if row < LABELS.size() else ""
+    label.add_theme_color_override("font_color", LABEL_COLOUR)
+    label.add_theme_font_size_override("font_size", 12)
+    label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    label.position = origin + Vector2(-38.0, -3.0)
+    anchor.add_child(label)
     return fill

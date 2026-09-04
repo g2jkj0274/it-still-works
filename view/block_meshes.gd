@@ -58,8 +58,12 @@ static func _shape_of(tool: SurfaceTool, block_type: int) -> void:
             # 갈아 놓은 두둑. 밟고 다니는 곳이라 가장 낮다.
             _box(tool, Vector3(0.0, -0.32, 0.0), Vector3(_CELL, 0.36, _CELL))
         BlockType.CROP:
-            # 거둔 낟알. 손에 드는 것이라 작다.
-            _box(tool, Vector3(0.0, -0.25, 0.0), Vector3(0.46, 0.50, 0.46))
+            # 작물 포기. 밑동에서 이삭이 두 갈래로 솟는다.
+            # 땅에 난 것은 부숴서 먹고, 이것이 첫날을 넘기는 유일한 길이다.
+            _box(tool, Vector3(0.0, -0.40, 0.0), Vector3(0.44, 0.20, 0.44))
+            _box(tool, Vector3(-0.10, -0.12, 0.0), Vector3(0.16, 0.44, 0.16))
+            _box(tool, Vector3(0.12, -0.04, 0.06), Vector3(0.16, 0.56, 0.16))
+            _box(tool, Vector3(0.0, 0.18, 0.0), Vector3(0.30, 0.18, 0.30))
         BlockType.DETECTOR:
             # 눈. 몸통 위로 렌즈가 곧게 솟았다. 부품 가운데 가장 키가 크다.
             _box(tool, Vector3(0.0, -0.22, 0.0), Vector3(0.80, 0.56, 0.80))

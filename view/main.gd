@@ -33,10 +33,12 @@ var _sky_view: SkyView
 var _sea_view: SeaView
 var _threat_view: ThreatView
 var _vitals_bar: VitalsBar
+var _day_clock: DayClock
 var _part_hint: PartHint
 var _help_overlay: HelpOverlay
 var _hotbar: Hotbar
 var _notice: Notice
+var _first_steps: FirstSteps
 var _last_usec: int = 0
 
 
@@ -121,6 +123,10 @@ func vitals_bar() -> VitalsBar:
     return _vitals_bar
 
 
+func day_clock() -> DayClock:
+    return _day_clock
+
+
 func part_hint() -> PartHint:
     return _part_hint
 
@@ -138,10 +144,12 @@ func sync_views() -> void:
     _bundle_marks.sync()
     _threat_view.sync()
     _sky_view.apply(simulation.current_tick())
+    _day_clock.apply(simulation.current_tick())
     _hotbar.sync()
     _part_hint.sync()
     _vitals_bar.sync()
     _camera.follow(_character_view.target_position(), CAMERA_FOLLOW)
+    _first_steps.check()
 
 
 func input_controller() -> InputController:
@@ -243,6 +251,11 @@ func _build_input() -> void:
     _vitals_bar.bind(simulation.state.vitals)
     _vitals_bar.sync()
 
+    _day_clock = DayClock.new()
+    _day_clock.name = "DayClock"
+    add_child(_day_clock)
+    _day_clock.apply(simulation.current_tick())
+
     _part_hint = PartHint.new()
     _part_hint.name = "PartHint"
     add_child(_part_hint)
@@ -261,9 +274,18 @@ func _build_hint() -> void:
     _notice.name = "Notice"
     add_child(_notice)
 
+    _first_steps = FirstSteps.new()
+    _first_steps.name = "FirstSteps"
+    add_child(_first_steps)
+    _first_steps.bind(simulation, _notice)
+
 
 func notice() -> Notice:
     return _notice
+
+
+func first_steps() -> FirstSteps:
+    return _first_steps
 
 
 ## 판을 적어 둔다. 명령을 만지는 일이 아니라 파일을 만지는 일이라 여기서 한다.
@@ -306,6 +328,7 @@ func adopt_simulation() -> void:
     _threat_view.bind(state.threats)
     _vitals_bar.bind(state.vitals)
 
+    _first_steps.bind(simulation, _notice)
     _input.bind(simulation)
     _input.clear_chosen()
     _input.clear_link_source()

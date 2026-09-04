@@ -27,6 +27,9 @@ var _phase := 0
 var _wait := 0
 var _with_subject: Image
 var _report: Array[String] = []
+
+## 08 단계가 실제로 놓은 작동기와 감지기의 자리. 다시 계산하지 않고 적어 둔다.
+var _door_parts: Array[Vector3i] = []
 var _failures := 0
 
 
@@ -130,6 +133,11 @@ func _build_auto_door() -> void:
     var actuator := here + Vector3i(3, 0, 0)
     var detector := here + Vector3i(4, 0, 0)
 
+    # 무대를 비운다. 저절로 난 작물이 자리를 차지하고 있으면 놓이지 않는다.
+    for cell in [door, actuator, detector]:
+        state.grid.set_block(cell, BlockType.EMPTY)
+    _door_parts = [actuator, detector]
+
     var start := _main.simulation.current_tick()
     _main.simulation.submit_at(PlaceBlockCommand.create(door, BlockType.DOOR_CLOSED), start)
     _main.simulation.submit_at(PlacePartCommand.create(actuator, BlockType.ACTUATOR), start + 2)
@@ -171,10 +179,9 @@ func _bundle_the_auto_door() -> void:
     controller.submit_place()
 
 
-## 07 단계가 놓은 작동기와 감지기의 자리.
+## 08 단계가 놓은 작동기와 감지기의 자리.
 func _auto_door_parts() -> Array[Vector3i]:
-    var here: Vector3i = _main.simulation.state.character.cell()
-    return [here + Vector3i(3, 0, 0), here + Vector3i(4, 0, 0)]
+    return _door_parts
 
 
 func _target_at(cell: Vector3i) -> BlockTarget:
