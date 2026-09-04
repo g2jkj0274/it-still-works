@@ -141,6 +141,11 @@ static func _raise_hill(grid: VoxelGrid) -> void:
                 grid.set_block(Vector3i(x, y, GROUND_TOP_Z + 2), BlockType.GROUND)
 
 
+## 광석 자원지를 놓는다. 가운데가 솟은 더미로 쌓는다.
+##
+## 납작하게 깔면 스무 칸 밖에서 보이지 않는다. **갈 곳을 모르면 왕복이
+## 시작되지 않고**, 그러면 자원지를 멀리 둔 뜻(§3.6)이 통째로 사라진다.
+## 솟아 있으면 지형이 스스로 "저기 뭔가 있다"고 말한다.
 static func _place_ore(grid: VoxelGrid) -> void:
     for site in ORE_SITES:
         for y in range(site.y - ORE_SITE_RADIUS, site.y + ORE_SITE_RADIUS + 1):
@@ -150,7 +155,13 @@ static func _place_ore(grid: VoxelGrid) -> void:
                     continue
                 if not grid.is_solid(Vector3i(x, y, GROUND_TOP_Z)):
                     continue
-                grid.set_block(Vector3i(x, y, GROUND_TOP_Z + 1), BlockType.STONE)
+
+                # 가운데로 갈수록 높다. 바깥 테두리는 한 칸, 한가운데는 세 칸.
+                var offset := column - site
+                var away := maxi(absi(offset.x), absi(offset.y))
+                var height := ORE_SITE_RADIUS + 1 - away
+                for step in height:
+                    grid.set_block(Vector3i(x, y, GROUND_TOP_Z + 1 + step), BlockType.STONE)
 
 
 static func _plant_trees(grid: VoxelGrid) -> void:

@@ -24,10 +24,11 @@ const BOX_BUNDLE := DETECTOR
 ## Godot 4.7.2 / 서로 다른 프로세스 3회 실행에서 동일함을 확인하고 고정했다.
 ##   제작법이 생겨 시작 지급을 껐다. 빈손으로 시작하므로 인벤토리 초기값이 바뀜
 ##   섬에 저절로 난 작물이 놓여 격자가 바뀜 (첫날 밤에 손으로 닿게 하려고)
+##   광석 자원지가 가운데 솟은 더미가 되어 격자가 바뀜 (멀리서 보이게)
 ##
 ## 이 값이 깨졌다면 시뮬레이션 동작이 바뀐 것이다. 값을 고쳐 통과시키지 말고
 ## 무엇이 바뀌었는지 먼저 밝힌다.
-const GOLDEN_HASH := "4e35679fbb608c3272ed511774faee55138f30972f9ba0d2a9849093c4a88a76"
+const GOLDEN_HASH := "187698e3c54c9a1b4d79b8fe668367b4035a8ab7ae7daf4c1ea333340c5afca0"
 
 
 func _cells(values: Array) -> Array[Vector3i]:

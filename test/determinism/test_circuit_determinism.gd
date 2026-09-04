@@ -23,7 +23,8 @@ const BRANCH := Vector3i(33, 31, 2)
 ## 갱신 이력: 묶음 부품이 늘어 블록 종류가 하나 늘고, 묶음 설계도 목록이 상태에 추가됨
 ##   제작법이 생겨 시작 지급을 껐다. 빈손으로 시작하므로 인벤토리 초기값이 바뀜
 ##   섬에 저절로 난 작물이 놓여 격자가 바뀜 (첫날 밤에 손으로 닿게 하려고)
-const GOLDEN_HASH := "8aae801ec28fc4f47fae061f9e1dfeb4e5bbb8d95c6bab4319728a7ea734ab66"
+##   광석 자원지가 가운데 솟은 더미가 되어 격자가 바뀜 (멀리서 보이게)
+const GOLDEN_HASH := "67dcab85e7d702b71b52f276abb0cb446a933ceee995b57486b7fd924a652048"
 
 ## 같은 실행이 끝났을 때 문이 어떤 상태인지. 해시보다 읽기 쉽다.
 const GOLDEN_DOOR := BlockType.DOOR_CLOSED

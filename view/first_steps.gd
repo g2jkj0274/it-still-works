@@ -94,3 +94,8 @@ func check() -> void:
 ## 처음부터 다시 알려준다. 새 판을 시작하거나 불러왔을 때 쓴다.
 func restart() -> void:
     _step = 0
+
+
+## 다 알려 준 것으로 친다. 그림을 찍을 때처럼 안내가 끼면 안 되는 자리에 쓴다.
+func silence() -> void:
+    _step = line_count()
