@@ -374,6 +374,69 @@ func test_making_without_the_materials_changes_nothing() -> void:
     assert_int(main.simulation.state.inventory.total()).is_equal(0)
 
 
+func test_the_game_screen_can_write_and_read_back_a_game() -> void:
+    SaveSlot.clear()
+
+    var main: GameMain = auto_free((load(MAIN_SCENE) as PackedScene).instantiate())
+    add_child(main)
+    main.set_physics_process(false)
+
+    var here: Vector3i = main.simulation.state.character.cell()
+    main.simulation.submit(BreakBlockCommand.create(here + Vector3i(1, 0, -1)))
+    _advance(main, 8)
+    var saved := main.simulation.state_hash()
+
+    assert_bool(main.save_game()).is_true()
+    assert_str(main.notice().text()).is_not_empty()
+
+    # 저장한 뒤로 더 진행한다. 불러오면 그 자리로 되돌아가야 한다.
+    _advance(main, 60)
+    assert_str(main.simulation.state_hash()).is_not_equal(saved)
+
+    assert_bool(main.load_game()).is_true()
+    assert_str(main.simulation.state_hash()).is_equal(saved)
+    SaveSlot.clear()
+
+
+func test_the_views_follow_the_game_that_was_loaded() -> void:
+    # 붙이는 것을 하나라도 빠뜨리면 화면이 옛 판을 계속 읽는다.
+    SaveSlot.clear()
+
+    var main: GameMain = auto_free((load(MAIN_SCENE) as PackedScene).instantiate())
+    add_child(main)
+    main.set_physics_process(false)
+    main.save_game()
+
+    var before := main.simulation
+    assert_bool(main.load_game()).is_true()
+    assert_bool(main.simulation != before).is_true()
+
+    var state := main.simulation.state
+    main.sync_views()
+    assert_bool(main.character_view().target_position().is_equal_approx(
+        SimViewCoords.sub_to_world(state.character.sub_position) + Vector3.UP * 0.5)).is_true()
+
+    # 인벤토리를 바꿔 핫바가 새 판을 읽고 있는지 본다.
+    state.inventory.add(BlockType.WOOD, 5)
+    main.hotbar().sync()
+    var slot := InputController.PLACEABLE.find(BlockType.WOOD)
+    assert_str(main.hotbar().slot_text(slot)).contains("5")
+    SaveSlot.clear()
+
+
+func test_loading_with_nothing_saved_leaves_the_game_alone() -> void:
+    SaveSlot.clear()
+
+    var main: GameMain = auto_free((load(MAIN_SCENE) as PackedScene).instantiate())
+    add_child(main)
+    main.set_physics_process(false)
+    _advance(main, 10)
+    var before := main.simulation.state_hash()
+
+    assert_bool(main.load_game()).is_false()
+    assert_str(main.simulation.state_hash()).is_equal(before)
+
+
 func _aim_at(cell: Vector3i) -> BlockTarget:
     var target := BlockTarget.new()
     target.hit = true

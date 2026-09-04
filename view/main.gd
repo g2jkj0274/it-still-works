@@ -36,12 +36,12 @@ var _vitals_bar: VitalsBar
 var _part_hint: PartHint
 var _help_overlay: HelpOverlay
 var _hotbar: Hotbar
+var _notice: Notice
 var _last_usec: int = 0
 
 
 func _ready() -> void:
-    simulation = Simulation.new(SEED)
-    IslandBuilder.populate(simulation.state)
+    simulation = IslandBuilder.start(SEED)
     driver = TickDriver.new()
 
     _build_environment()
@@ -228,6 +228,8 @@ func _build_input() -> void:
     _input.bind_camera(_camera)
     _bundle_marks.bind(_input)
     _input.help_toggled.connect(_on_help_toggled)
+    _input.save_requested.connect(save_game)
+    _input.load_requested.connect(load_game)
 
     _hotbar = Hotbar.new()
     _hotbar.name = "Hotbar"
@@ -254,6 +256,64 @@ func _build_hint() -> void:
     _help_overlay.name = "Help"
     add_child(_help_overlay)
     _help_overlay.set_shown(_input.help_shown())
+
+    _notice = Notice.new()
+    _notice.name = "Notice"
+    add_child(_notice)
+
+
+func notice() -> Notice:
+    return _notice
+
+
+## 판을 적어 둔다. 명령을 만지는 일이 아니라 파일을 만지는 일이라 여기서 한다.
+func save_game() -> bool:
+    var saved := SaveSlot.save(simulation)
+    _notice.say("적어 두었다" if saved else "적어 두지 못했다")
+    return saved
+
+
+## 적어 둔 판을 되살린다. 없거나 읽을 수 없으면 지금 판을 그대로 둔다.
+func load_game() -> bool:
+    var restored := SaveSlot.restore()
+    if restored == null:
+        _notice.say("적어 둔 판이 없다")
+        return false
+
+    simulation = restored
+    adopt_simulation()
+    _notice.say("불러왔다")
+    return true
+
+
+## 표현 레이어를 새 판에 다시 붙인다.
+##
+## 붙이는 곳을 한 군데로 모아 둔다. 빠뜨린 것이 하나라도 있으면 화면이 옛 판을
+## 계속 읽어 실제와 어긋난다.
+func adopt_simulation() -> void:
+    var state := simulation.state
+
+    _world_view.bind(state.grid)
+    _world_view.rebuild()
+    _ground_cover.bind(state.grid)
+    _ground_cover.rebuild()
+
+    _character_view.bind(state.character)
+    _character_view.snap()
+
+    _wire_view.bind(state.circuit)
+    _wire_view.rebuild()
+    _threat_view.bind(state.threats)
+    _vitals_bar.bind(state.vitals)
+
+    _input.bind(simulation)
+    _input.clear_chosen()
+    _input.clear_link_source()
+    _input.refresh_held_bundle()
+    _hotbar.bind(state.inventory, _input)
+
+    _camera.focus_on(_character_view.target_position())
+    sync_views()
 
 
 func _on_help_toggled(shown: bool) -> void:
