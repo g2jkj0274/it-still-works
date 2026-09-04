@@ -21,6 +21,31 @@ func _view(circuit: Circuit) -> WireView:
     return view
 
 
+func test_a_wire_climbs_over_the_parts_it_joins() -> void:
+    # 부품은 자기 칸을 거의 채운다. 칸 한가운데끼리 곧게 이으면 배선이 통째로
+    # 부품 안에 파묻혀 화면에서 사라진다. 회로 게임인데 회로가 안 보였다.
+    var neighbour := Vector3i(5, 4, 1)
+    var path := WireView.path_of([A, neighbour, 0])
+
+    var cell_top := SimViewCoords.cell_to_world(A).y + SimViewCoords.CELL_SIZE * 0.5
+    # 건너가는 토막은 두 부품 지붕보다 위에 있어야 한다.
+    assert_float(path[1].y).is_greater(cell_top)
+    assert_float(path[2].y).is_greater(cell_top)
+
+
+func test_a_wire_is_drawn_in_three_pieces() -> void:
+    var circuit := _circuit()
+    circuit.link(A, B)
+    var view := _view(circuit)
+    assert_int(view.wire_count()).is_equal(1)
+    assert_int(view.piece_count()).is_equal(WireView.PIECES)
+
+
+func test_a_wire_is_thick_enough_to_see() -> void:
+    # 한 칸이 화면에서 사십 픽셀 남짓이다. 0.08 은 세 픽셀이라 보이지 않았다.
+    assert_float(WireView.THICKNESS).is_greater(0.1)
+
+
 func test_no_wires_means_nothing_drawn() -> void:
     assert_int(_view(_circuit()).wire_count()).is_equal(0)
 

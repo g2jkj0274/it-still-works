@@ -118,6 +118,10 @@ signal help_toggled(shown: bool)
 signal save_requested
 signal load_requested
 
+## 만들기를 접수했다. 소리를 낼 자리를 알리는 것뿐이고, 실제로 만들어졌는지는
+## 시뮬레이션이 정한다.
+signal crafted
+
 var _simulation: Simulation
 var _camera: Camera3D
 var _selected: int = BlockType.WOOD
@@ -313,6 +317,13 @@ func place_cell() -> Vector3i:
     return _facing_cell()
 
 
+## 지금 겨냥하고 있는 부품. 없으면 null.
+func aimed_part() -> CircuitPart:
+    if _simulation == null:
+        return null
+    return _simulation.state.circuit.part_at(break_cell())
+
+
 func has_link_source() -> bool:
     return _has_link_source
 
@@ -359,7 +370,12 @@ func submit_break() -> void:
 func submit_craft() -> void:
     if _simulation == null or not RecipeBook.can_be_made(_selected):
         return
+    # 재료가 없으면 만들어지지 않는다. 그때는 소리도 나지 않아야 한다.
+    if not RecipeBook.has_materials(
+        _simulation.state.inventory, RecipeBook.index_for(_selected)):
+        return
     _simulation.submit(CraftCommand.create(_selected))
+    crafted.emit()
 
 
 ## 지금 고른 것을 만들 수 있는가. 화면에 무엇을 보일지 정할 때 쓴다.

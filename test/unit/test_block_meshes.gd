@@ -102,6 +102,37 @@ func test_the_top_of_a_block_is_lighter_than_its_underside() -> void:
     assert_float(top).is_greater(bottom)
 
 
+func test_earth_shows_grass_on_top_and_soil_on_the_side() -> void:
+    # 한 색으로 여섯 면을 다 칠하면 놓은 블록이 땅에 묻힌다. 세 칸짜리 탑을
+    # 세워도 "벽을 세웠다"가 아니라 "그림자가 생겼다"로 보였다.
+    var arrays := _mesh(BlockType.GROUND).surface_get_arrays(0)
+    var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+    var colours: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+
+    var top := Color.BLACK
+    var side := Color.BLACK
+    for i in normals.size():
+        if normals[i].y > 0.9:
+            top = colours[i]
+        elif absf(normals[i].y) < 0.1:
+            side = colours[i]
+
+    # 밝기가 아니라 빛깔이 달라야 한다. 초록 위에 흙색 옆면이다.
+    assert_float(top.h).is_not_equal(side.h)
+    assert_float(top.g).is_greater(side.g)
+
+
+func test_a_block_with_one_colour_keeps_it_on_every_side() -> void:
+    var arrays := _mesh(BlockType.WOOD).surface_get_arrays(0)
+    var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+    var colours: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+
+    for i in normals.size():
+        if absf(normals[i].y) < 0.1:
+            # 옆면끼리는 밝기만 다르고 빛깔은 같다.
+            assert_float(colours[i].h).is_equal_approx(Palette.of_block(BlockType.WOOD).h, 0.01)
+
+
 func test_the_two_visible_sides_are_shaded_apart() -> void:
     # 아이소메트릭에서는 옆면 두 쪽이 함께 보인다. 같은 밝기면 모서리가 사라진다.
     assert_float(absf(BlockMeshes.FACE_SIDE_X - BlockMeshes.FACE_SIDE_Z)).is_greater(0.02)

@@ -6,6 +6,11 @@ extends Node3D
 ## **꾸밈일 뿐이다.** 시뮬레이션은 이것을 알지 못한다. 부술 수도 없고 길을
 ## 막지도 않는다. 넓은 초록 면이 종이처럼 보이지 않게 하는 것이 전부다.
 ##
+## **잔돌은 깔지 않는다.** 캘 수 있는 광석과 색도 형태도 비슷해서, 눈앞의
+## 조약돌에 Q 를 눌렀다가 아무 일도 없으면 사람은 "부수기가 고장났다"고
+## 결론짓는다. 게임은 이유를 말해 주지 않으므로 그대로 나가 버린다.
+## 깔린 것이 전부 풀과 꽃이면 "회색은 캘 수 있는 것"이라는 규칙이 선다.
+##
 ## 어디에 무엇이 놓이는지는 **칸 좌표에서 뽑는다.** 난수를 쓰지 않으므로
 ## 실행할 때마다 같은 자리에 같은 것이 난다. 시뮬레이션의 RNG 는 건드리지
 ## 않는다 — 표현이 난수를 당겨 쓰면 그 순간 결정론이 깨진다.
@@ -26,8 +31,6 @@ const KINDS: Array = [
     ["flower_yellowA.glb", Palette.COVER_FLOWER_YELLOW, 6],
     ["flower_purpleA.glb", Palette.COVER_FLOWER_PURPLE, 5],
     ["flower_redA.glb", Palette.COVER_FLOWER_RED, 5],
-    ["rock_smallFlatA.glb", Palette.COVER_ROCK, 6],
-    ["rock_smallA.glb", Palette.COVER_ROCK, 4],
     ["mushroom_tan.glb", Palette.COVER_MUSHROOM, 2],
     ["mushroom_red.glb", Palette.COVER_FLOWER_RED, 2],
 ]

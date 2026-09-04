@@ -23,20 +23,25 @@ var driver: TickDriver
 
 var _world_view: WorldView
 var _ground_cover: GroundCover
+var _canopy_view: CanopyView
 var _character_view: CharacterView
 var _camera: IsometricCamera
 var _highlight: BlockHighlight
 var _bundle_marks: BundleMarks
 var _input: InputController
 var _wire_view: WireView
+var _part_marks: PartMarks
 var _sky_view: SkyView
 var _sea_view: SeaView
 var _threat_view: ThreatView
 var _vitals_bar: VitalsBar
+var _day_clock: DayClock
 var _part_hint: PartHint
 var _help_overlay: HelpOverlay
 var _hotbar: Hotbar
 var _notice: Notice
+var _first_steps: FirstSteps
+var _sound_board: SoundBoard
 var _last_usec: int = 0
 
 
@@ -105,6 +110,10 @@ func wire_view() -> WireView:
     return _wire_view
 
 
+func part_marks() -> PartMarks:
+    return _part_marks
+
+
 func sky_view() -> SkyView:
     return _sky_view
 
@@ -121,6 +130,10 @@ func vitals_bar() -> VitalsBar:
     return _vitals_bar
 
 
+func day_clock() -> DayClock:
+    return _day_clock
+
+
 func part_hint() -> PartHint:
     return _part_hint
 
@@ -133,15 +146,21 @@ func help_overlay() -> HelpOverlay:
 func sync_views() -> void:
     _world_view.sync()
     _ground_cover.sync()
+    _canopy_view.sync()
     _character_view.sync(CHARACTER_FOLLOW)
     _wire_view.sync()
+    _part_marks.sync()
     _bundle_marks.sync()
     _threat_view.sync()
     _sky_view.apply(simulation.current_tick())
+    _day_clock.apply(simulation.current_tick())
     _hotbar.sync()
     _part_hint.sync()
     _vitals_bar.sync()
     _camera.follow(_character_view.target_position(), CAMERA_FOLLOW)
+    _sound_board.forget()
+    _sound_board.sync()
+    _first_steps.check()
 
 
 func input_controller() -> InputController:
@@ -154,6 +173,10 @@ func world_view() -> WorldView:
 
 func ground_cover() -> GroundCover:
     return _ground_cover
+
+
+func canopy_view() -> CanopyView:
+    return _canopy_view
 
 
 func character_view() -> CharacterView:
@@ -187,6 +210,12 @@ func _build_views() -> void:
     _ground_cover.bind(simulation.state.grid)
     _ground_cover.rebuild()
 
+    _canopy_view = CanopyView.new()
+    _canopy_view.name = "CanopyView"
+    add_child(_canopy_view)
+    _canopy_view.bind(simulation.state.grid)
+    _canopy_view.rebuild()
+
     _character_view = CharacterView.new()
     _character_view.name = "CharacterView"
     add_child(_character_view)
@@ -198,6 +227,12 @@ func _build_views() -> void:
     add_child(_wire_view)
     _wire_view.bind(simulation.state.circuit)
     _wire_view.rebuild()
+
+    _part_marks = PartMarks.new()
+    _part_marks.name = "PartMarks"
+    add_child(_part_marks)
+    _part_marks.bind(simulation.state.circuit)
+    _part_marks.rebuild()
 
     _threat_view = ThreatView.new()
     _threat_view.name = "ThreatView"
@@ -220,6 +255,12 @@ func _build_views() -> void:
 
 
 func _build_input() -> void:
+    # 소리판을 먼저 세운다. 입력이 붙는 신호가 이것을 부른다.
+    _sound_board = SoundBoard.new()
+    _sound_board.name = "SoundBoard"
+    add_child(_sound_board)
+    _sound_board.bind(simulation)
+
     InputController.install_actions()
     _input = InputController.new()
     _input.name = "Input"
@@ -228,6 +269,7 @@ func _build_input() -> void:
     _input.bind_camera(_camera)
     _bundle_marks.bind(_input)
     _input.help_toggled.connect(_on_help_toggled)
+    _input.crafted.connect(_sound_board.note_crafted)
     _input.save_requested.connect(save_game)
     _input.load_requested.connect(load_game)
 
@@ -242,6 +284,11 @@ func _build_input() -> void:
     add_child(_vitals_bar)
     _vitals_bar.bind(simulation.state.vitals)
     _vitals_bar.sync()
+
+    _day_clock = DayClock.new()
+    _day_clock.name = "DayClock"
+    add_child(_day_clock)
+    _day_clock.apply(simulation.current_tick())
 
     _part_hint = PartHint.new()
     _part_hint.name = "PartHint"
@@ -261,9 +308,23 @@ func _build_hint() -> void:
     _notice.name = "Notice"
     add_child(_notice)
 
+    _first_steps = FirstSteps.new()
+    _first_steps.name = "FirstSteps"
+    add_child(_first_steps)
+    _first_steps.bind(simulation, _notice)
+    _sound_board.bind(simulation)
+
 
 func notice() -> Notice:
     return _notice
+
+
+func first_steps() -> FirstSteps:
+    return _first_steps
+
+
+func sound_board() -> SoundBoard:
+    return _sound_board
 
 
 ## 판을 적어 둔다. 명령을 만지는 일이 아니라 파일을 만지는 일이라 여기서 한다.
@@ -297,15 +358,21 @@ func adopt_simulation() -> void:
     _world_view.rebuild()
     _ground_cover.bind(state.grid)
     _ground_cover.rebuild()
+    _canopy_view.bind(state.grid)
+    _canopy_view.rebuild()
 
     _character_view.bind(state.character)
     _character_view.snap()
 
     _wire_view.bind(state.circuit)
     _wire_view.rebuild()
+    _part_marks.bind(state.circuit)
+    _part_marks.rebuild()
     _threat_view.bind(state.threats)
     _vitals_bar.bind(state.vitals)
 
+    _first_steps.bind(simulation, _notice)
+    _sound_board.bind(simulation)
     _input.bind(simulation)
     _input.clear_chosen()
     _input.clear_link_source()

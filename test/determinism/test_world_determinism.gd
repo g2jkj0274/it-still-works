@@ -35,10 +35,12 @@ const NORTH_EAST := Vector3i(1, -1, 0)
 ##   (끝 해시는 대각선 속도에 둔감하다. 걸음 도중을 재는 GOLDEN_MID_HASH 가 그것을 맡는다)
 ##   묶음 부품이 늘어 블록 종류가 하나 늘고, 묶음 설계도 목록이 상태에 추가됨
 ##   제작법이 생겨 시작 지급을 껐다. 빈손으로 시작하므로 인벤토리 초기값이 바뀜
+##   섬에 저절로 난 작물이 놓여 격자가 바뀜 (첫날 밤에 손으로 닿게 하려고)
+##   광석 자원지가 가운데 솟은 더미가 되어 격자가 바뀜 (멀리서 보이게)
 ##
 ## 이 값이 깨졌다면 시뮬레이션 동작이 바뀐 것이다. 값을 고쳐 통과시키지 말고
 ## 무엇이 바뀌었는지 먼저 밝힌다.
-const GOLDEN_HASH := "aabeb7e9ad738cb512c400c1cc9bcf5fa6feca9a985627c2517bb32f5abbf411"
+const GOLDEN_HASH := "5f9e986d58e44cb815636654f4f0a7e74ac3cf6be36131a5567e14f56ee3e5f6"
 
 ## 같은 실행이 끝났을 때 캐릭터가 서 있는 칸.
 ## 해시보다 읽기 쉬워서 이동 규칙이 어긋났을 때 원인을 빨리 좁혀준다.
@@ -86,7 +88,7 @@ func _scenario() -> Array:
 ## 어느 속도로도 제때 도착하기 때문이다. 걸음 도중을 함께 못박아야 타이밍이
 ## 지켜진다.
 const MID_TICK := 104 + 2
-const GOLDEN_MID_HASH := "3ccf27dcd0a5f759a8a4e46a41aef332bdaf21cf5399f6f2df9213659f064246"
+const GOLDEN_MID_HASH := "2dab594e46987b5670ba8a4c64634ec63d38967fdb211522249c59a8528431ee"
 
 
 func _run(seed_value: int = SEED, scenario: Array = []) -> Simulation:

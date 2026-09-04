@@ -27,6 +27,9 @@ var _phase := 0
 var _wait := 0
 var _with_subject: Image
 var _report: Array[String] = []
+
+## 08 단계가 실제로 놓은 작동기와 감지기의 자리. 다시 계산하지 않고 적어 둔다.
+var _door_parts: Array[Vector3i] = []
 var _failures := 0
 
 
@@ -82,6 +85,7 @@ func _build_steps() -> Array:
         ["12_parts", _line_up_the_parts],
         ["13_island", _pull_back_to_the_shore],
         ["14_craft", _make_something_by_hand],
+        ["15_store", _pose_for_the_store],
     ]
 
 
@@ -130,6 +134,11 @@ func _build_auto_door() -> void:
     var actuator := here + Vector3i(3, 0, 0)
     var detector := here + Vector3i(4, 0, 0)
 
+    # 무대를 비운다. 저절로 난 작물이 자리를 차지하고 있으면 놓이지 않는다.
+    for cell in [door, actuator, detector]:
+        state.grid.set_block(cell, BlockType.EMPTY)
+    _door_parts = [actuator, detector]
+
     var start := _main.simulation.current_tick()
     _main.simulation.submit_at(PlaceBlockCommand.create(door, BlockType.DOOR_CLOSED), start)
     _main.simulation.submit_at(PlacePartCommand.create(actuator, BlockType.ACTUATOR), start + 2)
@@ -171,10 +180,9 @@ func _bundle_the_auto_door() -> void:
     controller.submit_place()
 
 
-## 07 단계가 놓은 작동기와 감지기의 자리.
+## 08 단계가 놓은 작동기와 감지기의 자리.
 func _auto_door_parts() -> Array[Vector3i]:
-    var here: Vector3i = _main.simulation.state.character.cell()
-    return [here + Vector3i(3, 0, 0), here + Vector3i(4, 0, 0)]
+    return _door_parts
 
 
 func _target_at(cell: Vector3i) -> BlockTarget:
@@ -251,6 +259,102 @@ func _write_and_read_back() -> void:
         return
     if _main.simulation.state_hash() != saved:
         _fail("07_save", "불러온 판이 적어 둔 판과 다르다")
+
+
+## 스토어에 걸 그림 한 장.
+##
+## 이 게임이 팔릴 근거는 하나다 — **"내가 조립한 장치가 돌아가고, 그것을 한
+## 칸으로 압축해 다시 쓴다."** 그 근거가 한 그림에 다 들어가야 한다.
+##
+## 해 질 녘. 밭과 문이 있고, 감지기에서 갈림길·되풀이·상자를 지나 작동기까지
+## 배선이 훤히 보이며 신호가 흐른다. 그 옆에 같은 회로를 압축한 묶음 한 칸이
+## 나란히 놓여 "저게 저 한 칸이 됐다"가 그림만으로 읽힌다.
+##
+## 러너가 결정론적으로 같은 그림을 다시 뽑아 주므로, 아트가 바뀔 때마다
+## 이 장면도 함께 갱신된다. **검사 도구가 곧 마케팅 자산이다.**
+func _pose_for_the_store() -> void:
+    # **새 판에서 찍는다.** 앞 단계들이 파 놓은 구덩이와 세워 둔 탑과 밤에
+    # 나온 것들이 남아 있으면 그림이 어수선해진다.
+    _main.simulation = IslandBuilder.start(GameMain.SEED)
+    _main.adopt_simulation()
+    _main.first_steps().silence()
+    _main.notice().visible = false
+
+    var state: Object = _main.simulation.state
+    var controller := _main.input_controller()
+
+    # 해 질 녘으로 맞춘다. 낮도 밤도 아닌 참이 가장 보기 좋다.
+    state.tick = DayCycle.DAY_TICKS - 8 * Simulation.TICK_RATE
+
+    # 요 45도에서 화면 오른쪽은 격자 (1,-1), 화면 아래는 격자 (1,1) 이다.
+    # 카메라가 사람을 따라가므로 사람을 가운데 두고 그 둘레에 세운다.
+    var here: Vector3i = state.character.cell()
+    var right := Vector3i(1, -1, 0)
+    var down := Vector3i(1, 1, 0)
+
+    for dy in range(-6, 7):
+        for dx in range(-6, 7):
+            var floor_cell := here + Vector3i(dx, dy, -1)
+            state.grid.set_block(floor_cell, BlockType.GROUND)
+            state.grid.set_block(floor_cell + VoxelGrid.UP, BlockType.EMPTY)
+
+    # 회로 한 줄을 화면 가로로 눕힌다. 사람 한 칸 아래다.
+    #
+    # 감지기는 사람을 세 칸 안에서 본다. 신호가 실제로 흐르는 순간을 찍으려면
+    # 그 안에 들어와야 한다. 배선이 흐린 색이면 아무것도 증명하지 못한다.
+    var row := here + down
+    var eye := row + right * -1
+    var branch := row
+    var repeater := row + right
+    var box := row + right * 2
+    var hand := row + right * 3
+    var door := row + right * 4
+
+    state.grid.set_block(door, BlockType.DOOR_CLOSED)
+    for i in 3:
+        state.grid.set_block(here - down + right * i, BlockType.FIELD)
+
+    _put(eye, BlockType.DETECTOR, PackedInt32Array([DetectorPart.TARGET_PLAYER]))
+    _put(branch, BlockType.BRANCH, PackedInt32Array([BranchPart.MODE_TRUTH, 0]))
+    _put(repeater, BlockType.REPEATER,
+        PackedInt32Array([RepeaterPart.MODE_FOREVER, 0, 10]))
+    _put(box, BlockType.BOX, PackedInt32Array([BoxPart.SHAPE_ROUND]))
+    _put(hand, BlockType.ACTUATOR, PackedInt32Array())
+
+    for pair in [[eye, branch], [branch, repeater], [repeater, box], [box, hand]]:
+        state.circuit.link(pair[0], pair[1])
+
+    # 같은 회로를 압축한 묶음을 아래에 나란히 놓는다.
+    # "저 다섯이 이 한 칸이 됐다"가 그림만으로 읽혀야 한다.
+    var cells: Array[Vector3i] = [eye, branch, repeater, box, hand]
+    var blueprint := BundleBlueprint.capture(
+        state.circuit, cells, [] as Array[Vector3i], [] as Array[Vector3i])
+    var bundle_id: int = state.bundles.define(blueprint)
+    # 다섯을 삼킨 그 한 칸을 바로 옆에 둔다.
+    _put(row + right * -2, BlockType.BUNDLE, PackedInt32Array([bundle_id]))
+
+    controller.select_block(BlockType.BUNDLE)
+    state.inventory.add_bundle(bundle_id, 2)
+    controller.cycle_held_bundle()
+
+    # 신호가 흐르는 순간을 잡는다.
+    for i in 6:
+        _main.simulation.step()
+
+    _main.camera().zoom_by(-8)
+    _main.world_view().rebuild()
+    _main.canopy_view().rebuild()
+    _main.ground_cover().rebuild()
+
+
+## 무대에 부품 하나를 세운다. 재료를 세지 않는다. 그림을 위한 자리다.
+func _put(cell: Vector3i, part_type: int, settings: PackedInt32Array) -> void:
+    var state: Object = _main.simulation.state
+    var part := CircuitPartFactory.create(part_type, cell, settings, state.bundles)
+    if part == null:
+        return
+    state.grid.set_block(cell, part_type)
+    state.circuit.add_part(part)
 
 
 func _begin_step() -> void:

@@ -21,8 +21,18 @@ const VARIATION := 0.045
 
 ## 파스텔은 쓸 수 있는 폭이 좁다. 색상환에 고르게 펴야 서로 구별된다.
 const GROUND := Color(0.64, 0.84, 0.58)
+
+## 흙의 옆면. 윗면은 풀, 옆면은 흙이다.
+##
+## 한 색으로 여섯 면을 다 칠하면 놓은 블록이 땅에 묻힌다. 세 칸짜리 탑을
+## 세워도 "벽을 세웠다"가 아니라 "그림자가 생겼다"로 보였다. 옆면이 드러나야
+## 블록이 땅에서 솟아오르고, 파 놓은 구덩이에 깊이가 생긴다.
+const GROUND_SIDE := Color(0.66, 0.60, 0.46)
 const STONE := Color(0.68, 0.74, 0.84)
 const WOOD := Color(0.80, 0.63, 0.48)
+
+## 나뭇잎. 블록이 아니라 줄기 위에 덧그리는 것이라 블록 색 목록에는 없다.
+const LEAF := Color(0.56, 0.80, 0.50)
 const DOOR := Color(0.95, 0.84, 0.58)
 const DETECTOR := Color(0.60, 0.82, 0.94)
 const ACTUATOR := Color(0.96, 0.70, 0.76)
@@ -37,6 +47,9 @@ const CHARACTER_SKIN := Color(0.98, 0.86, 0.74)
 const CHARACTER_BODY := Color(0.72, 0.86, 0.94)
 const CHARACTER_LEGS := Color(0.62, 0.68, 0.82)
 const THREAT := Color(0.82, 0.68, 0.86)
+
+## 부품 위에 얹는 설정 표시. 어느 부품 색 위에 얹혀도 읽히도록 톤을 낮춰 잡는다.
+const PART_MARK := Color(0.34, 0.36, 0.44)
 
 const HIGHLIGHT := Color(1.0, 1.0, 1.0, 0.32)
 
@@ -63,7 +76,10 @@ const WIRE_FALSE_IDLE := Color(0.58, 0.66, 0.74)
 ## 섬을 둘러싼 물. 하늘보다 조금 짙어 물가가 눈에 보인다.
 const SEA := Color(0.56, 0.78, 0.90)
 
-## 땅에 깔린 풀·꽃·잔돌의 빛깔.
+## 땅에 깔린 풀과 꽃의 빛깔.
+##
+## 잔돌은 뺐다. 캘 수 있는 광석(STONE)과 색이 붙어 있어서, 부술 수 없는
+## 조약돌을 캐려다 "부수기가 고장났다"고 결론짓는 사람이 나온다.
 ##
 ## 바깥에서 가져온 모델은 제 색을 달고 온다. 그대로 두면 톤이 흩어지므로
 ## **모양만 받고 색은 여기서 준다.** 색을 한 곳에 모아 둔다는 규칙은
@@ -73,19 +89,25 @@ const COVER_LEAF := Color(0.62, 0.84, 0.66)
 const COVER_FLOWER_YELLOW := Color(0.99, 0.92, 0.62)
 const COVER_FLOWER_PURPLE := Color(0.84, 0.74, 0.96)
 const COVER_FLOWER_RED := Color(0.98, 0.74, 0.74)
-const COVER_ROCK := Color(0.76, 0.78, 0.82)
 const COVER_MUSHROOM := Color(0.96, 0.78, 0.72)
 
 ## 땅에 깔리는 것들의 빛깔 전부. 톤 검사가 훑는다.
 const COVER_COLOURS: Array[Color] = [
     COVER_GRASS, COVER_LEAF, COVER_FLOWER_YELLOW, COVER_FLOWER_PURPLE,
-    COVER_FLOWER_RED, COVER_ROCK, COVER_MUSHROOM,
+    COVER_FLOWER_RED, COVER_MUSHROOM,
 ]
 
 const SKY_DAY := Color(0.66, 0.82, 0.92)
-const SKY_NIGHT := Color(0.17, 0.20, 0.32)
+const SKY_NIGHT := Color(0.14, 0.17, 0.34)
 const AMBIENT_DAY := Color(0.43, 0.46, 0.52)
-const AMBIENT_NIGHT := Color(0.16, 0.18, 0.27)
+const AMBIENT_NIGHT := Color(0.12, 0.16, 0.32)
+
+## 해와 달의 빛깔. 세기는 [SkyView] 가 정하고 여기서는 빛깔만 정한다.
+##
+## 밤에 밝기만 낮추면 초록이 그대로 초록이라 흐린 낮이 된다. 달빛을 파랗게
+## 돌리면 명도를 크게 낮추지 않고도 밤이 된다.
+const SUNLIGHT := Color(1.0, 0.97, 0.90)
+const MOONLIGHT := Color(0.58, 0.70, 1.0)
 
 const _BLOCKS: Dictionary[int, Color] = {
     BlockType.GROUND: GROUND,
@@ -104,8 +126,27 @@ const _BLOCKS: Dictionary[int, Color] = {
 }
 
 
+## 그 블록의 옆면 색. 따로 정하지 않았으면 윗면과 같다.
+const _SIDES: Dictionary[int, Color] = {
+    BlockType.GROUND: GROUND_SIDE,
+}
+
+
 static func of_block(block_type: int) -> Color:
     return _BLOCKS.get(block_type, MISSING)
+
+
+## 옆면 색. 윗면과 다른 것은 흙뿐이다.
+static func side_of(block_type: int) -> Color:
+    return _SIDES.get(block_type, of_block(block_type))
+
+
+## 칸마다 주는 명암의 배수. 1 을 기준으로 아주 조금 위아래로 흔든다.
+##
+## 색 자체가 아니라 배수를 돌려주는 이유는, 면마다 색이 다른 블록이 생겼기
+## 때문이다. 색은 면이 정하고 이 값은 칸이 정한다.
+static func variation_of(cell: Vector3i) -> float:
+    return 1.0 + (_cell_noise(cell) * 2.0 - 1.0) * VARIATION
 
 
 ## 칸마다 아주 조금 다른 명암을 준다.

@@ -114,6 +114,15 @@ func test_the_ground_is_not_buried_under_it() -> void:
     assert_int(GroundCover.DENSITY_PERCENT).is_less_equal(25)
 
 
+func test_nothing_that_looks_minable_is_scattered_about() -> void:
+    # 캘 수 있는 광석과 헷갈리는 것을 깔면, 눈앞의 조약돌에 Q 를 눌렀다가
+    # 아무 일도 없을 때 사람은 "부수기가 고장났다"고 결론짓는다.
+    for entry: Array in GroundCover.KINDS:
+        var file_name: String = entry[0]
+        assert_str(file_name).not_contains("rock")
+        assert_str(file_name).not_contains("stone")
+
+
 func test_every_kind_takes_its_colour_from_the_palette() -> void:
     for entry: Array in GroundCover.KINDS:
         assert_bool(Palette.COVER_COLOURS.has(entry[1])).is_true()
