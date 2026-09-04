@@ -28,13 +28,14 @@ const IDLE_TINT := Color(1.0, 1.0, 1.0, 0.55)
 
 const TEXT_COLOUR := Color(0.12, 0.14, 0.18)
 const EMPTY_TEXT_COLOUR := Color(0.42, 0.44, 0.48)
+
+## 빈 칸의 바탕. 무엇이 비어 있는지 보여야 한다.
+const EMPTY_SLOT_COLOUR := Color(0.86, 0.86, 0.84, 0.55)
 const CHOSEN_BORDER := Color(0.15, 0.17, 0.22)
 
 ## 누를 키 표시. 열째 칸은 0 이고, 숫자 너머의 것은 제 키로 고른다.
 ## 등은 L, 묶음은 N 이다.
-const _KEY_LABELS: PackedStringArray = [
-    "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "L", "N",
-]
+const _KEY_LABELS: PackedStringArray = ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
 var _inventory: Inventory
 var _controller: InputController
@@ -57,8 +58,8 @@ func _ready() -> void:
     _anchor.mouse_filter = Control.MOUSE_FILTER_IGNORE
     add_child(_anchor)
 
-    for slot in InputController.PLACEABLE.size():
-        _add_slot(slot, InputController.PLACEABLE[slot])
+    for slot in Inventory.HOTBAR_SLOTS:
+        _add_slot(slot)
 
     _lay_out()
 
@@ -74,19 +75,20 @@ func sync() -> void:
     if _inventory == null:
         return
 
-    _selected_slot = 0
-    if _controller != null:
-        var chosen := InputController.PLACEABLE.find(_controller.selected_block())
-        if chosen >= 0:
-            _selected_slot = chosen
+    _selected_slot = _controller.selected_slot() if _controller != null else 0
 
-    for slot in InputController.PLACEABLE.size():
-        var block_type: int = InputController.PLACEABLE[slot]
-        var held := _count_of(block_type)
+    for slot in Inventory.HOTBAR_SLOTS:
+        var kind := _inventory.kind_at(slot)
+        var held := _inventory.amount_at(slot)
 
-        _labels[slot].text = "%s  %s\n%d" % [_KEY_LABELS[slot], _label_of(block_type), held]
+        _labels[slot].text = "%s  %s
+%s" % [
+            _KEY_LABELS[slot], _label_of(kind, _inventory.variant_at(slot)),
+            str(held) if held > 0 else ""]
         _labels[slot].add_theme_color_override(
             "font_color", TEXT_COLOUR if held > 0 else EMPTY_TEXT_COLOUR)
+        _style_of(slot).bg_color = (
+            Palette.of_block(kind) if held > 0 else EMPTY_SLOT_COLOUR)
 
         var is_chosen := slot == _selected_slot
         _panels[slot].modulate = CHOSEN_TINT if is_chosen else IDLE_TINT
@@ -95,22 +97,13 @@ func sync() -> void:
         _panels[slot].position.y = _row_top() - (CHOSEN_LIFT if is_chosen else 0.0)
 
 
-## 그 칸에 적을 이름. 묶음은 어느 것을 쥐고 있는지까지 적는다.
-func _label_of(block_type: int) -> String:
-    if block_type != BlockType.BUNDLE:
-        return name_of(block_type)
-    var held := _controller.held_bundle() if _controller != null else -1
-    if held < 0:
-        return name_of(block_type)
-    return "%s %s" % [name_of(block_type), PartWords.bundle_name(held)]
-
-
-## 그 칸에 적을 개수. 묶음은 번호마다 따로 센다.
-func _count_of(block_type: int) -> int:
-    if block_type != BlockType.BUNDLE:
-        return _inventory.count_of(block_type)
-    var held := _controller.held_bundle() if _controller != null else -1
-    return _inventory.count_of_bundle(held)
+## 그 칸에 적을 이름. 묶음은 어느 것인지까지 적는다.
+func _label_of(kind: int, variant: int) -> String:
+    if kind == BlockType.EMPTY:
+        return ""
+    if kind != BlockType.BUNDLE:
+        return name_of(kind)
+    return "%s %s" % [name_of(kind), PartWords.bundle_name(variant)]
 
 
 func slot_count() -> int:
@@ -141,7 +134,7 @@ func slot_rect(slot: int) -> Rect2:
     return Rect2(_panels[slot].position, Vector2(_slot_width, SLOT_HEIGHT))
 
 
-## 열 칸이 모두 화면 안에 들어와 있는가.
+## 모든 칸이 화면 안에 들어와 있는가.
 func all_slots_visible() -> bool:
     var screen := Rect2(Vector2.ZERO, _screen_size())
     for slot in _panels.size():
@@ -192,15 +185,15 @@ func _style_of(slot: int) -> StyleBoxFlat:
     return _panels[slot].get_theme_stylebox("panel") as StyleBoxFlat
 
 
-func _add_slot(slot: int, block_type: int) -> void:
+func _add_slot(slot: int) -> void:
     var style := StyleBoxFlat.new()
-    style.bg_color = Palette.of_block(block_type)
+    style.bg_color = EMPTY_SLOT_COLOUR
     style.set_corner_radius_all(6)
     style.set_content_margin_all(6)
     style.border_color = CHOSEN_BORDER
 
     var panel := PanelContainer.new()
-    panel.name = "Slot_" + BlockType.name_of(block_type)
+    panel.name = "Slot_%d" % slot
     panel.custom_minimum_size = Vector2(SLOT_WIDTH, SLOT_HEIGHT)
     panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
     panel.add_theme_stylebox_override("panel", style)

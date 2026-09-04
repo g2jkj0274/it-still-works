@@ -40,6 +40,10 @@ func apply(state: WorldState) -> void:
     if blueprint == null:
         return
 
+    # 받을 자리가 없으면 묶지 않는다. 묶고 나서 버리면 회로가 통째로 사라진다.
+    if not state.inventory.has_room_for(BlockType.BUNDLE, state.bundles.count()):
+        return
+
     var bundle_id := state.bundles.define(blueprint)
     if bundle_id < 0:
         return

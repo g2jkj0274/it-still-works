@@ -55,7 +55,7 @@ const ACTION_TERMINAL := &"cycle_terminal"
 const ACTION_BUNDLE := &"make_bundle"
 const ACTION_HOLD_BUNDLE := &"hold_bundle"
 const ACTION_CRAFT := &"craft"
-const ACTION_LAMP := &"hold_lamp"
+const ACTION_RECIPE := &"cycle_recipe"
 const ACTION_SAVE := &"save_game"
 const ACTION_LOAD := &"load_game"
 
@@ -88,7 +88,7 @@ const PARTS_WITH_SETTINGS: Array[int] = [
 
 const SELECT_ACTIONS: Array = [
     &"select_1", &"select_2", &"select_3", &"select_4", &"select_5",
-    &"select_6", &"select_7", &"select_8", &"select_9", &"select_0",
+    &"select_6", &"select_7", &"select_8", &"select_9",
 ]
 
 ## 키를 누르고 있을 때 한 걸음마다 두는 간격(틱).
@@ -126,7 +126,8 @@ signal crafted
 
 var _simulation: Simulation
 var _camera: Camera3D
-var _selected: int = BlockType.WOOD
+var _selected_slot: int = 0
+var _recipe: int = 0
 var _next_move_tick: int = 0
 var _target: BlockTarget = null
 var _detector_target: int = DetectorPart.TARGET_PLAYER
@@ -145,7 +146,6 @@ var _chosen: Array[Vector3i] = []
 var _roles: PackedInt32Array = PackedInt32Array()
 
 ## 지금 손에 쥔 묶음 번호. 아무것도 안 쥐었으면 -1.
-var _held_bundle: int = -1
 
 
 func bind(simulation: Simulation) -> void:
@@ -174,13 +174,35 @@ func grid_for_screen(screen: Vector2i) -> Vector3i:
 
 
 func selected_block() -> int:
-    return _selected
+    if _simulation == null:
+        return BlockType.EMPTY
+    return _simulation.state.inventory.kind_at(_selected_slot)
+
+
+func selected_variant() -> int:
+    if _simulation == null:
+        return 0
+    return _simulation.state.inventory.variant_at(_selected_slot)
+
+
+func selected_slot() -> int:
+    return _selected_slot
+
+
+func select_slot(slot: int) -> void:
+    if slot < 0 or slot >= Inventory.HOTBAR_SLOTS:
+        return
+    _selected_slot = slot
 
 
 func select_block(block_type: int) -> void:
-    if not PLACEABLE.has(block_type):
+    if _simulation == null:
         return
-    _selected = block_type
+    var inventory := _simulation.state.inventory
+    for slot in Inventory.HOTBAR_SLOTS:
+        if inventory.kind_at(slot) == block_type:
+            _selected_slot = slot
+            return
 
 
 ## 감지기가 무엇을 볼지. 놓기 전에 고른다.
@@ -238,16 +260,14 @@ func cycle_part_setting() -> void:
     if wiring_from_branch():
         cycle_link_port()
         return
-    if _selected == BlockType.BUNDLE:
-        cycle_held_bundle()
-        return
-    if _selected == BlockType.REPEATER:
+    var chosen := selected_block()
+    if chosen == BlockType.REPEATER:
         _repeater_preset = (_repeater_preset + 1) % REPEATER_PRESETS.size()
         return
-    if _selected == BlockType.BOX:
+    if chosen == BlockType.BOX:
         _box_shape = (_box_shape + 1) % BoxPart.SHAPE_COUNT
         return
-    if _selected == BlockType.BRANCH:
+    if chosen == BlockType.BRANCH:
         _branch_preset = (_branch_preset + 1) % BRANCH_PRESETS.size()
         return
     _detector_target = (_detector_target + 1) % DetectorPart.TARGET_COUNT
@@ -255,12 +275,12 @@ func cycle_part_setting() -> void:
 
 ## 지금 고른 것에 설정이 있는가. 화면에 무엇을 보일지 정할 때 쓴다.
 func has_part_setting() -> bool:
-    return PARTS_WITH_SETTINGS.has(_selected)
+    return PARTS_WITH_SETTINGS.has(selected_block())
 
 
 ## 지금 고른 설정을 화면에 보일 말로.
 func part_setting_name() -> String:
-    match _selected:
+    match selected_block():
         BlockType.DETECTOR:
             return PartWords.target_name(_detector_target)
         BlockType.REPEATER:
@@ -270,25 +290,26 @@ func part_setting_name() -> String:
         BlockType.BRANCH:
             return PartWords.branch_setting_name(_branch_preset)
         BlockType.BUNDLE:
-            return PartWords.bundle_name(_held_bundle)
+            return PartWords.bundle_name(selected_variant())
         _:
             return ""
 
 
 ## 지금 고른 것을 놓을 때 함께 넘길 설정값.
 func part_settings() -> PackedInt32Array:
-    if _selected == BlockType.DETECTOR:
+    var chosen := selected_block()
+    if chosen == BlockType.DETECTOR:
         return PackedInt32Array([_detector_target])
-    if _selected == BlockType.REPEATER:
+    if chosen == BlockType.REPEATER:
         var repeater: Array = REPEATER_PRESETS[_repeater_preset]
         return PackedInt32Array([repeater[0], repeater[1], repeater[2]])
-    if _selected == BlockType.BOX:
+    if chosen == BlockType.BOX:
         return PackedInt32Array([_box_shape])
-    if _selected == BlockType.BRANCH:
+    if chosen == BlockType.BRANCH:
         var branch: Array = BRANCH_PRESETS[_branch_preset]
         return PackedInt32Array([branch[0], branch[1]])
-    if _selected == BlockType.BUNDLE:
-        return PackedInt32Array([_held_bundle])
+    if chosen == BlockType.BUNDLE:
+        return PackedInt32Array([selected_variant()])
     return PackedInt32Array()
 
 
@@ -354,12 +375,13 @@ func submit_place() -> void:
         return
 
     var cell := place_cell()
-    if _selected == BlockType.BUNDLE and _held_bundle < 0:
+    var chosen := selected_block()
+    if chosen == BlockType.EMPTY:
         return
-    if BlockType.is_part(_selected):
-        _simulation.submit(PlacePartCommand.create(cell, _selected, part_settings()))
+    if BlockType.is_part(chosen):
+        _simulation.submit(PlacePartCommand.create(cell, chosen, part_settings()))
         return
-    _simulation.submit(PlaceBlockCommand.create(cell, _selected))
+    _simulation.submit(PlaceBlockCommand.create(cell, chosen))
 
 
 func submit_break() -> void:
@@ -368,21 +390,30 @@ func submit_break() -> void:
     _simulation.submit(BreakBlockCommand.create(break_cell()))
 
 
-## 지금 고른 것을 만든다. 재료가 모자라면 아무 일도 일어나지 않는다.
+## 지금 만들려는 것.
+##
+## 핫바가 칸이 되면서 "고른 것을 만든다"가 성립하지 않는다 — 빈 칸을 잡고
+## 있을 수도 있기 때문이다. 만들 것은 따로 고른다.
+func recipe_output() -> int:
+    return RecipeBook.output_of(_recipe)
+
+
+func recipe_index() -> int:
+    return _recipe
+
+
+func cycle_recipe() -> void:
+    _recipe = (_recipe + 1) % RecipeBook.count()
+
+
+## 만든다. 재료가 모자라면 아무 일도 일어나지 않는다.
 func submit_craft() -> void:
-    if _simulation == null or not RecipeBook.can_be_made(_selected):
+    if _simulation == null:
         return
-    # 재료가 없으면 만들어지지 않는다. 그때는 소리도 나지 않아야 한다.
-    if not RecipeBook.has_materials(
-        _simulation.state.inventory, RecipeBook.index_for(_selected)):
+    if not RecipeBook.has_materials(_simulation.state.inventory, _recipe):
         return
-    _simulation.submit(CraftCommand.create(_selected))
+    _simulation.submit(CraftCommand.create(recipe_output()))
     crafted.emit()
-
-
-## 지금 고른 것을 만들 수 있는가. 화면에 무엇을 보일지 정할 때 쓴다.
-func selected_can_be_made() -> bool:
-    return RecipeBook.can_be_made(_selected)
 
 
 ## 작물을 먹는다. 배가 찬다.
@@ -480,50 +511,40 @@ func submit_bundle() -> void:
     clear_chosen()
 
 
-## 지금 손에 쥔 묶음 번호. 아무것도 안 쥐었으면 -1.
 func held_bundle() -> int:
-    return _held_bundle
+    if selected_block() != BlockType.BUNDLE:
+        return -1
+    return selected_variant()
 
 
-## 손에 든 묶음들의 번호. 늘 오름차순이다.
 func owned_bundles() -> PackedInt32Array:
     var owned := PackedInt32Array()
     if _simulation == null:
         return owned
     var inventory := _simulation.state.inventory
-    for id in inventory.bundle_slots():
-        if inventory.count_of_bundle(id) > 0:
+    for slot in inventory.slot_count():
+        if inventory.kind_at(slot) != BlockType.BUNDLE:
+            continue
+        var id := inventory.variant_at(slot)
+        if not owned.has(id):
             owned.append(id)
+    owned.sort()
     return owned
 
 
-## 묶음을 손에 쥔다. 이미 쥐고 있으면 다음 묶음으로 넘어간다.
 func cycle_held_bundle() -> void:
-    var owned := owned_bundles()
-    if owned.is_empty():
-        _held_bundle = -1
-        _selected = BlockType.BUNDLE
+    if _simulation == null:
         return
-
-    if _selected != BlockType.BUNDLE:
-        _selected = BlockType.BUNDLE
-        if owned.has(_held_bundle):
+    var inventory := _simulation.state.inventory
+    for i in Inventory.HOTBAR_SLOTS:
+        var slot := (_selected_slot + 1 + i) % Inventory.HOTBAR_SLOTS
+        if inventory.kind_at(slot) == BlockType.BUNDLE:
+            _selected_slot = slot
             return
-        _held_bundle = owned[0]
-        return
-
-    var at := owned.find(_held_bundle)
-    _held_bundle = owned[(at + 1) % owned.size()]
 
 
-## 쥐고 있던 묶음이 사라졌으면 손을 비우거나 남은 것으로 옮긴다.
-##
-## 묶는 것은 명령이라 한 틱 뒤에야 손에 들어온다. 그때 저절로 쥐게 하려는 것이다.
 func refresh_held_bundle() -> void:
-    var owned := owned_bundles()
-    if owned.has(_held_bundle):
-        return
-    _held_bundle = owned[0] if not owned.is_empty() else -1
+    pass
 
 
 func _cells_with_role(role: int) -> Array[Vector3i]:
@@ -538,7 +559,6 @@ func _cells_with_role(role: int) -> Array[Vector3i]:
 func poll(current_tick: int) -> void:
     if _simulation == null:
         return
-    refresh_held_bundle()
     _poll_selection()
     _poll_movement(current_tick)
     _poll_actions()
@@ -565,11 +585,11 @@ static func install_actions() -> void:
     _install(ACTION_BUNDLE, [KEY_G])
     _install(ACTION_HOLD_BUNDLE, [KEY_N])
     _install(ACTION_CRAFT, [KEY_C])
-    _install(ACTION_LAMP, [KEY_L])
+    _install(ACTION_RECIPE, [KEY_X])
     _install(ACTION_SAVE, [KEY_F5])
     _install(ACTION_LOAD, [KEY_F9])
 
-    var keys: Array = [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_0]
+    var keys: Array = [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9]
     for i in SELECT_ACTIONS.size():
         _install(SELECT_ACTIONS[i], [keys[i]])
 
@@ -650,8 +670,8 @@ func _poll_actions() -> void:
         cycle_held_bundle()
     if Input.is_action_just_pressed(ACTION_CRAFT):
         submit_craft()
-    if Input.is_action_just_pressed(ACTION_LAMP):
-        select_block(BlockType.LAMP_DARK)
+    if Input.is_action_just_pressed(ACTION_RECIPE):
+        cycle_recipe()
     if Input.is_action_just_pressed(ACTION_SAVE):
         save_requested.emit()
     if Input.is_action_just_pressed(ACTION_LOAD):
@@ -673,6 +693,6 @@ func _poll_camera() -> void:
 
 ## 숫자 키는 열 개뿐이다. 그 너머의 것은 제 키로 고른다. 묶음은 N 이다.
 func _poll_selection() -> void:
-    for i in mini(PLACEABLE.size(), SELECT_ACTIONS.size()):
+    for i in SELECT_ACTIONS.size():
         if Input.is_action_just_pressed(SELECT_ACTIONS[i]):
-            select_block(PLACEABLE[i])
+            select_slot(i)

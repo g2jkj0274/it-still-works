@@ -38,6 +38,12 @@ var _drawn: Dictionary[int, Array] = {}
 ## 칸이 어느 층 몇 번째에 들어 있는가. [층 종류, 번호] 이고, 없으면 없다.
 var _slot_of: Dictionary[Vector3i, Array] = {}
 
+## 칸 수가 늘 때 한 번에 잡아 두는 여유분.
+##
+## MultiMesh 의 instance_count 를 한 칸씩 늘리면 그때마다 버퍼를 다시 잡고
+## **앞서 넣어 둔 것이 지워진다.** 넉넉히 잡아 두고 보이는 수만 조절한다.
+const GROWTH := 512
+
 ## 지표에서 이만큼 아래면 가장 어둡다.
 const DARK_DEPTH := 5
 
@@ -177,7 +183,7 @@ func patch(changed: Array[Vector3i]) -> void:
 func instance_count(block_type: int) -> int:
     if not _layers.has(block_type):
         return 0
-    return _layers[block_type].multimesh.instance_count
+    return _drawn[block_type].size()
 
 
 func total_instance_count() -> int:
@@ -209,7 +215,7 @@ func _forget(pos: Vector3i, block_type: int, at: int) -> void:
 
     cells.resize(last)
     _slot_of.erase(pos)
-    _layers[block_type].multimesh.instance_count = last
+    _layers[block_type].multimesh.visible_instance_count = last
 
 
 func _remember(pos: Vector3i, block_type: int) -> void:
@@ -217,7 +223,8 @@ func _remember(pos: Vector3i, block_type: int) -> void:
     cells.append(pos)
     var at := cells.size() - 1
     _slot_of[pos] = [block_type, at]
-    _layers[block_type].multimesh.instance_count = cells.size()
+    _reserve(block_type, cells.size())
+    _layers[block_type].multimesh.visible_instance_count = cells.size()
     _write_instance(block_type, at, pos)
 
 
@@ -279,6 +286,22 @@ func _make_layer(block_type: int) -> MultiMeshInstance3D:
 
 func _fill_layer(block_type: int) -> void:
     var cells: Array = _drawn[block_type]
-    _layers[block_type].multimesh.instance_count = cells.size()
+    _reserve(block_type, cells.size())
+    _layers[block_type].multimesh.visible_instance_count = cells.size()
     for i in cells.size():
+        _write_instance(block_type, i, cells[i])
+
+
+## 그만큼 담을 자리를 잡아 둔다.
+##
+## 자리를 다시 잡으면 넣어 둔 것이 지워지므로, 넉넉히 잡고 그 안에서만 논다.
+## 다시 잡아야 할 때는 이미 그리던 것을 도로 채워 넣는다.
+func _reserve(block_type: int, needed: int) -> void:
+    var multimesh := _layers[block_type].multimesh
+    if multimesh.instance_count >= needed:
+        return
+
+    multimesh.instance_count = needed + GROWTH
+    var cells: Array = _drawn[block_type]
+    for i in mini(cells.size(), needed):
         _write_instance(block_type, i, cells[i])

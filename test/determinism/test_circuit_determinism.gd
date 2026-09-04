@@ -29,7 +29,8 @@ const BRANCH := Vector3i(33, 31, FLOOR_Z + 1)
 ##   광석 자원지가 가운데 솟은 더미가 되어 격자가 바뀜 (멀리서 보이게)
 ##   세계의 세로가 16 → 24 로 늘고, 지표가 기복을 타며 그 아래가 돌·광맥·동굴이 됨
 ##   등 블록이 늘어 블록 종류가 둘 늘어남 (스펙 §5 의 자동 조명)
-const GOLDEN_HASH := "14d6fdc283ce91dbee7ed01e4942971e59a3983867ae0a4f0100ebcb76839699"
+##   인벤토리가 칸으로 나뉘고 칸마다 쌓이는 한계가 생겨 상태의 짜임이 바뀜
+const GOLDEN_HASH := "b7f4fb3253259445685870fe0c04231a3e6c054257a4ecd2f68f3c71ebe895fb"
 
 ## 같은 실행이 끝났을 때 문이 어떤 상태인지. 해시보다 읽기 쉽다.
 const GOLDEN_DOOR := BlockType.DOOR_CLOSED

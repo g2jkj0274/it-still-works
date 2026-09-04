@@ -88,6 +88,9 @@ static func has_materials(inventory: Inventory, index: int) -> bool:
 static func make(inventory: Inventory, index: int) -> bool:
     if not has_materials(inventory, index):
         return false
+    # 만든 것을 받을 자리도 있어야 한다. 재료만 쓰고 결과가 사라지면 안 된다.
+    if not inventory.has_room_for(output_of(index)):
+        return false
 
     for entry: Array in RECIPES[index][2] as Array:
         inventory.take(int(entry[0]), int(entry[1]))

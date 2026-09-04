@@ -16,6 +16,8 @@ func _sim() -> Simulation:
     var sim := Simulation.new(1)
     IslandBuilder.populate(sim.state)
     for type in InputController.PLACEABLE:
+        if BlockType.is_uniquely_made(type):
+            continue
         sim.state.inventory.add(type, 4)
     return sim
 
@@ -120,16 +122,28 @@ func test_break_targets_the_cell_in_front() -> void:
     assert_bool(sim.state.grid.is_solid(target)).is_false()
 
 
-func test_selection_is_limited_to_placeable_blocks() -> void:
-    var controller := _controller(_sim())
-    for type in InputController.PLACEABLE:
-        controller.select_block(type)
-        assert_int(controller.selected_block()).is_equal(type)
+func test_the_hand_holds_whatever_is_in_the_chosen_slot() -> void:
+    # 고르는 것은 종류가 아니라 칸이다. 빈 칸을 잡을 수도 있다.
+    # 손이 빈 판에서 본다. 무엇이 어느 칸에 있는지가 이 테스트의 전부다.
+    var sim := Simulation.new(1)
+    var controller := _controller(sim)
+    sim.state.inventory.put_slot(0, BlockType.WOOD, 4)
+    sim.state.inventory.put_slot(3, BlockType.ORE, 2)
 
-    var last := controller.selected_block()
-    for bad in [BlockType.EMPTY, BlockType.COUNT, -1]:
-        controller.select_block(bad)
-        assert_int(controller.selected_block()).is_equal(last)
+    controller.select_slot(0)
+    assert_int(controller.selected_block()).is_equal(BlockType.WOOD)
+    controller.select_slot(3)
+    assert_int(controller.selected_block()).is_equal(BlockType.ORE)
+    controller.select_slot(5)
+    assert_int(controller.selected_block()).is_equal(BlockType.EMPTY)
+
+
+func test_only_the_front_row_can_be_held() -> void:
+    var controller := _controller(_sim())
+    controller.select_slot(2)
+    for bad in [-1, Inventory.HOTBAR_SLOTS, Inventory.SLOT_COUNT]:
+        controller.select_slot(bad)
+        assert_int(controller.selected_slot()).is_equal(2)
 
 
 func test_actions_are_installed_into_the_input_map() -> void:

@@ -16,6 +16,8 @@ func _main() -> GameMain:
     main.set_physics_process(false)
     # 테스트가 쓰려고 쥐여 준다. 시작 지급이 아니다.
     for type in InputController.PLACEABLE:
+        if BlockType.is_uniquely_made(type):
+            continue
         main.simulation.state.inventory.add(type, 8)
     return main
 
@@ -179,20 +181,23 @@ func test_the_player_starts_with_no_bundle() -> void:
     # 묶음은 지급하지 못한다. 안에 무엇이 들었는지를 사람이 정하는 것이 묶음이다.
     # 쥐여 주려면 회로를 대신 지어 주는 셈이 된다.
     var main := _main()
-    assert_int(main.simulation.state.inventory.bundle_slots()).is_equal(0)
+    assert_int(main.simulation.state.inventory.count_of(BlockType.BUNDLE)).is_equal(0)
     assert_int(main.simulation.state.bundles.count()).is_equal(0)
 
 
-func test_the_hotbar_shows_a_name_and_a_count_for_every_slot() -> void:
+func test_the_hotbar_shows_the_front_of_the_inventory() -> void:
     var main := _main()
     main.hotbar().sync()
-    assert_int(main.hotbar().slot_count()).is_equal(InputController.PLACEABLE.size())
+    assert_int(main.hotbar().slot_count()).is_equal(Inventory.HOTBAR_SLOTS)
 
+    var inventory := main.simulation.state.inventory
     for slot in main.hotbar().slot_count():
-        var block_type: int = InputController.PLACEABLE[slot]
+        var kind := inventory.kind_at(slot)
+        if kind == BlockType.EMPTY:
+            continue
         var line := main.hotbar().slot_text(slot)
-        assert_str(line).contains(PartWords.name_of(block_type))
-        assert_str(line).contains(str(main.simulation.state.inventory.count_of(block_type)))
+        assert_str(line).contains(PartWords.name_of(kind))
+        assert_str(line).contains(str(inventory.amount_at(slot)))
 
 
 func test_only_the_chosen_slot_is_marked() -> void:
@@ -419,7 +424,13 @@ func test_the_views_follow_the_game_that_was_loaded() -> void:
     # 인벤토리를 바꿔 핫바가 새 판을 읽고 있는지 본다.
     state.inventory.add(BlockType.WOOD, 5)
     main.hotbar().sync()
-    var slot := InputController.PLACEABLE.find(BlockType.WOOD)
+
+    var slot := -1
+    for i in Inventory.HOTBAR_SLOTS:
+        if state.inventory.kind_at(i) == BlockType.WOOD:
+            slot = i
+            break
+    assert_int(slot).is_greater_equal(0)
     assert_str(main.hotbar().slot_text(slot)).contains("5")
     SaveSlot.clear()
 

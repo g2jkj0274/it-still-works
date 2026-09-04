@@ -51,7 +51,7 @@ static func line_at(index: int) -> String:
         0:
             return "부수기 Q · 놓기 E · 조작 안내 H"
         1:
-            return "만들 수 있는 것은 아래 한 줄에 적혀 있다 · 만들기 C"
+            return "만들 것은 X 로 고르고 C 로 만든다"
         2:
             return "부품 둘을 차례로 R 로 누르면 이어진다"
         _:

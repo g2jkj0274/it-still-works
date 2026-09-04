@@ -393,7 +393,6 @@ func adopt_simulation() -> void:
     _input.bind(simulation)
     _input.clear_chosen()
     _input.clear_link_source()
-    _input.refresh_held_bundle()
     _hotbar.bind(state.inventory, _input)
 
     _camera.focus_on(_character_view.target_position())
