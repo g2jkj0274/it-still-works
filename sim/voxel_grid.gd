@@ -30,8 +30,24 @@ const NEIGHBOURS: Array[Vector3i] = [
     Vector3i(0, 0, -1),
 ]
 
+## 마지막으로 훑어 간 뒤에 겉모습이 달라졌을 수 있는 칸들.
+##
+## 표현 레이어가 다시 그릴 곳을 좁히는 데 쓴다. 블록 하나가 바뀌면 그 칸과
+## 이웃 여섯 칸의 **드러남**이 달라진다. 그 일곱만 다시 보면 된다.
+##
+## 이것이 없으면 블록 하나를 놓을 때마다 격자 전체를 훑는다. 육만 칸을 훑는
+## 데 백 밀리초가 걸리고, 지하를 채우면 삼백 밀리초가 된다. 한 프레임이
+## 십육 밀리초이므로 놓을 때마다 화면이 멎는다.
+##
+## 격자의 **내용**에 대한 기록이지 그리는 방법에 대한 기록이 아니다.
+## 상태 해시에는 들어가지 않는다. 섬을 처음 세울 때처럼 한꺼번에 많이 바뀌면
+## 하나씩 고치는 것이 더 비싸므로 통째로 다시 그리라고 알린다.
+const DIRTY_LIMIT := 768
+
 var _cells: PackedByteArray = PackedByteArray()
 var _version: int = 0
+var _dirty: Array[Vector3i] = []
+var _dirty_overflow: bool = true
 
 
 func _init() -> void:
@@ -73,7 +89,37 @@ func set_block(pos: Vector3i, type: int) -> bool:
 
     _cells[index] = type
     _version += 1
+    _mark_dirty(pos)
     return true
+
+
+## 그 칸과 이웃들의 드러남이 달라졌음을 적어 둔다.
+func _mark_dirty(pos: Vector3i) -> void:
+    if _dirty_overflow:
+        return
+    if _dirty.size() + NEIGHBOURS.size() + 1 > DIRTY_LIMIT:
+        _dirty.clear()
+        _dirty_overflow = true
+        return
+
+    _dirty.append(pos)
+    for offset in NEIGHBOURS:
+        var neighbour := pos + offset
+        if is_inside(neighbour):
+            _dirty.append(neighbour)
+
+
+## 달라진 칸들을 가져가고 비운다. 적은 차례 그대로다.
+func take_dirty() -> Array[Vector3i]:
+    var changed := _dirty
+    _dirty = []
+    _dirty_overflow = false
+    return changed
+
+
+## 하나씩 고치기보다 통째로 다시 그리는 편이 나은가.
+func needs_full_redraw() -> bool:
+    return _dirty_overflow
 
 
 ## 아직 아무것도 없는 칸인가. 열린 문은 지나갈 수 있지만 빈 칸은 아니다.
