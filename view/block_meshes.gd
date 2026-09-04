@@ -67,6 +67,11 @@ static func _shape_of(tool: SurfaceTool, block_type: int) -> void:
         BlockType.FIELD:
             # 갈아 놓은 두둑. 밟고 다니는 곳이라 가장 낮다.
             _box(tool, Vector3(0.0, -0.32, 0.0), Vector3(_CELL, 0.36, _CELL))
+        BlockType.CHEST:
+            # 궤짝. 몸통 위에 뚜껑이 얹히고 앞에 걸쇠가 붙었다.
+            _box(tool, Vector3(0.0, -0.22, 0.0), Vector3(0.92, 0.56, 0.78))
+            _box(tool, Vector3(0.0, 0.16, 0.0), Vector3(0.96, 0.24, 0.82))
+            _box(tool, Vector3(0.0, -0.02, -0.42), Vector3(0.22, 0.24, 0.10))
         BlockType.LAMP_DARK, BlockType.LAMP_LIT:
             # 등. 기둥 위에 갓이 얹혔다. 켜고 꺼짐은 색이 말한다.
             _box(tool, Vector3(0.0, -0.34, 0.0), Vector3(0.30, 0.32, 0.30))

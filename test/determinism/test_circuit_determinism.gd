@@ -30,7 +30,8 @@ const BRANCH := Vector3i(33, 31, FLOOR_Z + 1)
 ##   세계의 세로가 16 → 24 로 늘고, 지표가 기복을 타며 그 아래가 돌·광맥·동굴이 됨
 ##   등 블록이 늘어 블록 종류가 둘 늘어남 (스펙 §5 의 자동 조명)
 ##   인벤토리가 칸으로 나뉘고 칸마다 쌓이는 한계가 생겨 상태의 짜임이 바뀜
-const GOLDEN_HASH := "b7f4fb3253259445685870fe0c04231a3e6c054257a4ecd2f68f3c71ebe895fb"
+##   굤짝이 늘어 블록 종류가 하나 늘고 그 안에 든 것이 상태에 추가됨
+const GOLDEN_HASH := "d40f718418a3c5810cd473d61448712d3cd8e08892b378633f82b75d7c5d3320"
 
 ## 같은 실행이 끝났을 때 문이 어떤 상태인지. 해시보다 읽기 쉽다.
 const GOLDEN_DOOR := BlockType.DOOR_CLOSED

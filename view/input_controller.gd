@@ -56,6 +56,7 @@ const ACTION_BUNDLE := &"make_bundle"
 const ACTION_HOLD_BUNDLE := &"hold_bundle"
 const ACTION_CRAFT := &"craft"
 const ACTION_RECIPE := &"cycle_recipe"
+const ACTION_BAG := &"open_bag"
 const ACTION_SAVE := &"save_game"
 const ACTION_LOAD := &"load_game"
 
@@ -72,6 +73,7 @@ const PLACEABLE: Array[int] = [
     BlockType.BRANCH,
     BlockType.FIELD,
     BlockType.LAMP_DARK,
+    BlockType.CHEST,
     BlockType.BUNDLE,
 ]
 
@@ -123,6 +125,12 @@ signal load_requested
 ## 만들기를 접수했다. 소리를 낼 자리를 알리는 것뿐이고, 실제로 만들어졌는지는
 ## 시뮬레이션이 정한다.
 signal crafted
+
+## 인벤토리 화면을 열고 닫는다. 화면을 여는 것은 명령이 아니다.
+signal bag_toggled
+
+## 겨냥한 궤짝을 열어 달라. 놓기(E)가 궤짝을 만나면 이쪽으로 간다.
+signal chest_opened(cell: Vector3i)
 
 var _simulation: Simulation
 var _camera: Camera3D
@@ -374,6 +382,12 @@ func submit_place() -> void:
     if _simulation == null:
         return
 
+    # 궤짝을 겨냥하고 놓기를 누르면 궤짝이 열린다. 놓는 것이 아니다.
+    var aimed := break_cell()
+    if _simulation.state.chests.has_chest(aimed):
+        chest_opened.emit(aimed)
+        return
+
     var cell := place_cell()
     var chosen := selected_block()
     if chosen == BlockType.EMPTY:
@@ -586,6 +600,7 @@ static func install_actions() -> void:
     _install(ACTION_HOLD_BUNDLE, [KEY_N])
     _install(ACTION_CRAFT, [KEY_C])
     _install(ACTION_RECIPE, [KEY_X])
+    _install(ACTION_BAG, [KEY_TAB, KEY_I])
     _install(ACTION_SAVE, [KEY_F5])
     _install(ACTION_LOAD, [KEY_F9])
 
@@ -672,6 +687,8 @@ func _poll_actions() -> void:
         submit_craft()
     if Input.is_action_just_pressed(ACTION_RECIPE):
         cycle_recipe()
+    if Input.is_action_just_pressed(ACTION_BAG):
+        bag_toggled.emit()
     if Input.is_action_just_pressed(ACTION_SAVE):
         save_requested.emit()
     if Input.is_action_just_pressed(ACTION_LOAD):

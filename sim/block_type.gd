@@ -57,12 +57,16 @@ const LAMP_DARK := 15
 ## 켜진 등. 둘레를 밝힌다. 문과 마찬가지로 작동기가 여닫는다.
 const LAMP_LIT := 16
 
-const COUNT := 17
+## 궤짝. 물건을 넣어 둔다. 손이 모자라야 왕복에 값이 붙고, 넣어 둘 곳이
+## 있어야 손이 모자란 것이 짜증이 아니라 살림이 된다.
+const CHEST := 17
+
+const COUNT := 18
 
 const _NAMES: PackedStringArray = [
     "empty", "ground", "ore", "wood",
     "door_closed", "door_open", "detector", "actuator", "repeater", "box", "branch", "field", "crop",
-    "bundle", "rock", "lamp_dark", "lamp_lit",
+    "bundle", "rock", "lamp_dark", "lamp_lit", "chest",
 ]
 
 

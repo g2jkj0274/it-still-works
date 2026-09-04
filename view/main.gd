@@ -41,6 +41,7 @@ var _part_hint: PartHint
 var _help_overlay: HelpOverlay
 var _hotbar: Hotbar
 var _notice: Notice
+var _bag: InventoryScreen
 var _first_steps: FirstSteps
 var _sound_board: SoundBoard
 var _last_usec: int = 0
@@ -62,6 +63,14 @@ func _physics_process(_delta: float) -> void:
     var now := Time.get_ticks_usec()
     var elapsed := now - _last_usec
     _last_usec = now
+
+    # 화면이 열려 있는 동안에는 겨냥도 조작도 하지 않는다. 마우스가 화면에
+    # 매여 있는데 그대로 겨냥이 되면 엉뚱한 곳을 부순다.
+    if _bag.is_open():
+        _poll_bag()
+        simulation.advance(driver.pump(elapsed))
+        sync_views()
+        return
 
     update_target()
     _input.poll(simulation.current_tick())
@@ -162,12 +171,25 @@ func sync_views() -> void:
     _sky_view.apply(simulation.current_tick())
     _day_clock.apply(simulation.current_tick())
     _hotbar.sync()
+    _bag.sync()
     _part_hint.sync()
     _vitals_bar.sync()
     _camera.follow(_character_view.target_position(), CAMERA_FOLLOW)
     _sound_board.forget()
     _sound_board.sync()
     _first_steps.check()
+
+
+## 화면이 열려 있을 때의 입력. 닫는 키와 마우스뿐이다.
+func _poll_bag() -> void:
+    if Input.is_action_just_pressed(InputController.ACTION_BAG):
+        _bag.close()
+    if Input.is_action_just_pressed(InputController.ACTION_PLACE):
+        _bag.close()
+    if Input.is_action_just_pressed(InputController.ACTION_BREAK):
+        var viewport := get_viewport()
+        if viewport != null:
+            _bag.click_at(viewport.get_mouse_position())
 
 
 func input_controller() -> InputController:
@@ -288,6 +310,15 @@ func _build_input() -> void:
     _input.crafted.connect(_sound_board.note_crafted)
     _input.save_requested.connect(save_game)
     _input.load_requested.connect(load_game)
+    _input.bag_toggled.connect(toggle_bag)
+    _input.chest_opened.connect(open_chest)
+
+    _bag = InventoryScreen.new()
+    _bag.name = "Bag"
+    add_child(_bag)
+    _bag.bind(simulation.state.inventory)
+    _bag.move_requested.connect(_on_move_requested)
+    _bag.craft_requested.connect(_on_craft_requested)
 
     _hotbar = Hotbar.new()
     _hotbar.name = "Hotbar"
@@ -333,6 +364,41 @@ func _build_hint() -> void:
 
 func notice() -> Notice:
     return _notice
+
+
+func bag() -> InventoryScreen:
+    return _bag
+
+
+## 인벤토리 화면을 열고 닫는다.
+func toggle_bag() -> void:
+    if _bag.is_open():
+        _bag.close()
+        return
+    _bag.open()
+
+
+## 겨냥한 궤짝을 연다.
+func open_chest(cell: Vector3i) -> void:
+    var inside := simulation.state.chests.inside(cell)
+    if inside == null:
+        return
+    _bag.open_chest(cell, inside)
+
+
+func _on_move_requested(from_where: int, from_slot: int, to_where: int, to_slot: int) -> void:
+    simulation.submit(MoveItemCommand.create(
+        _where_of(from_where), from_slot, _where_of(to_where), to_slot))
+
+
+func _on_craft_requested(index: int) -> void:
+    simulation.submit(CraftCommand.create(RecipeBook.output_of(index)))
+
+
+func _where_of(where: int) -> Vector3i:
+    if where == InventoryScreen.WHERE_CHEST:
+        return _bag.chest_cell()
+    return MoveItemCommand.IN_HAND
 
 
 func first_steps() -> FirstSteps:
@@ -394,6 +460,8 @@ func adopt_simulation() -> void:
     _input.clear_chosen()
     _input.clear_link_source()
     _hotbar.bind(state.inventory, _input)
+    _bag.bind(state.inventory)
+    _bag.close()
 
     _camera.focus_on(_character_view.target_position())
     sync_views()

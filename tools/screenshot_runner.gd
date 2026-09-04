@@ -63,6 +63,9 @@ func _process(_delta: float) -> bool:
     return false
 
 
+## 화면이 세상을 통째로 가리는 단계들. 캐릭터가 보일 리 없다.
+const COVERED_STEPS: PackedStringArray = ["16_bag"]
+
 ## 단계 목록. 각 항목은 [이름, 준비 동작] 이다.
 ##
 ## 저장 단계가 앞쪽에 있는 것은 일부러다. 뒤의 단계들은 무대를 세우려고 상태를
@@ -86,7 +89,8 @@ func _build_steps() -> Array:
         ["13_island", _pull_back_to_the_shore],
         ["14_craft", _make_something_by_hand],
         ["15_underground", _dig_down],
-        ["16_store", _pose_for_the_store],
+        ["16_bag", _open_the_bag],
+        ["17_store", _pose_for_the_store],
     ]
 
 
@@ -394,6 +398,39 @@ func _dig_down() -> void:
     _main.lamp_lights().sync()
 
 
+## 가진 것을 펼쳐 보고 굤짝을 열어 본다.
+##
+## 손이 모자라야 왕복에 값이 붙고(스펙 §3.6), 넣어 둘 곳이 있어야
+## 그것이 짜증이 아니라 살림이 된다.
+func _open_the_bag() -> void:
+    _main.simulation = IslandBuilder.start(GameMain.SEED)
+    _main.adopt_simulation()
+    _main.first_steps().silence()
+    _main.notice().visible = false
+
+    var state: Object = _main.simulation.state
+    var here: Vector3i = state.character.cell()
+    var spot := here + Vector3i(1, 0, 0)
+    for z in range(here.z, VoxelGrid.SIZE_Z):
+        state.grid.set_block(Vector3i(spot.x, spot.y, z), BlockType.EMPTY)
+    state.grid.set_block(spot - VoxelGrid.UP, BlockType.GROUND)
+
+    # 손에 이것저것 채워 넣고 굤짝을 하나 놓는다.
+    for pair in [
+        [BlockType.GROUND, 64], [BlockType.ROCK, 37], [BlockType.WOOD, 22],
+        [BlockType.ORE, 15], [BlockType.LAMP_DARK, 6], [BlockType.DOOR_CLOSED, 3],
+        [BlockType.DETECTOR, 2], [BlockType.CROP, 9],
+    ]:
+        state.inventory.add(int(pair[0]), int(pair[1]))
+    state.chests.place(spot)
+    state.grid.set_block(spot, BlockType.CHEST)
+    state.chests.inside(spot).add(BlockType.ORE, 48)
+    state.chests.inside(spot).add(BlockType.WOOD, 31)
+
+    _main.open_chest(spot)
+    _main.world_view().rebuild()
+
+
 func _begin_step() -> void:
     var action: Callable = _steps[_index][1]
     action.call()
@@ -427,7 +464,8 @@ func _evaluate(without_subject: Image) -> void:
     for problem in problems:
         _fail(name, problem)
 
-    if not ScreenshotCheck.subject_visible(_with_subject, without_subject, _subject_rect()):
+    if not COVERED_STEPS.has(name) and not ScreenshotCheck.subject_visible(
+        _with_subject, without_subject, _subject_rect()):
         _fail(name, "캐릭터가 있어야 할 자리에 아무것도 그려지지 않았다")
 
     # 밀려나 보이지 않는 칸이 있으면 무엇을 눌러야 하는지 알 수 없다.

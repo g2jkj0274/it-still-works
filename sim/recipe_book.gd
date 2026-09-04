@@ -27,6 +27,8 @@ const RECIPES: Array = [
     [BlockType.BRANCH, 1, [[BlockType.ORE, 2], [BlockType.WOOD, 2]]],
     # 등은 여럿 필요하다. 땅속을 밝히려면 몇 칸마다 하나씩 놓는다.
     [BlockType.LAMP_DARK, 2, [[BlockType.WOOD, 1], [BlockType.ORE, 1]]],
+    # 궤짝. 손이 모자란 것이 짜증이 아니라 살림이 되려면 넣어 둘 곳이 있어야 한다.
+    [BlockType.CHEST, 1, [[BlockType.WOOD, 6]]],
 ]
 
 ## 스펙이 정한 제작법 수의 상한.

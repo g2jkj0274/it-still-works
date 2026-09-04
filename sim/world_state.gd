@@ -41,6 +41,9 @@ var threats: ThreatField
 ## 밭에 심긴 작물들.
 var crops: CropField
 
+## 월드에 놓인 궤짝들과 그 안에 든 것.
+var chests: ChestField
+
 var _values: Dictionary[StringName, int] = {}
 
 
@@ -54,6 +57,7 @@ func _init(p_rng: SimRng = null) -> void:
     vitals = Vitals.new()
     threats = ThreatField.new()
     crops = CropField.new()
+    chests = ChestField.new()
 
 
 func set_value(key: StringName, value: int) -> void:
@@ -126,6 +130,7 @@ func to_hash_fields() -> Array:
     fields.append_array(vitals.to_hash_fields())
     fields.append_array(threats.to_hash_fields())
     fields.append_array(crops.to_hash_fields())
+    fields.append_array(chests.to_hash_fields())
     for key in sorted_keys():
         fields.append(["value." + String(key), _values[key]])
     return fields

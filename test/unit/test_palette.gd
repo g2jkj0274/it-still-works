@@ -115,14 +115,41 @@ const PAIRED_STATES: Array[int] = [BlockType.DOOR_OPEN, BlockType.LAMP_LIT]
 
 
 func test_different_blocks_are_told_apart() -> void:
-    var seen: Array = []
+    # 색이 붙어 있어도 된다. 다만 그때는 **생김새가 갈려야 한다.**
+    #
+    # 파스텔은 쓸 수 있는 폭이 좁다(명도 0.60 이상, 채도 0.45 이하). 블록이
+    # 열몇 종을 넘어가면 색만으로는 더 가를 자리가 없다. 그래서 이 게임은
+    # 처음부터 키와 바닥 넓이로도 가르기로 했고, 그 규칙을 여기서도 쓴다.
+    var seen: Array[int] = []
     for type in BlockType.COUNT:
         if type == BlockType.EMPTY or PAIRED_STATES.has(type):
             continue
-        var colour := Palette.of_block(type)
-        for other: Color in seen:
-            assert_float(_distance(colour, other)).is_greater(0.12)
-        seen.append(colour)
+        for other in seen:
+            var apart := _distance(Palette.of_block(type), Palette.of_block(other)) > 0.12
+            var shaped := _shape_of(type) != _shape_of(other)
+            assert_bool(apart or shaped).override_failure_message(
+                "%s 와 %s 가 색으로도 모양으로도 갈리지 않는다" % [
+                    BlockType.name_of(type), BlockType.name_of(other)]).is_true()
+        seen.append(type)
+
+
+func test_blocks_that_share_a_colour_are_a_short_list() -> void:
+    # 모양으로 갈린다고 해서 색을 마구 겹쳐도 되는 것은 아니다.
+    # 겹치는 짝이 늘어나면 화면이 한 덩어리로 보인다.
+    var close := 0
+    var seen: Array[int] = []
+    for type in BlockType.COUNT:
+        if type == BlockType.EMPTY or PAIRED_STATES.has(type):
+            continue
+        for other in seen:
+            if _distance(Palette.of_block(type), Palette.of_block(other)) <= 0.12:
+                close += 1
+        seen.append(type)
+    assert_int(close).is_less_equal(2)
+
+
+func _shape_of(block_type: int) -> PackedVector3Array:
+    return BlockMeshes.for_block(block_type).surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
 
 
 func test_a_lit_lamp_is_told_apart_from_a_dark_one() -> void:

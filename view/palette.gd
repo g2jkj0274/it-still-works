@@ -53,6 +53,9 @@ const CROP := Color(0.96, 0.98, 0.74)
 ## 등. 꺼진 것은 잿빛이 돌고 켜진 것은 환하다.
 const LAMP_DARK := Color(0.80, 0.78, 0.62)
 const LAMP_LIT := Color(1.0, 0.96, 0.72)
+
+## 궤짝. 나무로 짠 것이라 나무빛이되 조금 붉다.
+const CHEST := Color(0.86, 0.70, 0.52)
 const BUNDLE := Color(0.56, 0.93, 0.78)
 
 const CHARACTER_SKIN := Color(0.98, 0.86, 0.74)
@@ -140,6 +143,7 @@ const _BLOCKS: Dictionary[int, Color] = {
     BlockType.CROP: CROP,
     BlockType.LAMP_DARK: LAMP_DARK,
     BlockType.LAMP_LIT: LAMP_LIT,
+    BlockType.CHEST: CHEST,
     BlockType.BUNDLE: BUNDLE,
 }
 
