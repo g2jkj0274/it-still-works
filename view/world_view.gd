@@ -11,6 +11,9 @@ extends Node3D
 ##
 ## 생김새는 종류마다 다르다. [BlockMeshes] 가 정한다. 색만으로는 파스텔 열 종을
 ## 가르기 어렵고, 문은 열린 것과 닫힌 것이 아예 같은 색이다.
+##
+## **면의 색도 메시가 정한다.** 흙은 윗면이 풀이고 옆면이 흙이다. 그래서
+## 여기서 인스턴스에 넘기는 것은 색이 아니라 칸마다의 명암 배수다.
 
 var _grid: VoxelGrid
 var _layers: Dictionary[int, MultiMeshInstance3D] = {}
@@ -87,14 +90,6 @@ func build_count() -> int:
     return _build_count
 
 
-## 이 층이 그리는 블록의 바탕색.
-func _base_colour(node: MultiMeshInstance3D) -> Color:
-    for block_type in _layers:
-        if _layers[block_type] == node:
-            return colour_of(block_type)
-    return Palette.MISSING
-
-
 func _make_layer(block_type: int) -> MultiMeshInstance3D:
     var material := StandardMaterial3D.new()
     material.albedo_color = Color.WHITE
@@ -126,4 +121,6 @@ func _fill_layer(node: MultiMeshInstance3D, cells: Array) -> void:
         var cell: Vector3i = cells[i]
         multimesh.set_instance_transform(i, Transform3D(Basis(), SimViewCoords.cell_to_world(cell)))
         # 칸마다 명암을 아주 조금 달리해 넓은 면이 한 덩어리로 보이지 않게 한다.
-        multimesh.set_instance_color(i, Palette.varied(_base_colour(node), cell))
+        # 색은 면이 정하므로(BlockMeshes) 여기서는 배수만 넘긴다.
+        var shade := Palette.variation_of(cell)
+        multimesh.set_instance_color(i, Color(shade, shade, shade))

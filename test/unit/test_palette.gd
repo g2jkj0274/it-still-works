@@ -31,6 +31,24 @@ func test_creature_colours_are_pastel() -> void:
         assert_float(colour.s).is_less_equal(Palette.MAX_SATURATION)
 
 
+func test_the_earth_side_stays_pastel_and_is_not_mistaken_for_wood() -> void:
+    var side := Palette.GROUND_SIDE
+    assert_float(side.v).is_greater_equal(Palette.MIN_VALUE)
+    assert_float(side.s).is_less_equal(Palette.MAX_SATURATION)
+
+    # 흙 옆면이 나무 줄기와 붙어 있으면 나무가 흙기둥으로 보인다.
+    var wood := Palette.of_block(BlockType.WOOD)
+    assert_float(Vector3(
+        side.r - wood.r, side.g - wood.g, side.b - wood.b).length()).is_greater(0.12)
+
+
+func test_the_variation_is_a_multiplier_around_one() -> void:
+    for i in 200:
+        var cell := Vector3i(i % 17, (i / 17) % 13, i % 5)
+        assert_float(Palette.variation_of(cell)).is_between(
+            1.0 - Palette.VARIATION - 0.001, 1.0 + Palette.VARIATION + 0.001)
+
+
 func test_the_sky_and_the_sea_stay_pastel() -> void:
     # 화면에서 가장 넓은 자리를 차지하는 색들이다. 톤이 여기서 어긋나면 다 어긋난다.
     for colour in [Palette.SKY_DAY, Palette.SEA]:

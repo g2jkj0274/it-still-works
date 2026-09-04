@@ -16,6 +16,7 @@ extends RefCounted
 ## ([method Palette.varied]) 와 곱해진다.
 
 ## 면 밝기. 윗면이 가장 밝고 바닥이 가장 어둡다.
+## 밝기와 함께 면의 **색**도 여기서 구워 둔다 — 흙은 위가 풀, 옆이 흙이다.
 ## 아이소메트릭에서는 옆면 두 쪽이 함께 보이므로 그 둘도 서로 다르게 둔다.
 const FACE_TOP := 1.00
 const FACE_SIDE_X := 0.82
@@ -32,11 +33,20 @@ const _CELL := SimViewCoords.CELL_SIZE
 
 
 ## 그 블록을 그릴 메시. 종류마다 한 번만 만들어 쓴다.
+##
+## 면의 색까지 여기서 구워 둔다. 칸마다 주는 명암은 인스턴스 쪽에서 곱해진다.
 static func for_block(block_type: int) -> ArrayMesh:
     var tool := SurfaceTool.new()
     tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+    _top = Palette.of_block(block_type)
+    _side = Palette.side_of(block_type)
     _shape_of(tool, block_type)
     return tool.commit()
+
+
+## 지금 굽고 있는 블록의 윗면·옆면 색. [method for_block] 이 채운다.
+static var _top: Color = Color.WHITE
+static var _side: Color = Color.WHITE
 
 
 ## 종류별 생김새. 모두 한 칸 안에 들어간다.
@@ -113,6 +123,7 @@ static func _box(tool: SurfaceTool, centre: Vector3, size: Vector3) -> void:
         var right: Vector3 = face[2]
         var up: Vector3 = face[3]
 
+        var face_colour: Color = _top if absf(normal.y) > 0.5 else _side
         var middle := centre + normal * h
         var across := right * h
         var along := up * h
@@ -123,7 +134,7 @@ static func _box(tool: SurfaceTool, centre: Vector3, size: Vector3) -> void:
             middle + across + along,
             middle - across + along,
         ]
-        _quad(tool, corners, normal, Color(shade, shade, shade))
+        _quad(tool, corners, normal, face_colour * shade)
 
 
 ## 여섯 면. [법선, 밝기, 가로축, 세로축].

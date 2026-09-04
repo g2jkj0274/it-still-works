@@ -23,6 +23,7 @@ var driver: TickDriver
 
 var _world_view: WorldView
 var _ground_cover: GroundCover
+var _canopy_view: CanopyView
 var _character_view: CharacterView
 var _camera: IsometricCamera
 var _highlight: BlockHighlight
@@ -139,6 +140,7 @@ func help_overlay() -> HelpOverlay:
 func sync_views() -> void:
     _world_view.sync()
     _ground_cover.sync()
+    _canopy_view.sync()
     _character_view.sync(CHARACTER_FOLLOW)
     _wire_view.sync()
     _bundle_marks.sync()
@@ -162,6 +164,10 @@ func world_view() -> WorldView:
 
 func ground_cover() -> GroundCover:
     return _ground_cover
+
+
+func canopy_view() -> CanopyView:
+    return _canopy_view
 
 
 func character_view() -> CharacterView:
@@ -194,6 +200,12 @@ func _build_views() -> void:
     add_child(_ground_cover)
     _ground_cover.bind(simulation.state.grid)
     _ground_cover.rebuild()
+
+    _canopy_view = CanopyView.new()
+    _canopy_view.name = "CanopyView"
+    add_child(_canopy_view)
+    _canopy_view.bind(simulation.state.grid)
+    _canopy_view.rebuild()
 
     _character_view = CharacterView.new()
     _character_view.name = "CharacterView"
@@ -319,6 +331,8 @@ func adopt_simulation() -> void:
     _world_view.rebuild()
     _ground_cover.bind(state.grid)
     _ground_cover.rebuild()
+    _canopy_view.bind(state.grid)
+    _canopy_view.rebuild()
 
     _character_view.bind(state.character)
     _character_view.snap()
