@@ -6,6 +6,10 @@ extends CanvasLayer
 ## 조작 안내다. **무엇이 잘못됐는지는 말하지 않는다.** 회로가 왜 안 도는지는
 ## 만든 사람이 알아내야 할 몫이고, 그것을 알려주는 화면은 만들지 않는다.
 ##
+## 겨냥한 곳에 이미 놓인 부품이 있으면 그것을 읽어 준다. 그래야 어제 놓은
+## 감지기가 무엇을 보고 있었는지 확인할 수 있다. 그리고 그 줄이 묶기로
+## 들어가는 길(V)도 함께 알려 준다 — 그 키를 알 방법이 안내판밖에 없었다.
+##
 ## 설정이 있는 부품은 지금 고른 설정도 함께 보인다. 놓기 전에 무엇으로 놓는지
 ## 알 수 있어야 한다. 배선을 잇는 중이면 어느 출구에서 나가는지도 보인다.
 ##
@@ -133,6 +137,18 @@ func _measure() -> Vector2:
     return font.get_string_size(_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 
 
+## 겨냥한 부품이 무엇으로 놓여 있는지.
+##
+## 놓고 나면 알 길이 없었다. 설정이 다른 부품이 전부 똑같이 생겼기 때문이다.
+## **왜 안 도는지는 말하지 않는다.** 무엇으로 놓여 있는지만 읽어 준다.
+static func aimed_line(part: CircuitPart) -> String:
+    var line := "놓인 %s" % PartWords.name_of(part.kind())
+    var setting := PartWords.setting_of(part)
+    if not setting.is_empty():
+        line += " — %s" % setting
+    return line + "   [잇기 R · 묶을 칸 고르기 V]"
+
+
 ## 고른 것의 이름과 한 줄 설명. 설정이 있으면 그것도 붙인다.
 static func line_for(controller: InputController) -> String:
     if controller.is_choosing():
@@ -144,6 +160,10 @@ static func line_for(controller: InputController) -> String:
     if controller.wiring_from_branch():
         return "잇는 중 — %s 쪽으로 나간다.  T 로 바꾸고, 이을 부품에 R" % [
             controller.link_port_name()]
+
+    var aimed := controller.aimed_part()
+    if aimed != null:
+        return aimed_line(aimed)
 
     var block_type := controller.selected_block()
     var line := "%s — %s" % [PartWords.name_of(block_type), PartWords.description_of(block_type)]

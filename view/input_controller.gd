@@ -313,6 +313,13 @@ func place_cell() -> Vector3i:
     return _facing_cell()
 
 
+## 지금 겨냥하고 있는 부품. 없으면 null.
+func aimed_part() -> CircuitPart:
+    if _simulation == null:
+        return null
+    return _simulation.state.circuit.part_at(break_cell())
+
+
 func has_link_source() -> bool:
     return _has_link_source
 

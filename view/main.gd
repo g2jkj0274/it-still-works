@@ -30,6 +30,7 @@ var _highlight: BlockHighlight
 var _bundle_marks: BundleMarks
 var _input: InputController
 var _wire_view: WireView
+var _part_marks: PartMarks
 var _sky_view: SkyView
 var _sea_view: SeaView
 var _threat_view: ThreatView
@@ -108,6 +109,10 @@ func wire_view() -> WireView:
     return _wire_view
 
 
+func part_marks() -> PartMarks:
+    return _part_marks
+
+
 func sky_view() -> SkyView:
     return _sky_view
 
@@ -143,6 +148,7 @@ func sync_views() -> void:
     _canopy_view.sync()
     _character_view.sync(CHARACTER_FOLLOW)
     _wire_view.sync()
+    _part_marks.sync()
     _bundle_marks.sync()
     _threat_view.sync()
     _sky_view.apply(simulation.current_tick())
@@ -218,6 +224,12 @@ func _build_views() -> void:
     add_child(_wire_view)
     _wire_view.bind(simulation.state.circuit)
     _wire_view.rebuild()
+
+    _part_marks = PartMarks.new()
+    _part_marks.name = "PartMarks"
+    add_child(_part_marks)
+    _part_marks.bind(simulation.state.circuit)
+    _part_marks.rebuild()
 
     _threat_view = ThreatView.new()
     _threat_view.name = "ThreatView"
@@ -339,6 +351,8 @@ func adopt_simulation() -> void:
 
     _wire_view.bind(state.circuit)
     _wire_view.rebuild()
+    _part_marks.bind(state.circuit)
+    _part_marks.rebuild()
     _threat_view.bind(state.threats)
     _vitals_bar.bind(state.vitals)
 

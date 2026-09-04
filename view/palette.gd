@@ -48,6 +48,9 @@ const CHARACTER_BODY := Color(0.72, 0.86, 0.94)
 const CHARACTER_LEGS := Color(0.62, 0.68, 0.82)
 const THREAT := Color(0.82, 0.68, 0.86)
 
+## 부품 위에 얹는 설정 표시. 어느 부품 색 위에 얹혀도 읽히도록 톤을 낮춰 잡는다.
+const PART_MARK := Color(0.34, 0.36, 0.44)
+
 const HIGHLIGHT := Color(1.0, 1.0, 1.0, 0.32)
 
 ## 묶으려고 고른 칸 표시. 값이 드나드는 자리는 배선 색과 짝을 맞춘다.

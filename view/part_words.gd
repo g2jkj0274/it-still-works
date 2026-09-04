@@ -61,6 +61,19 @@ const _BRANCH_SETTINGS: PackedStringArray = [
     "온 대로", "1 이상", "10 이상", "3 미만", "둘 다 오면", "하나라도 오면",
 ]
 
+## 되풀이가 도는 방식을 말로.
+const _REPEATER_MODES: Dictionary[int, String] = {
+    RepeaterPart.MODE_WHILE: "조건이 맞는 동안",
+    RepeaterPart.MODE_FOREVER: "끝없이",
+}
+
+## 갈림길이 무엇을 보는지 말로. 견줄 수가 있는 것은 따로 채운다.
+const _BRANCH_MODES: Dictionary[int, String] = {
+    BranchPart.MODE_TRUTH: "온 대로",
+    BranchPart.MODE_AND: "둘 다 오면",
+    BranchPart.MODE_OR: "하나라도 오면",
+}
+
 
 static func name_of(block_type: int) -> String:
     return _NAMES.get(block_type, "?")
@@ -115,3 +128,36 @@ static func branch_setting_name(preset: int) -> String:
     if preset < 0 or preset >= _BRANCH_SETTINGS.size():
         return "?"
     return _BRANCH_SETTINGS[preset]
+
+
+## 이미 놓인 부품이 무엇으로 맞춰져 있는지.
+##
+## 놓고 나면 알 길이 없었다. 설정이 다른 부품이 전부 똑같이 생겼기 때문이다.
+## 이것은 오류를 말해 주는 것이 아니라 **눈에 안 보이는 사실을 읽어 주는 것**
+## 이다. 왜 안 도는지는 여전히 말하지 않는다.
+static func setting_of(part: CircuitPart) -> String:
+    if part == null:
+        return ""
+    match part.kind():
+        BlockType.DETECTOR:
+            return target_name((part as DetectorPart).target)
+        BlockType.BOX:
+            return shape_name((part as BoxPart).shape)
+        BlockType.REPEATER:
+            var repeater := part as RepeaterPart
+            if repeater.is_burnt():
+                return "타 버렸다"
+            return _REPEATER_MODES.get(repeater.mode, "%d번" % repeater.limit)
+        BlockType.BRANCH:
+            var branch := part as BranchPart
+            if _BRANCH_MODES.has(branch.mode):
+                return _BRANCH_MODES[branch.mode]
+            if branch.mode == BranchPart.MODE_LESS:
+                return "%d 미만" % branch.threshold
+            if branch.mode == BranchPart.MODE_EQUAL:
+                return "%d 일 때" % branch.threshold
+            return "%d 이상" % branch.threshold
+        BlockType.BUNDLE:
+            return bundle_name((part as BundlePart).bundle_id)
+        _:
+            return ""
