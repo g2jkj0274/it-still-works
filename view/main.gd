@@ -22,6 +22,7 @@ var simulation: Simulation
 var driver: TickDriver
 
 var _world_view: WorldView
+var _ground_cover: GroundCover
 var _character_view: CharacterView
 var _camera: IsometricCamera
 var _highlight: BlockHighlight
@@ -131,6 +132,7 @@ func help_overlay() -> HelpOverlay:
 ## 시뮬레이션 상태를 읽어 화면을 맞춘다. 시뮬레이션은 건드리지 않는다.
 func sync_views() -> void:
     _world_view.sync()
+    _ground_cover.sync()
     _character_view.sync(CHARACTER_FOLLOW)
     _wire_view.sync()
     _bundle_marks.sync()
@@ -148,6 +150,10 @@ func input_controller() -> InputController:
 
 func world_view() -> WorldView:
     return _world_view
+
+
+func ground_cover() -> GroundCover:
+    return _ground_cover
 
 
 func character_view() -> CharacterView:
@@ -174,6 +180,12 @@ func _build_views() -> void:
     add_child(_world_view)
     _world_view.bind(simulation.state.grid)
     _world_view.rebuild()
+
+    _ground_cover = GroundCover.new()
+    _ground_cover.name = "GroundCover"
+    add_child(_ground_cover)
+    _ground_cover.bind(simulation.state.grid)
+    _ground_cover.rebuild()
 
     _character_view = CharacterView.new()
     _character_view.name = "CharacterView"
