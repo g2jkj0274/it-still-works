@@ -24,6 +24,7 @@ var driver: TickDriver
 var _world_view: WorldView
 var _ground_cover: GroundCover
 var _canopy_view: CanopyView
+var _lamp_lights: LampLights
 var _character_view: CharacterView
 var _camera: IsometricCamera
 var _highlight: BlockHighlight
@@ -144,9 +145,15 @@ func help_overlay() -> HelpOverlay:
 
 ## 시뮬레이션 상태를 읽어 화면을 맞춘다. 시뮬레이션은 건드리지 않는다.
 func sync_views() -> void:
+    var eye := simulation.state.character.cell()
+    _world_view.look_from(eye)
     _world_view.sync()
+    _ground_cover.cut_above(eye.z, _world_view.is_cutting())
     _ground_cover.sync()
+    _canopy_view.cut_above(eye.z, _world_view.is_cutting())
     _canopy_view.sync()
+    _lamp_lights.look_at_point(_character_view.target_position())
+    _lamp_lights.sync()
     _character_view.sync(CHARACTER_FOLLOW)
     _wire_view.sync()
     _part_marks.sync()
@@ -177,6 +184,10 @@ func ground_cover() -> GroundCover:
 
 func canopy_view() -> CanopyView:
     return _canopy_view
+
+
+func lamp_lights() -> LampLights:
+    return _lamp_lights
 
 
 func character_view() -> CharacterView:
@@ -215,6 +226,11 @@ func _build_views() -> void:
     add_child(_canopy_view)
     _canopy_view.bind(simulation.state.grid)
     _canopy_view.rebuild()
+
+    _lamp_lights = LampLights.new()
+    _lamp_lights.name = "LampLights"
+    add_child(_lamp_lights)
+    _lamp_lights.bind(simulation.state.grid)
 
     _character_view = CharacterView.new()
     _character_view.name = "CharacterView"
@@ -360,6 +376,7 @@ func adopt_simulation() -> void:
     _ground_cover.rebuild()
     _canopy_view.bind(state.grid)
     _canopy_view.rebuild()
+    _lamp_lights.bind(state.grid)
 
     _character_view.bind(state.character)
     _character_view.snap()

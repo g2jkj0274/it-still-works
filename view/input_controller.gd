@@ -55,13 +55,14 @@ const ACTION_TERMINAL := &"cycle_terminal"
 const ACTION_BUNDLE := &"make_bundle"
 const ACTION_HOLD_BUNDLE := &"hold_bundle"
 const ACTION_CRAFT := &"craft"
+const ACTION_LAMP := &"hold_lamp"
 const ACTION_SAVE := &"save_game"
 const ACTION_LOAD := &"load_game"
 
 ## 손에 쥘 수 있는 것. 고를 수 있는 차례대로.
 const PLACEABLE: Array[int] = [
     BlockType.GROUND,
-    BlockType.STONE,
+    BlockType.ORE,
     BlockType.WOOD,
     BlockType.DOOR_CLOSED,
     BlockType.DETECTOR,
@@ -70,6 +71,7 @@ const PLACEABLE: Array[int] = [
     BlockType.BOX,
     BlockType.BRANCH,
     BlockType.FIELD,
+    BlockType.LAMP_DARK,
     BlockType.BUNDLE,
 ]
 
@@ -563,6 +565,7 @@ static func install_actions() -> void:
     _install(ACTION_BUNDLE, [KEY_G])
     _install(ACTION_HOLD_BUNDLE, [KEY_N])
     _install(ACTION_CRAFT, [KEY_C])
+    _install(ACTION_LAMP, [KEY_L])
     _install(ACTION_SAVE, [KEY_F5])
     _install(ACTION_LOAD, [KEY_F9])
 
@@ -647,6 +650,8 @@ func _poll_actions() -> void:
         cycle_held_bundle()
     if Input.is_action_just_pressed(ACTION_CRAFT):
         submit_craft()
+    if Input.is_action_just_pressed(ACTION_LAMP):
+        select_block(BlockType.LAMP_DARK)
     if Input.is_action_just_pressed(ACTION_SAVE):
         save_requested.emit()
     if Input.is_action_just_pressed(ACTION_LOAD):

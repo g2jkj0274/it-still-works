@@ -39,7 +39,7 @@ func test_simulation_is_never_advanced_from_process() -> void:
 func test_scene_builds_the_island_and_spawns_the_character() -> void:
     var main := _main()
     assert_object(main.simulation).is_not_null()
-    assert_bool(main.simulation.state.character.cell() == IslandBuilder.SPAWN).is_true()
+    assert_bool(main.simulation.state.character.cell() == IslandBuilder.spawn_cell()).is_true()
     assert_bool(main.simulation.state.grid.is_solid(Vector3i(32, 32, 0))).is_true()
 
 
@@ -47,7 +47,7 @@ func test_world_view_draws_the_island() -> void:
     var main := _main()
     assert_int(main.world_view().instance_count(BlockType.GROUND)).is_greater(1000)
     assert_int(main.world_view().instance_count(BlockType.WOOD)).is_greater(0)
-    assert_int(main.world_view().instance_count(BlockType.STONE)).is_greater(0)
+    assert_int(main.world_view().instance_count(BlockType.ORE)).is_greater(0)
 
 
 func test_camera_is_isometric_and_starts_on_the_character() -> void:
@@ -79,15 +79,15 @@ func test_walking_repeatedly_covers_ground() -> void:
 
 func test_placing_a_block_changes_the_world_and_the_drawing() -> void:
     var main := _main()
-    main.input_controller().select_block(BlockType.STONE)
+    main.input_controller().select_block(BlockType.ORE)
     var target := main.simulation.state.character.facing_cell()
-    var drawn := main.world_view().instance_count(BlockType.STONE)
+    var drawn := main.world_view().instance_count(BlockType.ORE)
 
     main.input_controller().submit_place()
     _advance(main, 2)
 
-    assert_int(main.simulation.state.grid.get_block(target)).is_equal(BlockType.STONE)
-    assert_int(main.world_view().instance_count(BlockType.STONE)).is_equal(drawn + 1)
+    assert_int(main.simulation.state.grid.get_block(target)).is_equal(BlockType.ORE)
+    assert_int(main.world_view().instance_count(BlockType.ORE)).is_equal(drawn + 1)
 
 
 func test_breaking_a_block_changes_the_world_and_the_drawing() -> void:
@@ -166,7 +166,7 @@ func test_the_player_starts_empty_handed() -> void:
 func test_everything_in_hand_can_be_gathered_or_made() -> void:
     # 손에 쥘 수 있는 것마다 얻을 길이 있어야 한다. 길이 없으면 빈손으로
     # 시작할 수 없다. 묶음만은 회로를 압축해 얻는다.
-    var gathered: Array[int] = [BlockType.GROUND, BlockType.STONE, BlockType.WOOD]
+    var gathered: Array[int] = [BlockType.GROUND, BlockType.ORE, BlockType.WOOD]
     for block_type in InputController.PLACEABLE:
         if block_type == BlockType.BUNDLE:
             continue
@@ -294,7 +294,7 @@ func test_pressing_up_moves_the_character_up_the_screen() -> void:
 func test_a_player_can_build_an_automatic_door() -> void:
     # 완료 조건. 사람이 손에 든 것만으로 자동문을 세울 수 있어야 한다.
     var main := _main()
-    var here: Vector3i = main.simulation.state.character.cell()
+    var here := _level_around(main, 5)
     # 감지기는 사람이 가까이 있어야 본다. 세 칸 안에 들어오도록 붙여 짓는다.
     var door := here + Vector3i(2, 0, 0)
     var actuator := here + Vector3i(2, 1, 0)
@@ -337,7 +337,7 @@ func test_a_player_can_gather_and_make_a_door_by_hand() -> void:
     assert_int(state.inventory.total()).is_equal(0)
 
     # 곁에 나무를 세워 두고 손으로 부순다.
-    var here: Vector3i = state.character.cell()
+    var here := _level_around(main, 4)
     var trunk := here + Vector3i(1, 0, 0)
     var controller := main.input_controller()
     for i in 4:
@@ -435,6 +435,19 @@ func test_loading_with_nothing_saved_leaves_the_game_alone() -> void:
 
     assert_bool(main.load_game()).is_false()
     assert_str(main.simulation.state_hash()).is_equal(before)
+
+
+## 지을 자리를 고르게 다진다. 지표가 기복을 타므로 이웃 칸의 높이가 저마다
+## 다르다. 지형을 시험하는 테스트가 아니므로 무대만 평평하게 만들어 둔다.
+func _level_around(main: GameMain, reach: int) -> Vector3i:
+    var grid := main.simulation.state.grid
+    var here: Vector3i = main.simulation.state.character.cell()
+    for dy in range(-reach, reach + 1):
+        for dx in range(-reach, reach + 1):
+            for z in range(VoxelGrid.BEDROCK_Z + 1, VoxelGrid.SIZE_Z):
+                var kind := BlockType.GROUND if z < here.z else BlockType.EMPTY
+                grid.set_block(Vector3i(here.x + dx, here.y + dy, z), kind)
+    return here
 
 
 func _aim_at(cell: Vector3i) -> BlockTarget:

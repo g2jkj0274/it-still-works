@@ -15,7 +15,7 @@ func _stocked(pairs: Array) -> Inventory:
 
 func _full_purse() -> Inventory:
     return _stocked([
-        [BlockType.WOOD, 99], [BlockType.STONE, 99], [BlockType.GROUND, 99],
+        [BlockType.WOOD, 99], [BlockType.ORE, 99], [BlockType.GROUND, 99],
     ])
 
 
@@ -36,7 +36,7 @@ func test_every_placeable_part_can_be_made() -> void:
 func test_gathered_materials_are_not_made() -> void:
     # 흙·돌·나무·작물은 손으로 얻는 것이다. 만들어 내면 자원지가 뜻을 잃는다.
     for block_type in [
-        BlockType.GROUND, BlockType.STONE, BlockType.WOOD, BlockType.CROP,
+        BlockType.GROUND, BlockType.ORE, BlockType.WOOD, BlockType.CROP,
     ]:
         assert_bool(RecipeBook.can_be_made(block_type)).is_false()
 
@@ -54,7 +54,7 @@ func test_every_circuit_part_costs_ore() -> void:
             continue
         var ore := 0
         for entry: Array in RecipeBook.inputs_of(index):
-            if int(entry[0]) == BlockType.STONE:
+            if int(entry[0]) == BlockType.ORE:
                 ore = int(entry[1])
         assert_int(ore).override_failure_message(
             "%s 를 광석 없이 만들 수 있다" % BlockType.name_of(output)).is_greater(0)
@@ -126,7 +126,7 @@ func test_crafting_what_cannot_be_made_does_nothing() -> void:
     sim.state.inventory.add(BlockType.WOOD, 9)
     var before := sim.state.inventory.total()
 
-    sim.submit(CraftCommand.create(BlockType.STONE))
+    sim.submit(CraftCommand.create(BlockType.ORE))
     sim.submit(CraftCommand.create(BlockType.BUNDLE))
     sim.step()
     assert_int(sim.state.inventory.total()).is_equal(before)
@@ -141,7 +141,7 @@ func test_a_craft_command_survives_being_written_and_read_back() -> void:
 
 func test_the_hint_line_spells_out_the_materials() -> void:
     var line := PartWords.recipe_line(BlockType.DETECTOR)
-    assert_str(line).contains(PartWords.name_of(BlockType.STONE))
+    assert_str(line).contains(PartWords.name_of(BlockType.ORE))
     assert_str(line).contains(PartWords.name_of(BlockType.WOOD))
     # 프로그래밍 용어가 화면에 나오면 안 된다.
     assert_str(line.to_lower()).not_contains("recipe")
@@ -149,7 +149,7 @@ func test_the_hint_line_spells_out_the_materials() -> void:
 
 
 func test_things_that_are_gathered_show_no_recipe() -> void:
-    assert_str(PartWords.recipe_line(BlockType.STONE)).is_empty()
+    assert_str(PartWords.recipe_line(BlockType.ORE)).is_empty()
 
 
 func test_a_first_night_can_be_reached_by_hand() -> void:
@@ -163,7 +163,7 @@ func test_a_first_night_can_be_reached_by_hand() -> void:
 func test_the_whole_night_system_is_affordable_in_one_trip() -> void:
     # 스펙 §5 의 마지막 장치는 부품 다섯 종을 다 쓴다. 한 번의 채집으로
     # 닿지 못할 만큼 비싸면 회로를 시험해 볼 수가 없다.
-    var inventory := _stocked([[BlockType.WOOD, 12], [BlockType.STONE, 12]])
+    var inventory := _stocked([[BlockType.WOOD, 12], [BlockType.ORE, 12]])
     for block_type in [
         BlockType.DETECTOR, BlockType.ACTUATOR, BlockType.REPEATER,
         BlockType.BOX, BlockType.BRANCH,

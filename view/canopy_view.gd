@@ -27,6 +27,11 @@ const CROWN_LIFT := 0.55
 
 var _grid: VoxelGrid
 var _node: MultiMeshInstance3D
+## 걷어낸 층. 이 위의 것은 그리지 않는다. 땅속에 들어가면 지상의 것이
+## 화면에 떠 있어 보이기 때문이다.
+var _cut_above: int = VoxelGrid.SIZE_Z
+var _cutting: bool = false
+
 var _last_version: int = -1
 var _build_count: int = 0
 var _crowns: Array[Vector3i] = []
@@ -60,6 +65,20 @@ func _ready() -> void:
 func bind(grid: VoxelGrid) -> void:
     _grid = grid
     _last_version = -1
+
+
+## 머리 위를 걷어내는 높이를 알린다. [WorldView] 와 같은 값을 받는다.
+func cut_above(height: int, active: bool) -> void:
+    if height == _cut_above and active == _cutting:
+        return
+    _cut_above = height
+    _cutting = active
+    rebuild()
+
+
+## 그 칸이 걷어낸 층 위에 있는가.
+func _is_cut_away(cell: Vector3i) -> bool:
+    return _cutting and cell.z > _cut_above
 
 
 func sync() -> void:
@@ -104,7 +123,7 @@ func _find_trunks() -> Array[Vector3i]:
     for y in VoxelGrid.SIZE_Y:
         for x in VoxelGrid.SIZE_X:
             var top := _trunk_top(x, y)
-            if top.z >= 0:
+            if top.z >= 0 and not _is_cut_away(top):
                 tops.append(top)
     return tops
 

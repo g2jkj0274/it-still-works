@@ -48,7 +48,7 @@ func test_bare_rock_and_wood_stay_bare() -> void:
     for y in range(10, 26):
         for x in range(10, 26):
             grid.set_block(Vector3i(x, y, 0), BlockType.GROUND)
-            grid.set_block(Vector3i(x, y, 1), BlockType.STONE)
+            grid.set_block(Vector3i(x, y, 1), BlockType.ORE)
     assert_int(_cover(grid).total_instance_count()).is_equal(0)
 
 
@@ -69,7 +69,7 @@ func test_building_on_the_grass_clears_what_grew_there() -> void:
     # 절반만 덮는다. 덮인 쪽의 풀은 사라지고 나머지는 그대로다.
     for y in range(10, 18):
         for x in range(10, 26):
-            grid.set_block(Vector3i(x, y, 2), BlockType.STONE)
+            grid.set_block(Vector3i(x, y, 2), BlockType.ORE)
     cover.sync()
 
     var after := cover.total_instance_count()

@@ -52,7 +52,7 @@ func test_a_wall_of_wood_does_not_grow_a_forest() -> void:
 
 func test_wood_with_a_roof_over_it_is_not_a_tree() -> void:
     var grid := _grid_with_trunk(3)
-    grid.set_block(BASE + VoxelGrid.UP * 4, BlockType.STONE)
+    grid.set_block(BASE + VoxelGrid.UP * 4, BlockType.ORE)
     assert_int(_view(grid).crown_count()).is_equal(0)
 
 

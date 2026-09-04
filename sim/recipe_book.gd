@@ -20,11 +20,13 @@ extends RefCounted
 const RECIPES: Array = [
     [BlockType.DOOR_CLOSED, 1, [[BlockType.WOOD, 4]]],
     [BlockType.FIELD, 1, [[BlockType.GROUND, 3], [BlockType.WOOD, 1]]],
-    [BlockType.DETECTOR, 1, [[BlockType.STONE, 2], [BlockType.WOOD, 1]]],
-    [BlockType.ACTUATOR, 1, [[BlockType.STONE, 1], [BlockType.WOOD, 2]]],
-    [BlockType.REPEATER, 1, [[BlockType.STONE, 3], [BlockType.WOOD, 1]]],
-    [BlockType.BOX, 1, [[BlockType.WOOD, 3], [BlockType.STONE, 1]]],
-    [BlockType.BRANCH, 1, [[BlockType.STONE, 2], [BlockType.WOOD, 2]]],
+    [BlockType.DETECTOR, 1, [[BlockType.ORE, 2], [BlockType.WOOD, 1]]],
+    [BlockType.ACTUATOR, 1, [[BlockType.ORE, 1], [BlockType.WOOD, 2]]],
+    [BlockType.REPEATER, 1, [[BlockType.ORE, 3], [BlockType.WOOD, 1]]],
+    [BlockType.BOX, 1, [[BlockType.WOOD, 3], [BlockType.ORE, 1]]],
+    [BlockType.BRANCH, 1, [[BlockType.ORE, 2], [BlockType.WOOD, 2]]],
+    # 등은 여럿 필요하다. 땅속을 밝히려면 몇 칸마다 하나씩 놓는다.
+    [BlockType.LAMP_DARK, 2, [[BlockType.WOOD, 1], [BlockType.ORE, 1]]],
 ]
 
 ## 스펙이 정한 제작법 수의 상한.

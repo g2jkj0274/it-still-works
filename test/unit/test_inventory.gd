@@ -14,7 +14,7 @@ func test_adding_increases_the_count() -> void:
     var inventory := Inventory.new()
     inventory.add(BlockType.WOOD, 3)
     assert_int(inventory.count_of(BlockType.WOOD)).is_equal(3)
-    assert_int(inventory.count_of(BlockType.STONE)).is_equal(0)
+    assert_int(inventory.count_of(BlockType.ORE)).is_equal(0)
 
 
 func test_empty_is_never_stocked() -> void:
@@ -39,16 +39,16 @@ func test_negative_amounts_are_ignored() -> void:
 
 func test_taking_removes_the_count() -> void:
     var inventory := Inventory.new()
-    inventory.add(BlockType.STONE, 2)
-    assert_bool(inventory.take(BlockType.STONE, 1)).is_true()
-    assert_int(inventory.count_of(BlockType.STONE)).is_equal(1)
+    inventory.add(BlockType.ORE, 2)
+    assert_bool(inventory.take(BlockType.ORE, 1)).is_true()
+    assert_int(inventory.count_of(BlockType.ORE)).is_equal(1)
 
 
 func test_taking_more_than_held_takes_nothing() -> void:
     var inventory := Inventory.new()
-    inventory.add(BlockType.STONE, 2)
-    assert_bool(inventory.take(BlockType.STONE, 3)).is_false()
-    assert_int(inventory.count_of(BlockType.STONE)).is_equal(2)
+    inventory.add(BlockType.ORE, 2)
+    assert_bool(inventory.take(BlockType.ORE, 3)).is_false()
+    assert_int(inventory.count_of(BlockType.ORE)).is_equal(2)
 
 
 func test_taking_from_empty_stock_fails() -> void:
@@ -58,7 +58,7 @@ func test_taking_from_empty_stock_fails() -> void:
 func test_total_sums_every_kind() -> void:
     var inventory := Inventory.new()
     inventory.add(BlockType.WOOD, 2)
-    inventory.add(BlockType.STONE, 3)
+    inventory.add(BlockType.ORE, 3)
     assert_int(inventory.total()).is_equal(5)
 
 

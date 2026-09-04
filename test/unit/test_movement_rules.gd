@@ -93,14 +93,14 @@ func test_a_diagonal_needs_both_sides_open() -> void:
     # 한쪽이 막혀 있으면 모서리를 뚫고 지나가는 꼴이 된다.
     var grid := _flat()
     var start := Vector3i(4, 4, 1)
-    grid.set_block(Vector3i(5, 4, 1), BlockType.STONE)
+    grid.set_block(Vector3i(5, 4, 1), BlockType.ORE)
     assert_bool(MovementRules.resolve_walk(grid, start, Vector3i(1, 1, 0)) == start).is_true()
 
 
 func test_a_diagonal_is_refused_when_the_other_side_is_blocked() -> void:
     var grid := _flat()
     var start := Vector3i(4, 4, 1)
-    grid.set_block(Vector3i(4, 5, 1), BlockType.STONE)
+    grid.set_block(Vector3i(4, 5, 1), BlockType.ORE)
     assert_bool(MovementRules.resolve_walk(grid, start, Vector3i(1, 1, 0)) == start).is_true()
 
 
@@ -108,15 +108,15 @@ func test_a_diagonal_climbs_a_one_tall_corner() -> void:
     # 곧은 걸음과 마찬가지로 한 칸 턱은 오른다.
     var grid := _flat()
     var start := Vector3i(4, 4, 1)
-    grid.set_block(Vector3i(5, 5, 1), BlockType.STONE)
+    grid.set_block(Vector3i(5, 5, 1), BlockType.ORE)
     assert_bool(MovementRules.resolve_walk(grid, start, Vector3i(1, 1, 0)) == Vector3i(5, 5, 2)).is_true()
 
 
 func test_a_diagonal_cannot_climb_a_two_tall_corner() -> void:
     var grid := _flat()
     var start := Vector3i(4, 4, 1)
-    grid.set_block(Vector3i(5, 5, 1), BlockType.STONE)
-    grid.set_block(Vector3i(5, 5, 2), BlockType.STONE)
+    grid.set_block(Vector3i(5, 5, 1), BlockType.ORE)
+    grid.set_block(Vector3i(5, 5, 2), BlockType.ORE)
     assert_bool(MovementRules.resolve_walk(grid, start, Vector3i(1, 1, 0)) == start).is_true()
 
 
@@ -124,16 +124,16 @@ func test_a_diagonal_climb_still_needs_both_sides_open() -> void:
     # 오를 때도 스치는 양옆이 열려 있어야 한다.
     var grid := _flat()
     var start := Vector3i(4, 4, 1)
-    grid.set_block(Vector3i(5, 5, 1), BlockType.STONE)
-    grid.set_block(Vector3i(5, 4, 2), BlockType.STONE)
+    grid.set_block(Vector3i(5, 5, 1), BlockType.ORE)
+    grid.set_block(Vector3i(5, 4, 2), BlockType.ORE)
     assert_bool(MovementRules.resolve_walk(grid, start, Vector3i(1, 1, 0)) == start).is_true()
 
 
 func test_a_diagonal_climb_needs_headroom() -> void:
     var grid := _flat()
     var start := Vector3i(4, 4, 1)
-    grid.set_block(Vector3i(5, 5, 1), BlockType.STONE)
-    grid.set_block(Vector3i(4, 4, 3), BlockType.STONE)
+    grid.set_block(Vector3i(5, 5, 1), BlockType.ORE)
+    grid.set_block(Vector3i(4, 4, 3), BlockType.ORE)
     assert_bool(MovementRules.resolve_walk(grid, start, Vector3i(1, 1, 0)) == start).is_true()
 
 
@@ -141,7 +141,7 @@ func test_a_blocked_side_never_becomes_a_climb() -> void:
     # 옆이 막혀 못 가는 것을 턱 오르기로 우회하면 모서리 규칙이 새어 나간다.
     var grid := _flat()
     var start := Vector3i(4, 4, 1)
-    grid.set_block(Vector3i(5, 4, 1), BlockType.STONE)
+    grid.set_block(Vector3i(5, 4, 1), BlockType.ORE)
     assert_bool(MovementRules.resolve_walk(grid, start, Vector3i(1, 1, 0)) == start).is_true()
 
 

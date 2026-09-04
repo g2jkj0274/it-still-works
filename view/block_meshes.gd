@@ -67,6 +67,11 @@ static func _shape_of(tool: SurfaceTool, block_type: int) -> void:
         BlockType.FIELD:
             # 갈아 놓은 두둑. 밟고 다니는 곳이라 가장 낮다.
             _box(tool, Vector3(0.0, -0.32, 0.0), Vector3(_CELL, 0.36, _CELL))
+        BlockType.LAMP_DARK, BlockType.LAMP_LIT:
+            # 등. 기둥 위에 갓이 얹혔다. 켜고 꺼짐은 색이 말한다.
+            _box(tool, Vector3(0.0, -0.34, 0.0), Vector3(0.30, 0.32, 0.30))
+            _box(tool, Vector3(0.0, 0.02, 0.0), Vector3(0.62, 0.40, 0.62))
+            _box(tool, Vector3(0.0, 0.28, 0.0), Vector3(0.78, 0.12, 0.78))
         BlockType.CROP:
             # 작물 포기. 밑동에서 이삭이 두 갈래로 솟는다.
             # 땅에 난 것은 부숴서 먹고, 이것이 첫날을 넘기는 유일한 길이다.

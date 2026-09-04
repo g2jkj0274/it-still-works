@@ -12,12 +12,53 @@ extends RefCounted
 const CENTER := Vector2i(32, 32)
 const ISLAND_RADIUS := 29
 
-## 지면의 윗면 높이. 캐릭터는 그 위 칸에 선다.
-const GROUND_TOP_Z := 1
+## 물가에서 이만큼 안쪽까지가 해안이다. 그 사이에서 지표가 해안 높이로 눕는다.
+##
+## 눕히지 않고 그냥 낮추면 해안선의 높이가 기복을 따라 들쭉날쭉해져서,
+## 물낯을 어디에 두어도 어떤 곳은 잠기고 어떤 곳은 절벽이 된다.
+const SHORE_BAND := 6
 
+## 해안의 높이. 물낯은 이 바로 위에 놓인다.
+const SHORE_Z := GROUND_TOP_Z - 2
+
+## 평지의 윗면 높이. 캐릭터는 그 위 칸에 선다.
+##
+## 예전에는 1 이었다. 세계가 세로로 스물넷인데 두 층만 쓰고 있었고, 바닥층은
+## 부술 수 없으므로 **팔 수 있는 땅이 한 층뿐이었다.** 파고 내려갈 곳이 없으니
+## 캐는 일이 성립하지 않았다.
+const GROUND_TOP_Z := 8
+
+## 흙은 지표에서 이만큼만이다. 그 아래는 돌이다.
+const SOIL_DEPTH := 2
+
+## 기복의 폭. 지표가 이 사이에서 오르내린다.
+const RELIEF := 3
+
+## 기복 격자의 간격. 진폭의 두 배보다 넓어야 한 칸 넘는 턱이 생기지 않는다.
+const RELIEF_SPAN := 8
+
+## 이어 붙인 값의 눈금.
+const SMOOTH_SCALE := 1000
+
+## 언덕. 기복 위에 더 얹는다.
 const HILL_CENTER := Vector2i(44, 40)
 const HILL_RADIUS := 9
 const HILL_PEAK_RADIUS := 5
+
+## 이 깊이 아래에만 광맥이 든다. 얕은 곳에서 나오면 내려갈 이유가 없다.
+const VEIN_TOP_Z := 6
+
+## 광맥이 드는 문턱. 이 값을 넘는 곳에 든다. 깊을수록 문턱이 내려간다.
+const VEIN_LEVEL := 760
+const VEIN_LEVEL_PER_DEPTH := 34
+const VEIN_SPAN_XY := 5
+const VEIN_SPAN_Z := 3
+
+## 동굴이 뚫리는 문턱과 뚫릴 수 있는 깊이.
+const CAVE_LEVEL := 640
+const CAVE_TOP_Z := 7
+const CAVE_SPAN_XY := 7
+const CAVE_SPAN_Z := 3
 
 ## 광석 자원지. 기지에서 떨어져 있어야 왕복이 자동 운반 장치의 동기가 된다.
 const ORE_SITES: Array[Vector2i] = [
@@ -61,8 +102,8 @@ const WILD_CROPS: Array[Vector2i] = [
     Vector2i(39, 28), Vector2i(26, 38),
 ]
 
-## 캐릭터가 처음 서는 칸.
-const SPAWN := Vector3i(32, 32, GROUND_TOP_Z + 1)
+## 캐릭터가 처음 서는 기둥. 높이는 그 자리의 지표를 따라간다.
+const SPAWN_COLUMN := Vector2i(32, 32)
 
 ## 시작할 때 손에 무언가를 쥐여 줄 것인가.
 ##
@@ -95,14 +136,19 @@ static func populate(state: WorldState) -> void:
     build(state.grid)
     if GIVE_STARTING_KIT:
         stock_starting_kit(state.inventory)
-    state.spawn = SPAWN
-    state.character.place_at(SPAWN)
+    state.spawn = spawn_cell()
+    state.character.place_at(state.spawn)
     state.character.facing = Vector3i(0, 1, 0)
+
+
+## 캐릭터가 처음 서는 칸. 지표 바로 위다.
+static func spawn_cell() -> Vector3i:
+    return Vector3i(SPAWN_COLUMN.x, SPAWN_COLUMN.y, surface_z(SPAWN_COLUMN) + 1)
 
 
 ## 판정에 필요한 것을 미리 쥐여 준다.
 static func stock_starting_kit(inventory: Inventory) -> void:
-    for block_type in [BlockType.GROUND, BlockType.STONE, BlockType.WOOD]:
+    for block_type in [BlockType.GROUND, BlockType.ORE, BlockType.WOOD]:
         inventory.add(block_type, STARTING_BLOCKS)
     for part_type in [
         BlockType.DOOR_CLOSED, BlockType.FIELD, BlockType.DETECTOR,
@@ -114,31 +160,137 @@ static func stock_starting_kit(inventory: Inventory) -> void:
 
 static func build(grid: VoxelGrid) -> void:
     _fill_ground(grid)
-    _raise_hill(grid)
+    _carve_caves(grid)
+    _seed_veins(grid)
     _place_ore(grid)
     _plant_trees(grid)
     _scatter_wild_crops(grid)
 
 
+## 그 기둥의 지표 높이. 기복과 언덕을 함께 친다.
+##
+## 좌표에서 뽑는다. 난수를 쓰지 않으므로 실행마다 같은 섬이 나온다.
+## 시뮬레이션의 RNG 를 당겨 쓰면 그 순간 결정론의 뜻이 흐려진다.
+static func surface_z(column: Vector2i) -> int:
+    if not _within(column, CENTER, ISLAND_RADIUS):
+        return -1
+
+    var height := GROUND_TOP_Z + _relief_at(column)
+
+    # 물가로 갈수록 해안 높이로 눕는다. 해안선이 고르게 이어져야 물낯을 둘 수 있다.
+    #
+    # 거리를 정수로 어림하므로 맨 바깥 줄이 한 칸 안쪽으로 잡히기도 한다.
+    # 그래서 한 칸을 더 물려 물가 두 줄이 확실히 해안 높이가 되게 한다.
+    var edge := ISLAND_RADIUS - _distance_to(column, CENTER)
+    var blend := clampi(edge - 1, 0, SHORE_BAND)
+    if blend < SHORE_BAND:
+        height = SHORE_Z + (height - SHORE_Z) * blend / SHORE_BAND
+
+    # 언덕은 한 칸씩 오른다. 한 번에 두 칸 솟으면 그 위로 올라갈 길이 없다.
+    var to_hill := _distance_to(column, HILL_CENTER)
+    if to_hill <= HILL_RADIUS:
+        height += (HILL_RADIUS - to_hill + 1) / 2
+
+    return clampi(height, VoxelGrid.BEDROCK_Z + 1, VoxelGrid.SIZE_Z - 4)
+
+
+## 완만한 기복.
+##
+## **이웃한 기둥끼리 한 칸 넘게 벌어지면 안 된다.** 캐릭터는 한 칸 턱만 오르므로
+## (스펙 §3.3) 두 칸 절벽이 생기면 그 위로 올라갈 길이 없다. 그래서 성긴 격자에
+## 값을 두고 그 사이를 곧게 이어 채운다. 격자 간격이 진폭의 두 배보다 넓으면
+## 기울기가 1 을 넘지 않는다.
+static func _relief_at(column: Vector2i) -> int:
+    var raised := _smooth(Vector3i(column.x, column.y, 0), RELIEF_SPAN, 1, 7)
+    return raised * (RELIEF * 2) / SMOOTH_SCALE - RELIEF
+
+
+## 성긴 격자 위의 값을 곧게 이어 0..[constant SMOOTH_SCALE] 로 돌려준다.
+##
+## 칸마다 따로 뽑으면 소금을 뿌린 것처럼 되어 지형도 동굴도 이어지지 않는다.
+## 사이를 이어야 언덕이 언덕이 되고 동굴이 동굴이 된다.
+static func _smooth(cell: Vector3i, span_xy: int, span_z: int, salt: int) -> int:
+    var gx := cell.x / span_xy
+    var gy := cell.y / span_xy
+    var gz := cell.z / span_z
+    var fx := cell.x % span_xy
+    var fy := cell.y % span_xy
+    var fz := cell.z % span_z
+
+    var near := _lerp_plane(gx, gy, gz, fx, fy, span_xy, salt)
+    if span_z <= 1:
+        return near
+    var far := _lerp_plane(gx, gy, gz + 1, fx, fy, span_xy, salt)
+    return (near * (span_z - fz) + far * fz) / span_z
+
+
+static func _lerp_plane(gx: int, gy: int, gz: int, fx: int, fy: int, span: int, salt: int) -> int:
+    var top := _corner(gx, gy, gz, salt) * (span - fx) + _corner(gx + 1, gy, gz, salt) * fx
+    var bottom := _corner(gx, gy + 1, gz, salt) * (span - fx) + _corner(gx + 1, gy + 1, gz, salt) * fx
+    return (top * (span - fy) + bottom * fy) / (span * span)
+
+
+static func _corner(gx: int, gy: int, gz: int, salt: int) -> int:
+    return _noise(Vector3i(gx, gy, gz * 31 + salt)) % (SMOOTH_SCALE + 1)
+
+
 static func _fill_ground(grid: VoxelGrid) -> void:
     for y in VoxelGrid.SIZE_Y:
         for x in VoxelGrid.SIZE_X:
-            if not _within(Vector2i(x, y), CENTER, ISLAND_RADIUS):
+            var column := Vector2i(x, y)
+            var top := surface_z(column)
+            if top < 0:
                 continue
-            for z in GROUND_TOP_Z + 1:
-                grid.set_block(Vector3i(x, y, z), BlockType.GROUND)
+            for z in top + 1:
+                # 지표 가까이는 흙, 그 아래는 돌. 바닥층은 부술 수 없는 돌이다.
+                var kind := BlockType.GROUND if z > top - SOIL_DEPTH else BlockType.ROCK
+                grid.set_block(Vector3i(x, y, z), kind)
 
 
-static func _raise_hill(grid: VoxelGrid) -> void:
+## 땅속에 빈 곳을 판다. 파고 내려갈 이유가 되고, 광맥이 드러나는 자리가 된다.
+static func _carve_caves(grid: VoxelGrid) -> void:
     for y in VoxelGrid.SIZE_Y:
         for x in VoxelGrid.SIZE_X:
             var column := Vector2i(x, y)
-            if not _within(column, CENTER, ISLAND_RADIUS):
+            var top := surface_z(column)
+            if top < 0:
                 continue
-            if _within(column, HILL_CENTER, HILL_RADIUS):
-                grid.set_block(Vector3i(x, y, GROUND_TOP_Z + 1), BlockType.GROUND)
-            if _within(column, HILL_CENTER, HILL_PEAK_RADIUS):
-                grid.set_block(Vector3i(x, y, GROUND_TOP_Z + 2), BlockType.GROUND)
+            for z in range(VoxelGrid.BEDROCK_Z + 1, mini(CAVE_TOP_Z, top - SOIL_DEPTH)):
+                var cell := Vector3i(x, y, z)
+                if _smooth(cell, CAVE_SPAN_XY, CAVE_SPAN_Z, 41) < CAVE_LEVEL:
+                    continue
+                grid.set_block(cell, BlockType.EMPTY)
+
+
+## 돌 사이에 광맥을 심는다. 깊을수록 흔하다.
+static func _seed_veins(grid: VoxelGrid) -> void:
+    for y in VoxelGrid.SIZE_Y:
+        for x in VoxelGrid.SIZE_X:
+            for z in range(VoxelGrid.BEDROCK_Z + 1, VEIN_TOP_Z + 1):
+                var cell := Vector3i(x, y, z)
+                if grid.get_block(cell) != BlockType.ROCK:
+                    continue
+                var depth := VEIN_TOP_Z - z
+                var level := VEIN_LEVEL - depth * VEIN_LEVEL_PER_DEPTH
+                if _smooth(cell, VEIN_SPAN_XY, VEIN_SPAN_Z, 83) >= level:
+                    grid.set_block(cell, BlockType.ORE)
+
+
+## 자리에서 뽑은 값. 난수가 아니라 뒤섞기라 실행마다 같은 섬이 나온다.
+static func _noise(cell: Vector3i) -> int:
+    var mixed := cell.x * 374761393 + cell.y * 668265263 + cell.z * 1442695041
+    mixed = (mixed ^ (mixed >> 13)) * 1274126177
+    return absi(mixed ^ (mixed >> 16))
+
+
+## 정수 거리. 제곱근을 쓰지 않으려고 어림으로 잡는다.
+static func _distance_to(pos: Vector2i, centre: Vector2i) -> int:
+    var offset := pos - centre
+    var squared := offset.x * offset.x + offset.y * offset.y
+    var guess := 0
+    while (guess + 1) * (guess + 1) <= squared:
+        guess += 1
+    return guess
 
 
 ## 광석 자원지를 놓는다. 가운데가 솟은 더미로 쌓는다.
@@ -153,7 +305,8 @@ static func _place_ore(grid: VoxelGrid) -> void:
                 var column := Vector2i(x, y)
                 if not _within(column, site, ORE_SITE_RADIUS):
                     continue
-                if not grid.is_solid(Vector3i(x, y, GROUND_TOP_Z)):
+                var top := surface_z(column)
+                if top < 0:
                     continue
 
                 # 가운데로 갈수록 높다. 바깥 테두리는 한 칸, 한가운데는 세 칸.
@@ -161,12 +314,15 @@ static func _place_ore(grid: VoxelGrid) -> void:
                 var away := maxi(absi(offset.x), absi(offset.y))
                 var height := ORE_SITE_RADIUS + 1 - away
                 for step in height:
-                    grid.set_block(Vector3i(x, y, GROUND_TOP_Z + 1 + step), BlockType.STONE)
+                    grid.set_block(Vector3i(x, y, top + 1 + step), BlockType.ORE)
 
 
 static func _plant_trees(grid: VoxelGrid) -> void:
     for trunk in TREES:
-        var base := Vector3i(trunk.x, trunk.y, GROUND_TOP_Z + 1)
+        var top := surface_z(trunk)
+        if top < 0:
+            continue
+        var base := Vector3i(trunk.x, trunk.y, top + 1)
         if not grid.is_solid(base - VoxelGrid.UP) or grid.is_solid(base):
             continue
         for offset in TREE_HEIGHT:
@@ -176,7 +332,10 @@ static func _plant_trees(grid: VoxelGrid) -> void:
 ## 저절로 난 작물을 시작 자리 둘레에 흩어 둔다.
 static func _scatter_wild_crops(grid: VoxelGrid) -> void:
     for column in WILD_CROPS:
-        var cell := Vector3i(column.x, column.y, GROUND_TOP_Z + 1)
+        var top := surface_z(column)
+        if top < 0:
+            continue
+        var cell := Vector3i(column.x, column.y, top + 1)
         if not grid.is_solid(cell - VoxelGrid.UP) or grid.is_solid(cell):
             continue
         grid.set_block(cell, BlockType.CROP)

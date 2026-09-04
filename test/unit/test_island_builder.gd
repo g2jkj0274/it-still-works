@@ -21,10 +21,70 @@ func test_build_consumes_no_randomness() -> void:
     assert_int(state.rng.get_state()).is_equal(before)
 
 
-func test_island_centre_is_ground() -> void:
+func test_the_surface_is_soil_and_below_it_is_rock() -> void:
+    # 지표 가까이는 흙, 그 아래는 돌이다. 파고 내려가면 달라지는 것이 보여야 한다.
     var grid := _built()
-    assert_int(grid.get_block(Vector3i(32, 32, 0))).is_equal(BlockType.GROUND)
-    assert_int(grid.get_block(Vector3i(32, 32, IslandBuilder.GROUND_TOP_Z))).is_equal(BlockType.GROUND)
+    var column := IslandBuilder.SPAWN_COLUMN
+    var top := IslandBuilder.surface_z(column)
+
+    assert_int(grid.get_block(Vector3i(column.x, column.y, top))).is_equal(BlockType.GROUND)
+    assert_int(grid.get_block(Vector3i(column.x, column.y, VoxelGrid.BEDROCK_Z))).is_equal(
+        BlockType.ROCK)
+
+
+func test_there_is_room_to_dig() -> void:
+    # 예전에는 지면이 두 층뿐이고 바닥층은 부술 수 없어 **팔 수 있는 땅이 한
+    # 층**이었다. 파고 내려갈 곳이 없으면 캐는 일이 성립하지 않는다.
+    var column := IslandBuilder.SPAWN_COLUMN
+    var diggable := IslandBuilder.surface_z(column) - VoxelGrid.BEDROCK_Z
+    assert_int(diggable).is_greater_equal(6)
+
+
+func test_the_island_can_be_walked_from_end_to_end() -> void:
+    # 두 칸 턱은 오르지 못한다(스펙 §3.3). 지형이 사람을 가두면 안 된다.
+    var grid := _built()
+    var reached := _walk_from(grid, IslandBuilder.spawn_cell())
+
+    var land := 0
+    var missed := 0
+    for y in VoxelGrid.SIZE_Y:
+        for x in VoxelGrid.SIZE_X:
+            if IslandBuilder.surface_z(Vector2i(x, y)) < 0:
+                continue
+            land += 1
+            if not reached.has(Vector2i(x, y)):
+                missed += 1
+
+    assert_int(land).is_greater(2000)
+    # 광석 더미 꼭대기처럼 한 칸 쌓아야 오르는 자리는 남겨 둔다.
+    assert_int(missed * 100).is_less(land)
+
+
+## 시작 자리에서 걸어 닿는 기둥들.
+func _walk_from(grid: VoxelGrid, start: Vector3i) -> Dictionary:
+    var seen := {start: true}
+    var columns := {Vector2i(start.x, start.y): true}
+    var queue: Array[Vector3i] = []
+    queue.append(start)
+
+    while not queue.is_empty():
+        var here: Vector3i = queue.pop_back()
+        for offset: Vector3i in [
+            Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0),
+        ]:
+            for lift in [1, 0, -1, -2, -3, -4]:
+                var there: Vector3i = here + offset + Vector3i(0, 0, int(lift))
+                if seen.has(there):
+                    break
+                if not MovementRules.can_occupy(grid, there):
+                    continue
+                if not MovementRules.is_supported(grid, there):
+                    continue
+                seen[there] = true
+                columns[Vector2i(there.x, there.y)] = true
+                queue.append(there)
+                break
+    return columns
 
 
 func test_island_corners_are_open_water() -> void:
@@ -52,7 +112,7 @@ func test_nothing_reaches_the_ceiling() -> void:
 
 func test_spawn_is_standable() -> void:
     var grid := _built()
-    var spawn := IslandBuilder.SPAWN
+    var spawn := IslandBuilder.spawn_cell()
     assert_bool(grid.is_solid(spawn - VoxelGrid.UP)).is_true()
     for offset in CharacterState.HEIGHT:
         assert_bool(grid.is_free(spawn + VoxelGrid.UP * offset)).is_true()
@@ -61,27 +121,79 @@ func test_spawn_is_standable() -> void:
 func test_populate_places_the_character_at_spawn() -> void:
     var state := WorldState.new(SimRng.new(1))
     IslandBuilder.populate(state)
-    assert_bool(state.character.cell() == IslandBuilder.SPAWN).is_true()
+    assert_bool(state.character.cell() == IslandBuilder.spawn_cell()).is_true()
     assert_bool(state.grid.is_solid(Vector3i(32, 32, 0))).is_true()
 
 
-func test_hill_rises_above_the_plain() -> void:
-    var grid := _built()
+func test_hill_rises_above_what_is_around_it() -> void:
     var hill := IslandBuilder.HILL_CENTER
-    assert_bool(grid.is_solid(Vector3i(hill.x, hill.y, IslandBuilder.GROUND_TOP_Z + 1))).is_true()
-    assert_bool(grid.is_solid(Vector3i(32, 32, IslandBuilder.GROUND_TOP_Z + 1))).is_false()
+    var peak := IslandBuilder.surface_z(hill)
+    var foot := IslandBuilder.surface_z(hill + Vector2i(IslandBuilder.HILL_RADIUS + 3, 0))
+    assert_int(peak).is_greater(foot)
 
 
-func test_ore_sites_hold_stone() -> void:
+func test_the_ground_never_rises_by_more_than_one_at_a_time() -> void:
+    # 두 칸 턱은 오르지 못한다. 여기저기 절벽이 생기는 것은 괜찮지만
+    # 그것이 흔해지면 섬이 걸어 다닐 수 없는 곳이 된다.
+    var steep := 0
+    var columns := 0
+    for y in VoxelGrid.SIZE_Y:
+        for x in VoxelGrid.SIZE_X:
+            var here := IslandBuilder.surface_z(Vector2i(x, y))
+            if here < 0:
+                continue
+            columns += 1
+            for offset in [Vector2i(1, 0), Vector2i(0, 1)]:
+                var there := IslandBuilder.surface_z(Vector2i(x, y) + offset)
+                if there >= 0 and absi(there - here) > 1:
+                    steep += 1
+    assert_int(steep * 20).is_less(columns)
+
+
+func test_ore_sites_stand_on_the_surface() -> void:
     var grid := _built()
     for site in IslandBuilder.ORE_SITES:
-        assert_int(grid.get_block(Vector3i(site.x, site.y, IslandBuilder.GROUND_TOP_Z + 1))).is_equal(BlockType.STONE)
+        var top := IslandBuilder.surface_z(site)
+        assert_int(grid.get_block(Vector3i(site.x, site.y, top + 1))).is_equal(BlockType.ORE)
+
+
+func test_ore_hides_deep_and_not_at_the_surface() -> void:
+    # 얕은 곳에서 나오면 내려갈 이유가 없다.
+    var grid := _built()
+    var deep := 0
+    var shallow := 0
+    for y in VoxelGrid.SIZE_Y:
+        for x in VoxelGrid.SIZE_X:
+            for z in VoxelGrid.SIZE_Z:
+                if grid.get_block(Vector3i(x, y, z)) != BlockType.ORE:
+                    continue
+                if z <= IslandBuilder.VEIN_TOP_Z:
+                    deep += 1
+                else:
+                    shallow += 1
+    assert_int(deep).is_greater(200)
+    assert_int(deep).is_greater(shallow)
+
+
+func test_there_are_hollows_under_the_ground() -> void:
+    # 파고 내려갈 이유이고, 광맥이 드러나는 자리다.
+    var grid := _built()
+    var hollow := 0
+    for y in VoxelGrid.SIZE_Y:
+        for x in VoxelGrid.SIZE_X:
+            var top := IslandBuilder.surface_z(Vector2i(x, y))
+            if top < 0:
+                continue
+            for z in range(VoxelGrid.BEDROCK_Z + 1, top - IslandBuilder.SOIL_DEPTH):
+                if not grid.is_solid(Vector3i(x, y, z)):
+                    hollow += 1
+    assert_int(hollow).is_greater(500)
 
 
 func test_ore_sites_are_away_from_spawn() -> void:
     # 왕복 거리가 있어야 자동 운반 장치의 동기가 생긴다.
     for site in IslandBuilder.ORE_SITES:
-        var offset := site - Vector2i(IslandBuilder.SPAWN.x, IslandBuilder.SPAWN.y)
+        var offset := site - Vector2i(IslandBuilder.SPAWN_COLUMN.x, IslandBuilder.SPAWN_COLUMN.y)
         assert_int(offset.x * offset.x + offset.y * offset.y).is_greater(100)
 
 
@@ -89,7 +201,7 @@ func test_trees_are_wood_and_stand_on_ground() -> void:
     var grid := _built()
     var planted := 0
     for trunk in IslandBuilder.TREES:
-        var base := Vector3i(trunk.x, trunk.y, IslandBuilder.GROUND_TOP_Z + 1)
+        var base := Vector3i(trunk.x, trunk.y, IslandBuilder.surface_z(trunk) + 1)
         if grid.get_block(base) != BlockType.WOOD:
             continue
         planted += 1

@@ -44,7 +44,7 @@ func test_no_shape_spills_out_of_its_cell() -> void:
 
 func test_terrain_fills_its_cell() -> void:
     # 이어 붙였을 때 틈이 보이면 안 된다.
-    for block_type in [BlockType.GROUND, BlockType.STONE, BlockType.WOOD]:
+    for block_type in [BlockType.GROUND, BlockType.ORE, BlockType.WOOD]:
         var size := _mesh(block_type).get_aabb().size
         assert_float(size.x).is_equal_approx(SimViewCoords.CELL_SIZE, 0.001)
         assert_float(size.y).is_equal_approx(SimViewCoords.CELL_SIZE, 0.001)

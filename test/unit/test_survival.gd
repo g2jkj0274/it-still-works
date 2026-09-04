@@ -106,11 +106,11 @@ func test_hunger_wears_the_player_down_over_a_long_day() -> void:
 
 func test_falling_returns_the_player_to_the_start() -> void:
     var sim := _sim()
-    sim.state.character.place_at(IslandBuilder.SPAWN + Vector3i(4, 0, 0))
+    sim.state.character.place_at(IslandBuilder.spawn_cell() + Vector3i(4, 0, 0))
     sim.state.vitals.damage(Vitals.MAX_HEALTH)
     sim.advance(2)
 
-    assert_bool(sim.state.character.cell() == IslandBuilder.SPAWN).is_true()
+    assert_bool(sim.state.character.cell() == IslandBuilder.spawn_cell()).is_true()
     assert_int(sim.state.vitals.health).is_equal(Vitals.MAX_HEALTH)
 
 
@@ -118,30 +118,30 @@ func test_falling_costs_half_of_what_was_carried() -> void:
     # 시작 지급이 켜져 있을 수 있으므로 쓰러지기 직전 개수에서 재어 본다.
     var sim := _sim()
     sim.state.inventory.add(BlockType.WOOD, 8)
-    sim.state.inventory.add(BlockType.STONE, 3)
+    sim.state.inventory.add(BlockType.ORE, 3)
     var wood := sim.state.inventory.count_of(BlockType.WOOD)
-    var stone := sim.state.inventory.count_of(BlockType.STONE)
+    var stone := sim.state.inventory.count_of(BlockType.ORE)
 
     sim.state.vitals.damage(Vitals.MAX_HEALTH)
     sim.advance(2)
 
     assert_int(sim.state.inventory.count_of(BlockType.WOOD)).is_equal(wood / 2)
-    assert_int(sim.state.inventory.count_of(BlockType.STONE)).is_equal(stone / 2)
+    assert_int(sim.state.inventory.count_of(BlockType.ORE)).is_equal(stone / 2)
 
 
 func test_what_was_built_survives_a_fall() -> void:
     # 실패는 가볍다. 만든 것은 남는다.
     var sim := _sim()
-    var built := IslandBuilder.SPAWN + Vector3i(2, 0, 0)
-    sim.state.grid.set_block(built, BlockType.STONE)
+    var built := IslandBuilder.spawn_cell() + Vector3i(2, 0, 0)
+    sim.state.grid.set_block(built, BlockType.ORE)
     sim.state.vitals.damage(Vitals.MAX_HEALTH)
     sim.advance(2)
-    assert_int(sim.state.grid.get_block(built)).is_equal(BlockType.STONE)
+    assert_int(sim.state.grid.get_block(built)).is_equal(BlockType.ORE)
 
 
 func test_a_time_detector_wakes_at_night() -> void:
     var sim := _sim()
-    var at := IslandBuilder.SPAWN + Vector3i(3, 0, 0)
+    var at := IslandBuilder.spawn_cell() + Vector3i(3, 0, 0)
     sim.state.grid.set_block(at, BlockType.DETECTOR)
     sim.state.circuit.add_part(DetectorPart.create(at, DetectorPart.TARGET_TIME))
 

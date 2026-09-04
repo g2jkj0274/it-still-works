@@ -37,14 +37,16 @@ const NORTH_EAST := Vector3i(1, -1, 0)
 ##   제작법이 생겨 시작 지급을 껐다. 빈손으로 시작하므로 인벤토리 초기값이 바뀜
 ##   섬에 저절로 난 작물이 놓여 격자가 바뀜 (첫날 밤에 손으로 닿게 하려고)
 ##   광석 자원지가 가운데 솟은 더미가 되어 격자가 바뀜 (멀리서 보이게)
+##   세계의 세로가 16 → 24 로 늘고, 지표가 기복을 타며 그 아래가 돌·광맥·동굴이 됨
+##   등 블록이 늘어 블록 종류가 둘 늘어남 (스펙 §5 의 자동 조명)
 ##
 ## 이 값이 깨졌다면 시뮬레이션 동작이 바뀐 것이다. 값을 고쳐 통과시키지 말고
 ## 무엇이 바뀌었는지 먼저 밝힌다.
-const GOLDEN_HASH := "5f9e986d58e44cb815636654f4f0a7e74ac3cf6be36131a5567e14f56ee3e5f6"
+const GOLDEN_HASH := "010915fb5bd1a967971c3cd79a54faea05e11e3182f090b969c0bb2a4b61666a"
 
 ## 같은 실행이 끝났을 때 캐릭터가 서 있는 칸.
 ## 해시보다 읽기 쉬워서 이동 규칙이 어긋났을 때 원인을 빨리 좁혀준다.
-const GOLDEN_POSITION := Vector3i(32, 30, 2)
+const GOLDEN_POSITION := Vector3i(32, 30, 11)
 
 
 ## 실행마다 새로 만든다. 명령 객체는 큐가 틱과 순서를 새겨 넣으므로 재사용하지 않는다.
@@ -88,7 +90,7 @@ func _scenario() -> Array:
 ## 어느 속도로도 제때 도착하기 때문이다. 걸음 도중을 함께 못박아야 타이밍이
 ## 지켜진다.
 const MID_TICK := 104 + 2
-const GOLDEN_MID_HASH := "2dab594e46987b5670ba8a4c64634ec63d38967fdb211522249c59a8528431ee"
+const GOLDEN_MID_HASH := "5e136428ef1a0c884e58bec043dcc90b1bdb52fb47d5bb2c55fa86ed7fd8711f"
 
 
 func _run(seed_value: int = SEED, scenario: Array = []) -> Simulation:
@@ -138,7 +140,7 @@ func test_scenario_actually_changes_the_world() -> void:
     for entry: Array in _scenario():
         midway.submit_at(entry[1] as SimCommand, int(entry[0]))
     midway.advance(TOTAL_TICKS / 2)
-    assert_bool(midway.state.character.cell() == IslandBuilder.SPAWN).is_false()
+    assert_bool(midway.state.character.cell() == IslandBuilder.spawn_cell()).is_false()
 
 
 func test_dropping_one_command_produces_different_hash() -> void:

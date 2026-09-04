@@ -95,18 +95,18 @@ func test_submitting_a_move_only_queues_a_command() -> void:
     assert_str(sim.state_hash()).is_equal(before)
 
     sim.advance(10)
-    assert_bool(sim.state.character.cell() == IslandBuilder.SPAWN + Vector3i(0, -1, 0)).is_true()
+    assert_bool(sim.state.character.cell() == IslandBuilder.spawn_cell() + Vector3i(0, -1, 0)).is_true()
 
 
 func test_place_targets_the_cell_in_front() -> void:
     var sim := _sim()
     var controller := _controller(sim)
-    controller.select_block(BlockType.STONE)
+    controller.select_block(BlockType.ORE)
     var target := sim.state.character.facing_cell()
 
     controller.submit_place()
     sim.advance(2)
-    assert_int(sim.state.grid.get_block(target)).is_equal(BlockType.STONE)
+    assert_int(sim.state.grid.get_block(target)).is_equal(BlockType.ORE)
 
 
 func test_break_targets_the_cell_in_front() -> void:
@@ -168,7 +168,7 @@ func test_without_a_target_the_cell_in_front_is_used() -> void:
 func test_breaking_uses_the_targeted_cell() -> void:
     var sim := _sim()
     var controller := _controller(sim)
-    var aimed := IslandBuilder.SPAWN + Vector3i(2, 0, -1)
+    var aimed := IslandBuilder.spawn_cell() + Vector3i(2, 0, -1)
     controller.set_target(_target_on(aimed, VoxelGrid.UP))
     assert_bool(controller.break_cell() == aimed).is_true()
 
@@ -176,7 +176,7 @@ func test_breaking_uses_the_targeted_cell() -> void:
 func test_placing_uses_the_face_of_the_targeted_cell() -> void:
     var sim := _sim()
     var controller := _controller(sim)
-    var aimed := IslandBuilder.SPAWN + Vector3i(2, 0, -1)
+    var aimed := IslandBuilder.spawn_cell() + Vector3i(2, 0, -1)
     controller.set_target(_target_on(aimed, VoxelGrid.UP))
     assert_bool(controller.place_cell() == aimed + VoxelGrid.UP).is_true()
 
@@ -192,7 +192,9 @@ func test_a_missed_target_falls_back_to_the_cell_in_front() -> void:
 func test_targeted_break_reaches_a_block_that_is_not_in_front() -> void:
     var sim := _sim()
     var controller := _controller(sim)
-    var aimed := IslandBuilder.SPAWN + Vector3i(3, 3, -1)
+    # 지표가 기복을 타므로 그 기둥의 높이를 따라 겨냥한다.
+    var column := IslandBuilder.SPAWN_COLUMN + Vector2i(3, 3)
+    var aimed := Vector3i(column.x, column.y, IslandBuilder.surface_z(column))
     assert_bool(sim.state.grid.is_solid(aimed)).is_true()
 
     controller.set_target(_target_on(aimed, VoxelGrid.UP))

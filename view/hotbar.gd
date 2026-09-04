@@ -31,7 +31,10 @@ const EMPTY_TEXT_COLOUR := Color(0.42, 0.44, 0.48)
 const CHOSEN_BORDER := Color(0.15, 0.17, 0.22)
 
 ## 누를 키 표시. 열째 칸은 0 이고, 숫자 너머의 것은 제 키로 고른다.
-const _KEY_LABELS: PackedStringArray = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "N"]
+## 등은 L, 묶음은 N 이다.
+const _KEY_LABELS: PackedStringArray = [
+    "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "L", "N",
+]
 
 var _inventory: Inventory
 var _controller: InputController
