@@ -47,6 +47,11 @@ const SCALE_MAX := 1450
 
 var _grid: VoxelGrid
 var _layers: Array[MultiMeshInstance3D] = []
+## 걷어낸 층. 이 위의 것은 그리지 않는다. 땅속에 들어가면 지상의 것이
+## 화면에 떠 있어 보이기 때문이다.
+var _cut_above: int = VoxelGrid.SIZE_Z
+var _cutting: bool = false
+
 var _last_version: int = -1
 var _build_count: int = 0
 
@@ -62,6 +67,20 @@ func bind(grid: VoxelGrid) -> void:
 
 
 ## 격자가 바뀌었을 때만 다시 뿌린다. 블록을 놓으면 그 자리의 풀은 사라진다.
+## 머리 위를 걷어내는 높이를 알린다. [WorldView] 와 같은 값을 받는다.
+func cut_above(height: int, active: bool) -> void:
+    if height == _cut_above and active == _cutting:
+        return
+    _cut_above = height
+    _cutting = active
+    rebuild()
+
+
+## 그 칸이 걷어낸 층 위에 있는가.
+func _is_cut_away(cell: Vector3i) -> bool:
+    return _cutting and cell.z > _cut_above
+
+
 func sync() -> void:
     if _grid == null or _grid.version() == _last_version:
         return
@@ -80,6 +99,8 @@ func rebuild() -> void:
         for x in VoxelGrid.SIZE_X:
             var cell := _top_of_column(x, y)
             if cell.z < 0:
+                continue
+            if _is_cut_away(cell):
                 continue
             var noise := _noise(cell)
             if noise % 100 >= DENSITY_PERCENT:

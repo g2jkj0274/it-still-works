@@ -51,12 +51,18 @@ const BUNDLE := 13
 ## 돌. 지하를 이루는 흔한 암반. 흙보다 단단해 보이고 광석과는 다르다.
 const ROCK := 14
 
-const COUNT := 15
+## 꺼진 등.
+const LAMP_DARK := 15
+
+## 켜진 등. 둘레를 밝힌다. 문과 마찬가지로 작동기가 여닫는다.
+const LAMP_LIT := 16
+
+const COUNT := 17
 
 const _NAMES: PackedStringArray = [
     "empty", "ground", "ore", "wood",
     "door_closed", "door_open", "detector", "actuator", "repeater", "box", "branch", "field", "crop",
-    "bundle", "rock",
+    "bundle", "rock", "lamp_dark", "lamp_lit",
 ]
 
 
@@ -76,6 +82,19 @@ static func is_breakable(type: int) -> bool:
 
 static func is_door(type: int) -> bool:
     return type == DOOR_CLOSED or type == DOOR_OPEN
+
+
+## 등인가. 작동기가 켜고 끈다.
+static func is_lamp(type: int) -> bool:
+    return type == LAMP_DARK or type == LAMP_LIT
+
+
+static func lit_lamp() -> int:
+    return LAMP_LIT
+
+
+static func dark_lamp() -> int:
+    return LAMP_DARK
 
 
 ## 회로 부품인가.
@@ -105,6 +124,8 @@ static func closed_door() -> int:
 static func material_of(type: int) -> int:
     if type == DOOR_OPEN:
         return DOOR_CLOSED
+    if type == LAMP_LIT:
+        return LAMP_DARK
     return type
 
 

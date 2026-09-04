@@ -110,15 +110,33 @@ func test_the_variation_stays_subtle() -> void:
         assert_float(shade.v).is_between(0.0, 1.0)
 
 
+## 같은 물건의 두 상태. 서로만 갈리면 되고 다른 블록과 멀 필요는 없다.
+const PAIRED_STATES: Array[int] = [BlockType.DOOR_OPEN, BlockType.LAMP_LIT]
+
+
 func test_different_blocks_are_told_apart() -> void:
     var seen: Array = []
     for type in BlockType.COUNT:
-        if type == BlockType.EMPTY or type == BlockType.DOOR_OPEN:
+        if type == BlockType.EMPTY or PAIRED_STATES.has(type):
             continue
         var colour := Palette.of_block(type)
         for other: Color in seen:
             assert_float(_distance(colour, other)).is_greater(0.12)
         seen.append(colour)
+
+
+func test_a_lit_lamp_is_told_apart_from_a_dark_one() -> void:
+    # 켜졌는지 꺼졌는지가 보이지 않으면 자동 조명(스펙 §5)이 아무것도 보여주지 못한다.
+    assert_float(_distance(
+        Palette.of_block(BlockType.LAMP_LIT),
+        Palette.of_block(BlockType.LAMP_DARK))).is_greater(0.12)
+
+
+func test_an_open_door_is_told_apart_from_a_closed_one() -> void:
+    # 색이 같아도 된다. 생김새가 가른다 — 열린 문은 한쪽으로 물러난 얇은 판이다.
+    assert_bool(BlockMeshes.for_block(BlockType.DOOR_OPEN).surface_get_arrays(0)[
+        Mesh.ARRAY_VERTEX] == BlockMeshes.for_block(BlockType.DOOR_CLOSED
+        ).surface_get_arrays(0)[Mesh.ARRAY_VERTEX]).is_false()
 
 
 func _distance(a: Color, b: Color) -> float:

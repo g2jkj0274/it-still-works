@@ -49,6 +49,10 @@ const BOX := Color(0.76, 0.68, 0.95)
 const BRANCH := Color(0.98, 0.72, 0.56)
 const FIELD := Color(0.72, 0.60, 0.66)
 const CROP := Color(0.96, 0.98, 0.74)
+
+## 등. 꺼진 것은 잿빛이 돌고 켜진 것은 환하다.
+const LAMP_DARK := Color(0.80, 0.78, 0.62)
+const LAMP_LIT := Color(1.0, 0.96, 0.72)
 const BUNDLE := Color(0.56, 0.93, 0.78)
 
 const CHARACTER_SKIN := Color(0.98, 0.86, 0.74)
@@ -134,6 +138,8 @@ const _BLOCKS: Dictionary[int, Color] = {
     BlockType.BRANCH: BRANCH,
     BlockType.FIELD: FIELD,
     BlockType.CROP: CROP,
+    BlockType.LAMP_DARK: LAMP_DARK,
+    BlockType.LAMP_LIT: LAMP_LIT,
     BlockType.BUNDLE: BUNDLE,
 }
 

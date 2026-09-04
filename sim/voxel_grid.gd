@@ -151,6 +151,17 @@ func is_exposed(pos: Vector3i) -> bool:
     return false
 
 
+## 그 기둥에서 가장 높은 단단한 칸. 아무것도 없으면 -1.
+##
+## 표현 레이어가 "이 칸이 지표에서 얼마나 아래인가"를 재는 데 쓴다.
+## 격자 자신에 대한 물음이지 그리는 방법에 대한 물음이 아니다.
+func height_at(x: int, y: int) -> int:
+    for z in range(SIZE_Z - 1, -1, -1):
+        if is_solid(Vector3i(x, y, z)):
+            return z
+    return -1
+
+
 ## 내용이 바뀔 때마다 오르는 값. 표현 레이어가 다시 그릴 시점을 알 때 쓴다.
 func version() -> int:
     return _version

@@ -7,7 +7,7 @@ extends CircuitPart
 ## 그래서 나중에 블록을 늘려도 회로 부품은 늘지 않는다.
 ##
 ## 신호가 오면 작동하고 오지 않으면 되돌린다. 회로에서 "실행된다"는 곧
-## "신호가 있다"이다. 지금 작동시킬 수 있는 블록은 문뿐이다.
+## "신호가 있다"이다. 지금 작동시킬 수 있는 것은 문과 밭과 등이다.
 ##
 ## 무엇에 닿는지는 놓인 칸이 아니라 [member CircuitPart.anchor] 에서 잰다.
 ## 묶음 안에 들어가면 묶음이 놓인 칸에 맞닿은 것을 움직인다.
@@ -42,6 +42,7 @@ func act(state: WorldState) -> void:
         var neighbour := anchor + offset
         _work_door(state, neighbour)
         _work_field(state, neighbour)
+        _work_lamp(state, neighbour)
 
 
 ## 문은 신호가 오면 열리고 오지 않으면 닫힌다.
@@ -52,6 +53,16 @@ func _work_door(state: WorldState, cell: Vector3i) -> void:
     if not _wants_open and state.character.occupies(cell):
         return
     state.grid.set_block(cell, BlockType.opened_door() if _wants_open else BlockType.closed_door())
+
+
+## 등은 신호가 오면 켜지고 오지 않으면 꺼진다.
+##
+## 스펙 §5 의 "자동 조명" — 감지기(시간=밤) → 작동기(등) 이 이것으로 성립한다.
+func _work_lamp(state: WorldState, cell: Vector3i) -> void:
+    if not BlockType.is_lamp(state.grid.get_block(cell)):
+        return
+    state.grid.set_block(
+        cell, BlockType.lit_lamp() if _wants_open else BlockType.dark_lamp())
 
 
 ## 밭은 신호가 올 때만 거둔다. 다 자라지 않았으면 아무 일도 없다.

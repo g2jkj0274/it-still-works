@@ -24,8 +24,9 @@ const TOTAL_TICKS := 20
 ##   생존 지표와 위협이 상태에 추가됨
 ##   밭과 작물이 상태에 추가됨
 ##   블록 종류에 돌이 늘고 세계의 세로가 16 → 24 가 됨
+##   등 블록이 늘어 블록 종류가 둘 늘어남
 ##   묶음 부품이 늘어 블록 종류가 하나 늘고, 묶음 설계도 목록이 상태에 추가됨
-const GOLDEN_HASH := "b9c370c7e09e654bba9c6559e17feaa45d257de6775a13be9ef5fe3637876f87"
+const GOLDEN_HASH := "fe859874a3808568e53c073fb8a7aaa8616ca0a35a8cb012530cbf185faaa1d0"
 
 ## 실행마다 새로 만든다. 명령 객체는 큐가 틱과 순서를 새겨 넣으므로 재사용하지 않는다.
 func _scenario() -> Array:

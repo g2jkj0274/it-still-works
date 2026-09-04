@@ -85,7 +85,8 @@ func _build_steps() -> Array:
         ["12_parts", _line_up_the_parts],
         ["13_island", _pull_back_to_the_shore],
         ["14_craft", _make_something_by_hand],
-        ["15_store", _pose_for_the_store],
+        ["15_underground", _dig_down],
+        ["16_store", _pose_for_the_store],
     ]
 
 
@@ -355,6 +356,42 @@ func _put(cell: Vector3i, part_type: int, settings: PackedInt32Array) -> void:
         return
     state.grid.set_block(cell, part_type)
     state.circuit.add_part(part)
+
+
+## 땅을 파고 내려가 등을 켠다.
+##
+## 지하가 대낮처럼 밝으면 파고 내려가는 일이 아무 느낌이 없고 등을 만들
+## 이유도 없다. 어두운지, 그리고 등이 실제로 밝히는지 본다.
+func _dig_down() -> void:
+    _main.simulation = IslandBuilder.start(GameMain.SEED)
+    _main.adopt_simulation()
+    _main.first_steps().silence()
+    _main.notice().visible = false
+
+    var state: Object = _main.simulation.state
+    var here: Vector3i = state.character.cell()
+
+    # 널찍한 방을 판다. 위가 뚫려 있으면 볕이 들어 어둠이 보이지 않으므로
+    # 지붕은 남겨 둔다.
+    var floor_z: int = VoxelGrid.BEDROCK_Z + 1
+    for dy in range(-4, 5):
+        for dx in range(-4, 5):
+            for z in range(floor_z, here.z - 3):
+                state.grid.set_block(Vector3i(here.x + dx, here.y + dy, z), BlockType.EMPTY)
+
+    var bottom := Vector3i(here.x, here.y, floor_z)
+    state.character.place_at(bottom)
+    _main.character_view().snap()
+    _main.camera().focus_on(_main.character_view().target_position())
+
+    # 등을 켠다. 작동기가 켜는 것과 같은 결과다.
+    for offset in [Vector3i(-3, -2, 0), Vector3i(2, 2, 0), Vector3i(3, -3, 0)]:
+        state.grid.set_block(bottom + offset, BlockType.LAMP_LIT)
+
+    _main.camera().zoom_by(-4)
+    _main.world_view().rebuild()
+    _main.lamp_lights().look_at_point(_main.character_view().target_position())
+    _main.lamp_lights().sync()
 
 
 func _begin_step() -> void:

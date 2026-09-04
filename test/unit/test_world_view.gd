@@ -190,3 +190,77 @@ func test_a_whole_new_world_is_drawn_from_scratch() -> void:
     assert_bool(grid.needs_full_redraw()).is_true()
     view.sync()
     assert_int(view.build_count()).is_equal(builds + 1)
+
+
+## --- 머리 위 걷어내기 ---
+##
+## 고정 아이소메트릭에서는 지붕이 있으면 그 아래가 통째로 가려진다.
+## 걷어내지 않으면 지하는 있어도 볼 수가 없다.
+
+func _roofed_world() -> VoxelGrid:
+    var grid := VoxelGrid.new()
+    for y in range(10, 20):
+        for x in range(10, 20):
+            grid.set_block(Vector3i(x, y, 1), BlockType.ROCK)
+            # 두 칸 비우고 지붕을 덮는다.
+            grid.set_block(Vector3i(x, y, 4), BlockType.ROCK)
+            grid.set_block(Vector3i(x, y, 5), BlockType.GROUND)
+    return grid
+
+
+func test_nothing_is_cut_away_under_the_open_sky() -> void:
+    var grid := _small_world()
+    var view := _view(grid)
+    view.rebuild()
+
+    view.look_from(Vector3i(15, 15, 2))
+    assert_bool(view.is_cutting()).is_false()
+    assert_bool(view.is_cut_away(Vector3i(15, 15, 6))).is_false()
+
+
+func test_a_roof_over_your_head_is_taken_away() -> void:
+    var grid := _roofed_world()
+    var view := _view(grid)
+    view.rebuild()
+    var before := view.total_instance_count()
+
+    view.look_from(Vector3i(15, 15, 2))
+    assert_bool(view.is_cutting()).is_true()
+    assert_int(view.total_instance_count()).is_less(before)
+
+
+func test_what_is_at_your_level_or_below_stays() -> void:
+    var grid := _roofed_world()
+    var view := _view(grid)
+    view.look_from(Vector3i(15, 15, 2))
+
+    assert_bool(view.is_cut_away(Vector3i(15, 15, 1))).is_false()
+    assert_bool(view.is_cut_away(Vector3i(15, 15, 2))).is_false()
+    assert_bool(view.is_cut_away(Vector3i(15, 15, 4))).is_true()
+    # 둘레만 도려내면 방의 벽이 함께 사라져 섬에 구덩이가 뚫린 것처럼 보인다.
+    assert_bool(view.is_cut_away(Vector3i(40, 40, 4))).is_true()
+
+
+func test_walking_out_from_under_the_roof_puts_it_back() -> void:
+    var grid := _roofed_world()
+    var view := _view(grid)
+    view.rebuild()
+    var whole := view.total_instance_count()
+
+    view.look_from(Vector3i(15, 15, 2))
+    assert_int(view.total_instance_count()).is_less(whole)
+
+    view.look_from(Vector3i(30, 30, 2))
+    assert_bool(view.is_cutting()).is_false()
+    assert_int(view.total_instance_count()).is_equal(whole)
+
+
+func test_standing_still_does_not_redraw() -> void:
+    var grid := _roofed_world()
+    var view := _view(grid)
+    view.look_from(Vector3i(15, 15, 2))
+    var builds := view.build_count()
+
+    for i in 5:
+        view.look_from(Vector3i(15, 15, 2))
+    assert_int(view.build_count()).is_equal(builds)

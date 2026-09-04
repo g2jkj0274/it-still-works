@@ -28,7 +28,8 @@ const BRANCH := Vector3i(33, 31, FLOOR_Z + 1)
 ##   섬에 저절로 난 작물이 놓여 격자가 바뀜 (첫날 밤에 손으로 닿게 하려고)
 ##   광석 자원지가 가운데 솟은 더미가 되어 격자가 바뀜 (멀리서 보이게)
 ##   세계의 세로가 16 → 24 로 늘고, 지표가 기복을 타며 그 아래가 돌·광맥·동굴이 됨
-const GOLDEN_HASH := "572f03864bd183e6277d207648607074ae22f79528f259e28ff81d0f78521dfd"
+##   등 블록이 늘어 블록 종류가 둘 늘어남 (스펙 §5 의 자동 조명)
+const GOLDEN_HASH := "14d6fdc283ce91dbee7ed01e4942971e59a3983867ae0a4f0100ebcb76839699"
 
 ## 같은 실행이 끝났을 때 문이 어떤 상태인지. 해시보다 읽기 쉽다.
 const GOLDEN_DOOR := BlockType.DOOR_CLOSED

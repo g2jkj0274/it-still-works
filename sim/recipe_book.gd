@@ -25,6 +25,8 @@ const RECIPES: Array = [
     [BlockType.REPEATER, 1, [[BlockType.ORE, 3], [BlockType.WOOD, 1]]],
     [BlockType.BOX, 1, [[BlockType.WOOD, 3], [BlockType.ORE, 1]]],
     [BlockType.BRANCH, 1, [[BlockType.ORE, 2], [BlockType.WOOD, 2]]],
+    # 등은 여럿 필요하다. 땅속을 밝히려면 몇 칸마다 하나씩 놓는다.
+    [BlockType.LAMP_DARK, 2, [[BlockType.WOOD, 1], [BlockType.ORE, 1]]],
 ]
 
 ## 스펙이 정한 제작법 수의 상한.

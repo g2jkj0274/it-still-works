@@ -29,10 +29,11 @@ const BOX_BUNDLE := DETECTOR
 ##   섬에 저절로 난 작물이 놓여 격자가 바뀜 (첫날 밤에 손으로 닿게 하려고)
 ##   광석 자원지가 가운데 솟은 더미가 되어 격자가 바뀜 (멀리서 보이게)
 ##   세계의 세로가 16 → 24 로 늘고, 지표가 기복을 타며 그 아래가 돌·광맥·동굴이 됨
+##   등 블록이 늘어 블록 종류가 둘 늘어남 (스펙 §5 의 자동 조명)
 ##
 ## 이 값이 깨졌다면 시뮬레이션 동작이 바뀐 것이다. 값을 고쳐 통과시키지 말고
 ## 무엇이 바뀌었는지 먼저 밝힌다.
-const GOLDEN_HASH := "5f0e4193b75c6177e940ba3a57018309c0dbf2788d73e09f424541ead7f1d21d"
+const GOLDEN_HASH := "919dcc19c1be29236a921fd3f24c89005faba582c7b43c617edb52fc440b9ca2"
 
 
 func _cells(values: Array) -> Array[Vector3i]:
