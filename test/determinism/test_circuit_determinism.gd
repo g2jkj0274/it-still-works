@@ -21,7 +21,8 @@ const BRANCH := Vector3i(33, 31, 2)
 ## Godot 4.7.2 / 서로 다른 프로세스 3회 실행에서 동일함을 확인하고 고정했다.
 ##
 ## 갱신 이력: 묶음 부품이 늘어 블록 종류가 하나 늘고, 묶음 설계도 목록이 상태에 추가됨
-const GOLDEN_HASH := "88fddf6bcc4d948854688700f22fa833dbc7568539ad4a330e69ec59ff979cfe"
+##   제작법이 생겨 시작 지급을 껐다. 빈손으로 시작하므로 인벤토리 초기값이 바뀜
+const GOLDEN_HASH := "c2a3712d727df3f8e22886e4e75c98b2b47760ba12fc8254526126ce5449b387"
 
 ## 같은 실행이 끝났을 때 문이 어떤 상태인지. 해시보다 읽기 쉽다.
 const GOLDEN_DOOR := BlockType.DOOR_CLOSED

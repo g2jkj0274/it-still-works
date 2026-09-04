@@ -9,11 +9,17 @@ extends Node3D
 ##
 ## 지금까지는 섬 끝이 허공으로 끊겨 어디가 뭍이고 어디가 바깥인지 알 수 없었다.
 ##
-## 물낯을 지면 윗면보다 조금 낮게 둔다. 같은 높이면 물가가 사라지고,
-## 너무 낮으면 섬이 공중에 뜬 것처럼 보인다.
+## 물낯은 **사람이 팔 수 있는 층보다 아래**에 둔다.
+##
+## 처음에는 지면 윗면 바로 아래에 두었더니 파 놓은 구덩이마다 물이 차 보였다.
+## 시뮬레이션에는 빈 칸인데 화면이 물이라고 말한 것이다. 보이는 것이 사실이
+## 아니면 안 된다.
+##
+## 바닥층(z=0)은 부술 수 없으므로 그 윗면보다 낮으면 구덩이에 물이 비치지
+## 않는다. 물가에서는 여전히 한 칸쯤의 벼랑이 보인다.
 
-## 지면 윗면에서 물낯까지의 깊이.
-const DEPTH := 0.34
+## 바닥층 윗면에서 물낯까지 더 내려가는 깊이. 겹쳐 보이지 않을 만큼만.
+const BELOW_BEDROCK := 0.05
 
 ## 물낯의 크기. 어느 쪽으로 시점을 돌려도 끝이 보이지 않을 만큼 넓게.
 const EXTENT := 400.0
@@ -41,10 +47,10 @@ func _ready() -> void:
     position = Vector3(0.0, water_level(), 0.0)
 
 
-## 물낯의 높이. 지면 윗면 바로 아래다.
+## 물낯의 높이. 부술 수 없는 바닥층 윗면보다 조금 아래다.
 static func water_level() -> float:
-    var ground_top := float(IslandBuilder.GROUND_TOP_Z + 1) * SimViewCoords.CELL_SIZE
-    return ground_top - DEPTH
+    var bedrock_top := float(VoxelGrid.BEDROCK_Z + 1) * SimViewCoords.CELL_SIZE
+    return bedrock_top - BELOW_BEDROCK
 
 
 func surface_height() -> float:

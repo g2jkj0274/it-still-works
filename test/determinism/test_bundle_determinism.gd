@@ -22,10 +22,11 @@ const BOX_BUNDLE := DETECTOR
 
 ## 아래 시나리오를 SEED 로 TOTAL_TICKS 만큼 돌렸을 때의 상태 해시.
 ## Godot 4.7.2 / 서로 다른 프로세스 3회 실행에서 동일함을 확인하고 고정했다.
+##   제작법이 생겨 시작 지급을 껐다. 빈손으로 시작하므로 인벤토리 초기값이 바뀜
 ##
 ## 이 값이 깨졌다면 시뮬레이션 동작이 바뀐 것이다. 값을 고쳐 통과시키지 말고
 ## 무엇이 바뀌었는지 먼저 밝힌다.
-const GOLDEN_HASH := "6e71fe9be0dc13be034e3b3e9f608a20f57a9f8ef58dd7ce7547537d8eeb3e48"
+const GOLDEN_HASH := "56f1e084d9684085c7aad4866f28effd1d516ae865b2380aea53500edd101ba1"
 
 
 func _cells(values: Array) -> Array[Vector3i]:
