@@ -11,7 +11,11 @@ extends RefCounted
 
 const SIZE_X := 64
 const SIZE_Y := 64
-const SIZE_Z := 16
+## 세로. 지하를 파고 그 위에 쌓을 만큼은 있어야 한다.
+##
+## 16 이던 것을 늘렸다. 그때는 지면이 두 층뿐이라 남는 세로가 뜻이 없었는데,
+## 지표를 올려 지하를 파면서 위아래가 다 필요해졌다.
+const SIZE_Z := 24
 const CELL_COUNT := SIZE_X * SIZE_Y * SIZE_Z
 
 ## 높이 방향 단위 벡터.

@@ -26,11 +26,11 @@ func test_one_slot_per_placeable_material() -> void:
 
 func test_slot_shows_the_material_name_and_count() -> void:
     var inventory := Inventory.new()
-    inventory.add(BlockType.STONE, 7)
+    inventory.add(BlockType.ORE, 7)
     var hotbar := _hotbar(inventory, _controller())
 
-    var slot := InputController.PLACEABLE.find(BlockType.STONE)
-    assert_str(hotbar.slot_text(slot)).contains(Hotbar.name_of(BlockType.STONE))
+    var slot := InputController.PLACEABLE.find(BlockType.ORE)
+    assert_str(hotbar.slot_text(slot)).contains(Hotbar.name_of(BlockType.ORE))
     assert_str(hotbar.slot_text(slot)).contains("7")
 
 
@@ -50,9 +50,9 @@ func test_the_chosen_slot_is_marked() -> void:
     var controller := _controller()
     var hotbar := _hotbar(Inventory.new(), controller)
 
-    controller.select_block(BlockType.STONE)
+    controller.select_block(BlockType.ORE)
     hotbar.sync()
-    assert_int(hotbar.selected_slot()).is_equal(InputController.PLACEABLE.find(BlockType.STONE))
+    assert_int(hotbar.selected_slot()).is_equal(InputController.PLACEABLE.find(BlockType.ORE))
 
     controller.select_block(BlockType.WOOD)
     hotbar.sync()

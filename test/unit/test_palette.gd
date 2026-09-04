@@ -70,6 +70,15 @@ func test_the_grass_is_told_apart_from_the_bare_ground() -> void:
         grass.r - ground.r, grass.g - ground.g, grass.b - ground.b).length()).is_greater(0.05)
 
 
+func test_the_sea_is_told_apart_from_the_sky() -> void:
+    # 위에서 내려다보는 시점이라 바다와 하늘이 화면에서 맞닿는다.
+    # 붙여 두면 어디가 물이고 어디가 하늘인지 알 수 없다.
+    var sea := Palette.SEA
+    var sky := Palette.SKY_DAY
+    assert_float(Vector3(
+        sea.r - sky.r, sea.g - sky.g, sea.b - sky.b).length()).is_greater(0.12)
+
+
 func test_the_sea_is_told_apart_from_the_ground() -> void:
     # 물가가 보이지 않으면 섬이 섬으로 보이지 않는다.
     var sea := Palette.SEA
@@ -86,8 +95,8 @@ func test_neighbouring_blocks_do_not_look_identical() -> void:
 
 func test_the_variation_is_the_same_every_run() -> void:
     var cell := Vector3i(7, 3, 2)
-    var once := Palette.varied(Palette.of_block(BlockType.STONE), cell)
-    var twice := Palette.varied(Palette.of_block(BlockType.STONE), cell)
+    var once := Palette.varied(Palette.of_block(BlockType.ORE), cell)
+    var twice := Palette.varied(Palette.of_block(BlockType.ORE), cell)
     assert_bool(once.is_equal_approx(twice)).is_true()
 
 

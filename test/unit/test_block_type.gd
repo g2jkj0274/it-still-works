@@ -12,16 +12,16 @@ func test_empty_is_not_solid() -> void:
 
 
 func test_terrain_blocks_are_solid() -> void:
-    for type in [BlockType.GROUND, BlockType.STONE, BlockType.WOOD, BlockType.DOOR_CLOSED]:
+    for type in [BlockType.GROUND, BlockType.ORE, BlockType.WOOD, BlockType.DOOR_CLOSED]:
         assert_bool(BlockType.is_solid(type)).is_true()
 
 
 func test_all_types_are_distinct_and_contiguous() -> void:
     var types := [
-        BlockType.EMPTY, BlockType.GROUND, BlockType.STONE, BlockType.WOOD,
+        BlockType.EMPTY, BlockType.GROUND, BlockType.ORE, BlockType.WOOD,
         BlockType.DOOR_CLOSED, BlockType.DOOR_OPEN, BlockType.DETECTOR, BlockType.ACTUATOR,
         BlockType.REPEATER, BlockType.BOX, BlockType.BRANCH,
-        BlockType.FIELD, BlockType.CROP, BlockType.BUNDLE,
+        BlockType.FIELD, BlockType.CROP, BlockType.BUNDLE, BlockType.ROCK,
     ]
     assert_int(types.size()).is_equal(BlockType.COUNT)
     types.sort()
@@ -58,7 +58,7 @@ func test_empty_is_not_breakable() -> void:
 
 func test_breaking_an_open_door_yields_a_door() -> void:
     assert_int(BlockType.material_of(BlockType.DOOR_OPEN)).is_equal(BlockType.DOOR_CLOSED)
-    assert_int(BlockType.material_of(BlockType.STONE)).is_equal(BlockType.STONE)
+    assert_int(BlockType.material_of(BlockType.ORE)).is_equal(BlockType.ORE)
 
 
 func test_parts_are_recognised() -> void:
@@ -71,5 +71,5 @@ func test_parts_are_recognised() -> void:
 
 
 func test_terrain_is_not_a_part() -> void:
-    for type in [BlockType.GROUND, BlockType.STONE, BlockType.WOOD, BlockType.DOOR_CLOSED]:
+    for type in [BlockType.GROUND, BlockType.ORE, BlockType.WOOD, BlockType.DOOR_CLOSED]:
         assert_bool(BlockType.is_part(type)).is_false()

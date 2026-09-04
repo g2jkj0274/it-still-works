@@ -8,14 +8,17 @@ extends GdUnitTestSuite
 const SEED := 20250901
 const TOTAL_TICKS := 90
 
-const DOOR := Vector3i(32, 30, 2)
-const ACTUATOR := Vector3i(33, 30, 2)
-const DETECTOR := Vector3i(34, 30, 2)
-const REPEATER := Vector3i(34, 29, 2)
-const LAMP_ACTUATOR := Vector3i(33, 29, 2)
-const LAMP_DOOR := Vector3i(32, 29, 2)
-const BOX := Vector3i(34, 31, 2)
-const BRANCH := Vector3i(33, 31, 2)
+## 무대의 바닥 높이. 아래 [method _level] 이 이 높이로 땅을 고른다.
+const FLOOR_Z := 8
+
+const DOOR := Vector3i(32, 30, FLOOR_Z + 1)
+const ACTUATOR := Vector3i(33, 30, FLOOR_Z + 1)
+const DETECTOR := Vector3i(34, 30, FLOOR_Z + 1)
+const REPEATER := Vector3i(34, 29, FLOOR_Z + 1)
+const LAMP_ACTUATOR := Vector3i(33, 29, FLOOR_Z + 1)
+const LAMP_DOOR := Vector3i(32, 29, FLOOR_Z + 1)
+const BOX := Vector3i(34, 31, FLOOR_Z + 1)
+const BRANCH := Vector3i(33, 31, FLOOR_Z + 1)
 
 ## 아래 시나리오를 SEED 로 TOTAL_TICKS 만큼 돌렸을 때의 상태 해시.
 ## Godot 4.7.2 / 서로 다른 프로세스 3회 실행에서 동일함을 확인하고 고정했다.
@@ -24,7 +27,8 @@ const BRANCH := Vector3i(33, 31, 2)
 ##   제작법이 생겨 시작 지급을 껐다. 빈손으로 시작하므로 인벤토리 초기값이 바뀜
 ##   섬에 저절로 난 작물이 놓여 격자가 바뀜 (첫날 밤에 손으로 닿게 하려고)
 ##   광석 자원지가 가운데 솟은 더미가 되어 격자가 바뀜 (멀리서 보이게)
-const GOLDEN_HASH := "67dcab85e7d702b71b52f276abb0cb446a933ceee995b57486b7fd924a652048"
+##   세계의 세로가 16 → 24 로 늘고, 지표가 기복을 타며 그 아래가 돌·광맥·동굴이 됨
+const GOLDEN_HASH := "572f03864bd183e6277d207648607074ae22f79528f259e28ff81d0f78521dfd"
 
 ## 같은 실행이 끝났을 때 문이 어떤 상태인지. 해시보다 읽기 쉽다.
 const GOLDEN_DOOR := BlockType.DOOR_CLOSED
@@ -68,6 +72,8 @@ func _run(seed_value: int = SEED, scenario: Array = []) -> Simulation:
 func _run_until(ticks: int, seed_value: int = SEED, scenario: Array = []) -> Simulation:
     var sim := Simulation.new(seed_value)
     IslandBuilder.populate(sim.state)
+    _level(sim.state.grid, Vector2i(33, 30), 5, FLOOR_Z)
+    sim.state.character.place_at(Vector3i(33, 33, FLOOR_Z + 1))
     # 지을 재료를 손에 쥐여 준다. 모으는 과정은 다른 시나리오가 이미 확인한다.
     sim.state.inventory.add(BlockType.DOOR_CLOSED, 4)
     sim.state.inventory.add(BlockType.DETECTOR, 4)
@@ -126,6 +132,8 @@ func test_hash_is_independent_of_step_granularity() -> void:
 
     var fine := Simulation.new(SEED)
     IslandBuilder.populate(fine.state)
+    _level(fine.state.grid, Vector2i(33, 30), 5, FLOOR_Z)
+    fine.state.character.place_at(Vector3i(33, 33, FLOOR_Z + 1))
     fine.state.inventory.add(BlockType.DOOR_CLOSED, 4)
     fine.state.inventory.add(BlockType.DETECTOR, 4)
     fine.state.inventory.add(BlockType.ACTUATOR, 4)
@@ -154,3 +162,17 @@ func test_golden_hash_is_unchanged() -> void:
 
 func test_golden_door_state_is_unchanged() -> void:
     assert_int(_run().state.grid.get_block(DOOR)).is_equal(GOLDEN_DOOR)
+
+
+## 지을 자리를 고르게 다진다.
+##
+## 지표가 기복을 타므로 이웃 칸의 높이가 저마다 다르다. 시나리오가 특정 칸에
+## 부품을 놓아야 하는데 그 자리가 허공이거나 땅속이면 아무것도 놓이지 않는다.
+## 지형을 시험하는 시나리오가 아니므로 무대만 평평하게 만들어 둔다.
+static func _level(grid: VoxelGrid, centre: Vector2i, reach: int, floor_z: int) -> void:
+    for dy in range(-reach, reach + 1):
+        for dx in range(-reach, reach + 1):
+            var column := centre + Vector2i(dx, dy)
+            for z in range(VoxelGrid.BEDROCK_Z + 1, VoxelGrid.SIZE_Z):
+                var kind := BlockType.GROUND if z <= floor_z else BlockType.EMPTY
+                grid.set_block(Vector3i(column.x, column.y, z), kind)

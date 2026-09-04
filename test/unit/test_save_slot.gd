@@ -31,8 +31,8 @@ func _played() -> Simulation:
     # 명령 자체에는 거리 제한이 없다.
     for trunk in [IslandBuilder.TREES[0], IslandBuilder.TREES[1]]:
         for i in IslandBuilder.TREE_HEIGHT:
-            sim.submit(BreakBlockCommand.create(
-                Vector3i(trunk.x, trunk.y, IslandBuilder.GROUND_TOP_Z + 1 + i)))
+            sim.submit(BreakBlockCommand.create(Vector3i(
+                trunk.x, trunk.y, IslandBuilder.surface_z(trunk) + 1 + i)))
     sim.advance(4)
 
     sim.submit(BreakBlockCommand.create(here + Vector3i(1, 0, -1)))

@@ -45,8 +45,8 @@ func test_move_updates_facing() -> void:
 func test_blocked_move_still_turns_the_character() -> void:
     # 갈 수 없어도 방향은 바뀐다. 제자리에서 돌아설 수 있어야 한다.
     var state := _state()
-    state.grid.set_block(Vector3i(5, 4, 1), BlockType.STONE)
-    state.grid.set_block(Vector3i(5, 4, 2), BlockType.STONE)
+    state.grid.set_block(Vector3i(5, 4, 1), BlockType.ORE)
+    state.grid.set_block(Vector3i(5, 4, 2), BlockType.ORE)
     MoveCharacterCommand.create(Vector3i(1, 0, 0)).apply(state)
     assert_bool(state.character.is_moving()).is_false()
     assert_bool(state.character.facing == Vector3i(1, 0, 0)).is_true()

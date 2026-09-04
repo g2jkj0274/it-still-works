@@ -237,7 +237,7 @@ func _make_something_by_hand() -> void:
     var controller := _main.input_controller()
 
     _main.camera().zoom_by(-20)
-    state.inventory.add(BlockType.STONE, 4)
+    state.inventory.add(BlockType.ORE, 4)
     state.inventory.add(BlockType.WOOD, 4)
 
     controller.select_block(BlockType.DETECTOR)

@@ -61,7 +61,7 @@ const ACTION_LOAD := &"load_game"
 ## 손에 쥘 수 있는 것. 고를 수 있는 차례대로.
 const PLACEABLE: Array[int] = [
     BlockType.GROUND,
-    BlockType.STONE,
+    BlockType.ORE,
     BlockType.WOOD,
     BlockType.DOOR_CLOSED,
     BlockType.DETECTOR,

@@ -6,8 +6,8 @@ extends GdUnitTestSuite
 func test_grid_size_matches_spec() -> void:
     assert_int(VoxelGrid.SIZE_X).is_equal(64)
     assert_int(VoxelGrid.SIZE_Y).is_equal(64)
-    assert_int(VoxelGrid.SIZE_Z).is_equal(16)
-    assert_int(VoxelGrid.CELL_COUNT).is_equal(64 * 64 * 16)
+    assert_int(VoxelGrid.SIZE_Z).is_equal(24)
+    assert_int(VoxelGrid.CELL_COUNT).is_equal(64 * 64 * 24)
 
 
 func test_new_grid_is_empty() -> void:
@@ -19,8 +19,8 @@ func test_new_grid_is_empty() -> void:
 
 func test_set_and_get_block() -> void:
     var grid := VoxelGrid.new()
-    assert_bool(grid.set_block(Vector3i(1, 2, 3), BlockType.STONE)).is_true()
-    assert_int(grid.get_block(Vector3i(1, 2, 3))).is_equal(BlockType.STONE)
+    assert_bool(grid.set_block(Vector3i(1, 2, 3), BlockType.ORE)).is_true()
+    assert_int(grid.get_block(Vector3i(1, 2, 3))).is_equal(BlockType.ORE)
     assert_bool(grid.is_solid(Vector3i(1, 2, 3))).is_true()
 
 
@@ -34,14 +34,14 @@ func test_index_is_unique_per_cell() -> void:
 
 
 func test_out_of_bounds_is_not_inside() -> void:
-    for pos in [Vector3i(-1, 0, 0), Vector3i(0, -1, 0), Vector3i(0, 0, -1), Vector3i(64, 0, 0), Vector3i(0, 64, 0), Vector3i(0, 0, 16)]:
+    for pos in [Vector3i(-1, 0, 0), Vector3i(0, -1, 0), Vector3i(0, 0, -1), Vector3i(64, 0, 0), Vector3i(0, 64, 0), Vector3i(0, 0, VoxelGrid.SIZE_Z)]:
         assert_bool(VoxelGrid.is_inside(pos)).is_false()
 
 
 func test_out_of_bounds_write_is_rejected() -> void:
     var grid := VoxelGrid.new()
-    assert_bool(grid.set_block(Vector3i(64, 0, 0), BlockType.STONE)).is_false()
-    assert_bool(grid.set_block(Vector3i(0, 0, -1), BlockType.STONE)).is_false()
+    assert_bool(grid.set_block(Vector3i(64, 0, 0), BlockType.ORE)).is_false()
+    assert_bool(grid.set_block(Vector3i(0, 0, -1), BlockType.ORE)).is_false()
 
 
 func test_out_of_bounds_read_is_empty_and_not_free() -> void:
@@ -73,7 +73,7 @@ func test_version_increases_on_change() -> void:
 
 func test_neighbouring_cells_do_not_alias() -> void:
     var grid := VoxelGrid.new()
-    grid.set_block(Vector3i(5, 5, 5), BlockType.STONE)
+    grid.set_block(Vector3i(5, 5, 5), BlockType.ORE)
     for offset in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
         assert_int(grid.get_block(Vector3i(5, 5, 5) + offset)).is_equal(BlockType.EMPTY)
 
@@ -97,7 +97,7 @@ func test_surface_cell_is_exposed_and_buried_cell_is_not() -> void:
     var grid := VoxelGrid.new()
     var center := Vector3i(10, 10, 5)
     for offset in [Vector3i.ZERO, Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
-        grid.set_block(center + offset, BlockType.STONE)
+        grid.set_block(center + offset, BlockType.ORE)
     assert_bool(grid.is_exposed(center)).is_false()
     assert_bool(grid.is_exposed(center + Vector3i(1, 0, 0))).is_true()
 

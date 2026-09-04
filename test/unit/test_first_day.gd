@@ -19,7 +19,7 @@ const STEP := 20
 func _crop_cells() -> Array[Vector3i]:
     var cells: Array[Vector3i] = []
     for column in IslandBuilder.WILD_CROPS:
-        cells.append(Vector3i(column.x, column.y, IslandBuilder.GROUND_TOP_Z + 1))
+        cells.append(Vector3i(column.x, column.y, IslandBuilder.surface_z(column) + 1))
     return cells
 
 
@@ -50,7 +50,7 @@ func test_the_island_has_something_to_eat_at_the_start() -> void:
 func test_the_food_is_close_enough_to_find() -> void:
     # 스무 칸 밖에 있으면 첫 화면에서 보이지 않아 없는 것과 같다.
     for column in IslandBuilder.WILD_CROPS:
-        var offset := column - Vector2i(IslandBuilder.SPAWN.x, IslandBuilder.SPAWN.y)
+        var offset := column - Vector2i(IslandBuilder.SPAWN_COLUMN.x, IslandBuilder.SPAWN_COLUMN.y)
         assert_int(offset.x * offset.x + offset.y * offset.y).is_less_equal(12 * 12)
 
 

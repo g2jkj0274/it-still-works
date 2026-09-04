@@ -10,7 +10,8 @@ extends RefCounted
 
 const _NAMES: Dictionary[int, String] = {
     BlockType.GROUND: "흙",
-    BlockType.STONE: "광석",
+    BlockType.ORE: "광석",
+    BlockType.ROCK: "돌",
     BlockType.WOOD: "나무",
     BlockType.DOOR_CLOSED: "문",
     BlockType.FIELD: "밭",
@@ -25,7 +26,8 @@ const _NAMES: Dictionary[int, String] = {
 
 const _DESCRIPTIONS: Dictionary[int, String] = {
     BlockType.GROUND: "땅을 메우고 길을 낸다",
-    BlockType.STONE: "부품을 만드는 데 든다. 섬 바깥쪽 자원지에서 캔다",
+    BlockType.ORE: "부품을 만드는 데 든다. 자원지와 땅속 깊은 곳에 있다",
+    BlockType.ROCK: "땅속을 이루는 돌. 단단하게 쌓는다",
     BlockType.WOOD: "가볍게 쌓는다",
     BlockType.DOOR_CLOSED: "작동기를 옆에 붙이면 여닫힌다",
     BlockType.FIELD: "작물이 자란다. 옆에 붙인 작동기가 거둔다",

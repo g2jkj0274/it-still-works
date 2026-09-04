@@ -28,7 +28,15 @@ const GROUND := Color(0.64, 0.84, 0.58)
 ## 세워도 "벽을 세웠다"가 아니라 "그림자가 생겼다"로 보였다. 옆면이 드러나야
 ## 블록이 땅에서 솟아오르고, 파 놓은 구덩이에 깊이가 생긴다.
 const GROUND_SIDE := Color(0.66, 0.60, 0.46)
-const STONE := Color(0.68, 0.74, 0.84)
+## 광석. 지하와 자원지에서 캔다. 잿빛 돌 사이에서 푸르게 도드라진다.
+## 감지기의 하늘빛과는 떨어뜨려 두었다. 붙으면 회로 부품으로 보인다.
+const ORE := Color(0.58, 0.70, 0.86)
+
+## 돌. 지하를 이루는 흔한 암반.
+const ROCK := Color(0.72, 0.71, 0.74)
+
+## 돌의 옆면. 켜켜이 쌓인 것이 보이도록 조금 어둡게.
+const ROCK_SIDE := Color(0.64, 0.63, 0.67)
 const WOOD := Color(0.80, 0.63, 0.48)
 
 ## 나뭇잎. 블록이 아니라 줄기 위에 덧그리는 것이라 블록 색 목록에는 없다.
@@ -73,12 +81,15 @@ const WIRE_FALSE_IDLE := Color(0.58, 0.66, 0.74)
 ## 낮 빛깔을 낮춰 잡은 것은 이유가 있다. 이보다 밝으면 볕 든 지면이 흰색으로
 ## 날아가 블록 경계도 팔레트의 칸별 변주도 보이지 않는다. 실제로 재어 보고
 ## 볕 든 흙이 팔레트에 적힌 제 색으로 나오는 지점을 골랐다.
-## 섬을 둘러싼 물. 하늘보다 조금 짙어 물가가 눈에 보인다.
-const SEA := Color(0.56, 0.78, 0.90)
+## 섬을 둘러싼 물.
+##
+## 하늘과 붙여 두면 물가가 사라진다. 위에서 내려다보는 시점이라 바다와 하늘이
+## 화면에서 맞닿으므로, 뭍·물·하늘이 세 가지로 읽혀야 한다.
+const SEA := Color(0.50, 0.72, 0.86)
 
 ## 땅에 깔린 풀과 꽃의 빛깔.
 ##
-## 잔돌은 뺐다. 캘 수 있는 광석(STONE)과 색이 붙어 있어서, 부술 수 없는
+## 잔돌은 뺐다. 캘 수 있는 광석과 색이 붙어 있어서, 부술 수 없는
 ## 조약돌을 캐려다 "부수기가 고장났다"고 결론짓는 사람이 나온다.
 ##
 ## 바깥에서 가져온 모델은 제 색을 달고 온다. 그대로 두면 톤이 흩어지므로
@@ -111,7 +122,8 @@ const MOONLIGHT := Color(0.58, 0.70, 1.0)
 
 const _BLOCKS: Dictionary[int, Color] = {
     BlockType.GROUND: GROUND,
-    BlockType.STONE: STONE,
+    BlockType.ORE: ORE,
+    BlockType.ROCK: ROCK,
     BlockType.WOOD: WOOD,
     BlockType.DOOR_CLOSED: DOOR,
     BlockType.DOOR_OPEN: DOOR,
@@ -129,6 +141,7 @@ const _BLOCKS: Dictionary[int, Color] = {
 ## 그 블록의 옆면 색. 따로 정하지 않았으면 윗면과 같다.
 const _SIDES: Dictionary[int, Color] = {
     BlockType.GROUND: GROUND_SIDE,
+    BlockType.ROCK: ROCK_SIDE,
 }
 
 

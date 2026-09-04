@@ -55,7 +55,7 @@ func test_place_refuses_out_of_bounds() -> void:
 
 func test_break_clears_a_solid_cell() -> void:
     var state := _state()
-    state.grid.set_block(Vector3i(5, 4, 1), BlockType.STONE)
+    state.grid.set_block(Vector3i(5, 4, 1), BlockType.ORE)
     BreakBlockCommand.create(Vector3i(5, 4, 1)).apply(state)
     assert_int(state.grid.get_block(Vector3i(5, 4, 1))).is_equal(BlockType.EMPTY)
 
@@ -90,12 +90,12 @@ func test_block_commands_do_not_consume_randomness() -> void:
 
 
 func test_place_and_break_round_trip() -> void:
-    var place := PlaceBlockCommand.create(Vector3i(5, 4, 1), BlockType.STONE)
+    var place := PlaceBlockCommand.create(Vector3i(5, 4, 1), BlockType.ORE)
     var restored_place := SimCommandCodec.from_dict(
         JSON.parse_string(JSON.stringify(place.to_dict()))) as PlaceBlockCommand
     assert_object(restored_place).is_not_null()
     assert_bool(restored_place.position == Vector3i(5, 4, 1)).is_true()
-    assert_int(restored_place.block_type).is_equal(BlockType.STONE)
+    assert_int(restored_place.block_type).is_equal(BlockType.ORE)
 
     var brk := BreakBlockCommand.create(Vector3i(2, 3, 1))
     var restored_break := SimCommandCodec.from_dict(
@@ -119,7 +119,7 @@ func test_breaking_the_floor_makes_the_character_settle_next_tick() -> void:
 func _stocked() -> WorldState:
     var state := _state()
     state.inventory.add(BlockType.WOOD, 4)
-    state.inventory.add(BlockType.STONE, 4)
+    state.inventory.add(BlockType.ORE, 4)
     return state
 
 
@@ -145,9 +145,9 @@ func test_a_refused_placement_keeps_the_material() -> void:
 
 func test_breaking_yields_the_material() -> void:
     var state := _state()
-    state.grid.set_block(Vector3i(5, 4, 1), BlockType.STONE)
+    state.grid.set_block(Vector3i(5, 4, 1), BlockType.ORE)
     BreakBlockCommand.create(Vector3i(5, 4, 1)).apply(state)
-    assert_int(state.inventory.count_of(BlockType.STONE)).is_equal(1)
+    assert_int(state.inventory.count_of(BlockType.ORE)).is_equal(1)
 
 
 func test_a_refused_break_yields_nothing() -> void:

@@ -12,8 +12,8 @@ const EMPTY := 0
 ## 섬의 지면.
 const GROUND := 1
 
-## 광석 자원지.
-const STONE := 2
+## 광석. 부품을 만드는 데 든다. 섬 바깥쪽 자원지와 지하 깊은 곳에 있다.
+const ORE := 2
 
 ## 나무. 목재 획득처이자 기본 건축재.
 const WOOD := 3
@@ -48,12 +48,15 @@ const CROP := 12
 ## 묶음. 회로 하나를 통째로 압축해 담은 부품. 안은 밖에서 보이지 않는다.
 const BUNDLE := 13
 
-const COUNT := 14
+## 돌. 지하를 이루는 흔한 암반. 흙보다 단단해 보이고 광석과는 다르다.
+const ROCK := 14
+
+const COUNT := 15
 
 const _NAMES: PackedStringArray = [
-    "empty", "ground", "stone", "wood",
+    "empty", "ground", "ore", "wood",
     "door_closed", "door_open", "detector", "actuator", "repeater", "box", "branch", "field", "crop",
-    "bundle",
+    "bundle", "rock",
 ]
 
 
