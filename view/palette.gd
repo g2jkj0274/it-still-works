@@ -98,9 +98,16 @@ const COVER_COLOURS: Array[Color] = [
 ]
 
 const SKY_DAY := Color(0.66, 0.82, 0.92)
-const SKY_NIGHT := Color(0.17, 0.20, 0.32)
+const SKY_NIGHT := Color(0.14, 0.17, 0.34)
 const AMBIENT_DAY := Color(0.43, 0.46, 0.52)
-const AMBIENT_NIGHT := Color(0.16, 0.18, 0.27)
+const AMBIENT_NIGHT := Color(0.12, 0.16, 0.32)
+
+## 해와 달의 빛깔. 세기는 [SkyView] 가 정하고 여기서는 빛깔만 정한다.
+##
+## 밤에 밝기만 낮추면 초록이 그대로 초록이라 흐린 낮이 된다. 달빛을 파랗게
+## 돌리면 명도를 크게 낮추지 않고도 밤이 된다.
+const SUNLIGHT := Color(1.0, 0.97, 0.90)
+const MOONLIGHT := Color(0.58, 0.70, 1.0)
 
 const _BLOCKS: Dictionary[int, Color] = {
     BlockType.GROUND: GROUND,

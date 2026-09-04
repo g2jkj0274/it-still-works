@@ -37,13 +37,28 @@ func test_threats_are_gone_by_morning() -> void:
 
 
 func test_threats_keep_their_distance_when_they_arrive() -> void:
+    # 나오자마자 붙으면 피할 틈이 없다.
     var sim := _sim()
     _to_nightfall(sim)
     var here := sim.state.character.cell()
     for threat in sim.state.threats.threats():
         var offset := threat.position - here
         assert_int(offset.x * offset.x + offset.y * offset.y).is_greater_equal(
-            ThreatField.SPAWN_CLEARANCE * ThreatField.SPAWN_CLEARANCE)
+            ThreatField.MIN_CLEARANCE * ThreatField.MIN_CLEARANCE)
+
+
+func test_threats_arrive_close_enough_to_be_seen_coming() -> void:
+    # 멀리서 다가오는 것을 몇 초 보는 것이 밤의 긴장 전부다. 화면 밖에서
+    # 나오면 밤이 아무 일도 없는 삼 분으로 시작해서 등 뒤에서 물리는 것으로
+    # 끝난다.
+    var sim := _sim()
+    _to_nightfall(sim)
+    var here := sim.state.character.cell()
+    assert_int(sim.state.threats.count()).is_greater(0)
+    for threat in sim.state.threats.threats():
+        var offset := threat.position - here
+        assert_int(offset.x * offset.x + offset.y * offset.y).is_less_equal(
+            ThreatField.MAX_CLEARANCE * ThreatField.MAX_CLEARANCE)
 
 
 func test_threats_stand_on_something() -> void:

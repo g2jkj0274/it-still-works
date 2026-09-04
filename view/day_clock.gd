@@ -25,6 +25,11 @@ const DUSK_COLOUR := Color(0.96, 0.66, 0.44)
 const MARKER_COLOUR := Color(0.16, 0.18, 0.24)
 const TEXT_COLOUR := Color(0.16, 0.18, 0.22)
 
+## 글자 테두리. 낮에는 밝은 지면, 밤에는 어두운 지면 위에 얹히므로 어느
+## 쪽에서도 읽히려면 글자 자체가 배경을 들고 다녀야 한다.
+const OUTLINE_COLOUR := Color(0.98, 0.98, 0.96, 0.92)
+const OUTLINE_SIZE := 4
+
 var _label: Label
 var _day_part: ColorRect
 var _night_part: ColorRect
@@ -55,6 +60,8 @@ func _ready() -> void:
     _label = Label.new()
     _label.name = "Day"
     _label.add_theme_color_override("font_color", TEXT_COLOUR)
+    _label.add_theme_color_override("font_outline_color", OUTLINE_COLOUR)
+    _label.add_theme_constant_override("outline_size", OUTLINE_SIZE)
     _label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _label.position = origin + Vector2(0.0, BAR_SIZE.y + 4.0)
     anchor.add_child(_label)

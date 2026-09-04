@@ -14,6 +14,10 @@ const MARGIN := Vector2(16, 56)
 const LABELS: PackedStringArray = ["체력", "배"]
 const LABEL_COLOUR := Color(0.16, 0.18, 0.22)
 
+## 낮에는 밝은 지면, 밤에는 어두운 지면 위에 얹힌다. 글자가 배경을 들고 다닌다.
+const OUTLINE_COLOUR := Color(0.98, 0.98, 0.96, 0.92)
+const OUTLINE_SIZE := 4
+
 const HEALTH_COLOUR := Color(0.86, 0.42, 0.44)
 const FULLNESS_COLOUR := Color(0.86, 0.72, 0.38)
 const EMPTY_COLOUR := Color(0.25, 0.27, 0.31, 0.65)
@@ -80,6 +84,8 @@ func _add_bar(anchor: Control, row: int, colour: Color) -> ColorRect:
     var label := Label.new()
     label.text = LABELS[row] if row < LABELS.size() else ""
     label.add_theme_color_override("font_color", LABEL_COLOUR)
+    label.add_theme_color_override("font_outline_color", OUTLINE_COLOUR)
+    label.add_theme_constant_override("outline_size", OUTLINE_SIZE)
     label.add_theme_font_size_override("font_size", 12)
     label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     label.position = origin + Vector2(-38.0, -3.0)

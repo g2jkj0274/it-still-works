@@ -17,7 +17,8 @@ const RUN_TICKS := 400
 ## 갱신 이력: 묶음 부품이 늘어 블록 종류가 하나 늘고, 묶음 설계도 목록이 상태에 추가됨
 ##   제작법이 생겨 시작 지급을 껐다. 빈손으로 시작하므로 인벤토리 초기값이 바뀜
 ##   섬에 저절로 난 작물이 놓여 격자가 바뀜 (첫날 밤에 손으로 닿게 하려고)
-const GOLDEN_HASH := "d4972cf20cda6e7cf3397ca5050850db3bddbde6c06b37b550bc1a817e963aa1"
+##   위협이 나오는 거리에 위 한계가 생겨 자리 고르기가 바뀜 (다가오는 것이 보이게)
+const GOLDEN_HASH := "1b0d4aa8fc78100208e34baf58a1a5e4c3f3ea3e931f15d89a955d3cc54a3104"
 
 
 func _scenario() -> Array:

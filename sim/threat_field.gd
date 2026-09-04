@@ -9,8 +9,20 @@ extends RefCounted
 ## 하룻밤에 나오는 수.
 const NIGHTLY_COUNT := 4
 
-## 사람에게서 이만큼은 떨어진 곳에 나타난다.
-const SPAWN_CLEARANCE := 12
+## 사람에게서 이만큼 떨어진 띠 안에서 나타난다.
+##
+## 예전에는 아래쪽 한계만 있었고 그것이 12 였다. 기본 시야가 열다섯 칸
+## 남짓이라 밤이 시작되는 순간 넷이 전부 화면 밖이거나 가장자리에 있었고,
+## 사람보다 느려서(0.6초에 한 칸) 다가오는 데 다시 일곱 초가 걸렸다.
+## **밤이 아무 일도 없는 삼 분으로 시작해서, 아무 예고 없이 등 뒤에서 물리는
+## 것으로 끝났다.**
+##
+## 멀리서 다가오는 것을 몇 초 보는 것이 밤의 긴장 전부다. 낮에 만든 장치가
+## 밤에 시험받는다는 계약(스펙 §3.2)도 그때 전달된다.
+##
+## 아래쪽 한계가 있는 이유는 그대로다. 나오자마자 붙으면 피할 틈이 없다.
+const MIN_CLEARANCE := 8
+const MAX_CLEARANCE := 14
 
 ## 자리를 고르다 이만큼 실패하면 그 밤은 그만큼만 나온다.
 const SPAWN_ATTEMPTS := 40
@@ -65,7 +77,10 @@ func _find_spot(state: WorldState) -> Vector3i:
         var y := state.rng.next_range(0, VoxelGrid.SIZE_Y - 1)
 
         var offset := Vector2i(x - here.x, y - here.y)
-        if offset.x * offset.x + offset.y * offset.y < SPAWN_CLEARANCE * SPAWN_CLEARANCE:
+        var squared := offset.x * offset.x + offset.y * offset.y
+        if squared < MIN_CLEARANCE * MIN_CLEARANCE:
+            continue
+        if squared > MAX_CLEARANCE * MAX_CLEARANCE:
             continue
 
         var found := _ground_above(state, x, y)

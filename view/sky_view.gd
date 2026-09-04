@@ -12,6 +12,14 @@ const NIGHT_SKY := Palette.SKY_NIGHT
 const DAY_AMBIENT := Palette.AMBIENT_DAY
 const NIGHT_AMBIENT := Palette.AMBIENT_NIGHT
 
+## 해와 달의 빛깔.
+##
+## 밝기만 낮추면 밤이 **흐린 낮**이 된다. 초록이 그대로 초록이라 어둠 말고는
+## 밤이라고 말해 주는 것이 없었다. 빛깔을 파랑 쪽으로 돌리면 명도를 크게
+## 낮추지 않고도 밤이 된다.
+const DAY_LIGHT_COLOUR := Palette.SUNLIGHT
+const NIGHT_LIGHT_COLOUR := Palette.MOONLIGHT
+
 ## 햇빛 세기.
 ##
 ## 1.1 이던 것을 낮췄다. 그 값에서는 화면의 74%가 순백으로 날아가 지면이
@@ -45,6 +53,7 @@ func _ready() -> void:
     _light.name = "Sun"
     _light.rotation_degrees = Vector3(-55.0, -40.0, 0.0)
     # 그림자는 부드럽게. 또렷한 그림자는 톤을 무겁게 만든다.
+    _light.light_color = DAY_LIGHT_COLOUR
     _light.shadow_enabled = true
     _light.light_angular_distance = 2.0
     add_child(_light)
@@ -62,6 +71,7 @@ func apply(tick: int) -> void:
     _environment.background_color = DAY_SKY.lerp(NIGHT_SKY, _darkness)
     _environment.ambient_light_color = DAY_AMBIENT.lerp(NIGHT_AMBIENT, _darkness)
     _light.light_energy = lerpf(DAY_LIGHT, NIGHT_LIGHT, _darkness)
+    _light.light_color = DAY_LIGHT_COLOUR.lerp(NIGHT_LIGHT_COLOUR, _darkness)
 
 
 ## 그 틱의 어둠 정도. 해 질 녘과 새벽에 부드럽게 오간다.
