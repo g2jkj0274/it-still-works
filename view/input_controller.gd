@@ -54,6 +54,7 @@ const ACTION_CHOOSE := &"choose_for_bundle"
 const ACTION_TERMINAL := &"cycle_terminal"
 const ACTION_BUNDLE := &"make_bundle"
 const ACTION_HOLD_BUNDLE := &"hold_bundle"
+const ACTION_CRAFT := &"craft"
 
 ## 손에 쥘 수 있는 것. 고를 수 있는 차례대로.
 const PLACEABLE: Array[int] = [
@@ -347,6 +348,18 @@ func submit_break() -> void:
     _simulation.submit(BreakBlockCommand.create(break_cell()))
 
 
+## 지금 고른 것을 만든다. 재료가 모자라면 아무 일도 일어나지 않는다.
+func submit_craft() -> void:
+    if _simulation == null or not RecipeBook.can_be_made(_selected):
+        return
+    _simulation.submit(CraftCommand.create(_selected))
+
+
+## 지금 고른 것을 만들 수 있는가. 화면에 무엇을 보일지 정할 때 쓴다.
+func selected_can_be_made() -> bool:
+    return RecipeBook.can_be_made(_selected)
+
+
 ## 작물을 먹는다. 배가 찬다.
 func submit_eat() -> void:
     if _simulation == null:
@@ -526,6 +539,7 @@ static func install_actions() -> void:
     _install(ACTION_TERMINAL, [KEY_B])
     _install(ACTION_BUNDLE, [KEY_G])
     _install(ACTION_HOLD_BUNDLE, [KEY_N])
+    _install(ACTION_CRAFT, [KEY_C])
 
     var keys: Array = [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_0]
     for i in SELECT_ACTIONS.size():
@@ -606,6 +620,8 @@ func _poll_actions() -> void:
         submit_bundle()
     if Input.is_action_just_pressed(ACTION_HOLD_BUNDLE):
         cycle_held_bundle()
+    if Input.is_action_just_pressed(ACTION_CRAFT):
+        submit_craft()
 
 
 func _poll_camera() -> void:

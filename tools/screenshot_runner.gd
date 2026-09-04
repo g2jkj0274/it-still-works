@@ -75,6 +75,7 @@ func _build_steps() -> Array:
         ["10_night", _fall_of_night],
         ["11_parts", _line_up_the_parts],
         ["12_island", _pull_back_to_the_shore],
+        ["13_craft", _make_something_by_hand],
     ]
 
 
@@ -214,6 +215,19 @@ func _line_up_the_parts() -> void:
 ## 지금까지는 섬 끝이 허공으로 끊겨 어디가 뭍이고 어디가 바깥인지 알 수 없었다.
 func _pull_back_to_the_shore() -> void:
     _main.camera().zoom_by(40)
+
+
+## 모은 재료로 부품을 만든다. 드는 재료가 화면 아래 한 줄에 뜨는지 본다.
+func _make_something_by_hand() -> void:
+    var state: Object = _main.simulation.state
+    var controller := _main.input_controller()
+
+    _main.camera().zoom_by(-20)
+    state.inventory.add(BlockType.STONE, 4)
+    state.inventory.add(BlockType.WOOD, 4)
+
+    controller.select_block(BlockType.DETECTOR)
+    controller.submit_craft()
 
 
 func _begin_step() -> void:

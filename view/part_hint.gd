@@ -9,6 +9,9 @@ extends CanvasLayer
 ## 설정이 있는 부품은 지금 고른 설정도 함께 보인다. 놓기 전에 무엇으로 놓는지
 ## 알 수 있어야 한다. 배선을 잇는 중이면 어느 출구에서 나가는지도 보인다.
 ##
+## 만들 수 있는 것은 드는 재료도 함께 적는다. 재료가 모자란지는 말하지 않는다.
+## 손에 든 것은 핫바에 다 적혀 있으므로 견주어 보면 된다.
+##
 ## 자리와 크기는 화면 크기에서 매번 다시 잰다. 한 번만 재면 창이 자리를 잡기
 ## 전이라 어긋난다.
 ##
@@ -146,4 +149,6 @@ static func line_for(controller: InputController) -> String:
     var line := "%s — %s" % [PartWords.name_of(block_type), PartWords.description_of(block_type)]
     if controller.has_part_setting():
         line += "   [지금: %s]" % controller.part_setting_name()
+    if controller.selected_can_be_made():
+        line += "   [만들기 C: %s]" % PartWords.recipe_line(block_type)
     return line

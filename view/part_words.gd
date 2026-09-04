@@ -97,6 +97,20 @@ static func role_name(role: int) -> String:
     return _ROLES[role]
 
 
+## 그것을 만드는 데 드는 재료. 만들 수 없는 것이면 빈 글.
+##
+## 재료가 모자란지는 말하지 않는다. 손에 든 것은 핫바에 다 적혀 있다.
+static func recipe_line(block_type: int) -> String:
+    var index := RecipeBook.index_for(block_type)
+    if index < 0:
+        return ""
+
+    var parts := PackedStringArray()
+    for entry: Array in RecipeBook.inputs_of(index):
+        parts.append("%s %d" % [name_of(int(entry[0])), int(entry[1])])
+    return ", ".join(parts)
+
+
 static func branch_setting_name(preset: int) -> String:
     if preset < 0 or preset >= _BRANCH_SETTINGS.size():
         return "?"

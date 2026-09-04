@@ -14,6 +14,7 @@ func _main() -> GameMain:
     var main: GameMain = auto_free((load(MAIN_SCENE) as PackedScene).instantiate())
     add_child(main)
     main.set_physics_process(false)
+    # 테스트가 쓰려고 쥐여 준다. 시작 지급이 아니다.
     for type in InputController.PLACEABLE:
         main.simulation.state.inventory.add(type, 8)
     return main
@@ -152,13 +153,26 @@ func test_out_of_reach_targets_are_refused() -> void:
     assert_bool(far.is_usable(main.simulation.state.character.cell())).is_false()
 
 
-func test_the_player_starts_with_parts_to_try() -> void:
-    # 제작이 아직 없으므로 판정용으로 지급한다.
-    var main := _main()
-    for part_type in InputController.PLACEABLE:
-        if BlockType.is_uniquely_made(part_type):
+func test_the_player_starts_empty_handed() -> void:
+    # 스펙 §3.1. 첫 블록은 손으로 부숴 얻는다. 제작법이 생겨 지급을 껐다.
+    #
+    # 위의 _main() 은 테스트가 쓰려고 손에 쥐여 주므로 여기서는 쓰지 않는다.
+    # 그것으로 재면 헬퍼가 채운 것을 다시 세는 꼴이 된다.
+    var state := WorldState.new(SimRng.new(1))
+    IslandBuilder.populate(state)
+    assert_int(state.inventory.total()).is_equal(0)
+
+
+func test_everything_in_hand_can_be_gathered_or_made() -> void:
+    # 손에 쥘 수 있는 것마다 얻을 길이 있어야 한다. 길이 없으면 빈손으로
+    # 시작할 수 없다. 묶음만은 회로를 압축해 얻는다.
+    var gathered: Array[int] = [BlockType.GROUND, BlockType.STONE, BlockType.WOOD]
+    for block_type in InputController.PLACEABLE:
+        if block_type == BlockType.BUNDLE:
             continue
-        assert_int(main.simulation.state.inventory.count_of(part_type)).is_greater(0)
+        assert_bool(gathered.has(block_type) or RecipeBook.can_be_made(block_type)
+            ).override_failure_message(
+                "%s 를 얻을 길이 없다" % BlockType.name_of(block_type)).is_true()
 
 
 func test_the_player_starts_with_no_bundle() -> void:
@@ -310,6 +324,54 @@ func test_a_player_can_build_an_automatic_door() -> void:
 
     assert_bool(main.simulation.state.circuit.is_linked(detector, actuator)).is_true()
     assert_int(main.simulation.state.grid.get_block(door)).is_equal(BlockType.DOOR_OPEN)
+
+
+func test_a_player_can_gather_and_make_a_door_by_hand() -> void:
+    # 완료 조건. 빈손에서 시작해 부수고, 만들고, 놓는 데까지 **입력 레이어를
+    # 거쳐** 닿아야 한다. 스펙 §3.1 의 "첫 블록은 손으로 부숴 얻는다".
+    var main: GameMain = auto_free((load(MAIN_SCENE) as PackedScene).instantiate())
+    add_child(main)
+    main.set_physics_process(false)
+
+    var state := main.simulation.state
+    assert_int(state.inventory.total()).is_equal(0)
+
+    # 곁에 나무를 세워 두고 손으로 부순다.
+    var here: Vector3i = state.character.cell()
+    var trunk := here + Vector3i(1, 0, 0)
+    var controller := main.input_controller()
+    for i in 4:
+        state.grid.set_block(trunk, BlockType.WOOD)
+        controller.set_target(_aim_at(trunk))
+        controller.submit_break()
+        _advance(main, 2)
+    assert_int(state.inventory.count_of(BlockType.WOOD)).is_equal(4)
+
+    # 모은 나무로 문을 만든다.
+    controller.select_block(BlockType.DOOR_CLOSED)
+    controller.submit_craft()
+    _advance(main, 2)
+    assert_int(state.inventory.count_of(BlockType.DOOR_CLOSED)).is_equal(1)
+    assert_int(state.inventory.count_of(BlockType.WOOD)).is_equal(0)
+
+    # 만든 문을 놓는다.
+    var spot := here + Vector3i(2, 0, 0)
+    controller.set_target(_aim_at(spot - VoxelGrid.UP))
+    controller.submit_place()
+    _advance(main, 2)
+    assert_int(state.grid.get_block(spot)).is_equal(BlockType.DOOR_CLOSED)
+
+
+func test_making_without_the_materials_changes_nothing() -> void:
+    var main: GameMain = auto_free((load(MAIN_SCENE) as PackedScene).instantiate())
+    add_child(main)
+    main.set_physics_process(false)
+
+    var controller := main.input_controller()
+    controller.select_block(BlockType.DETECTOR)
+    controller.submit_craft()
+    _advance(main, 2)
+    assert_int(main.simulation.state.inventory.total()).is_equal(0)
 
 
 func _aim_at(cell: Vector3i) -> BlockTarget:
