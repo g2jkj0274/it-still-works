@@ -57,12 +57,16 @@ const LAMP_DARK := 15
 ## 켜진 등. 둘레를 밝힌다. 문과 마찬가지로 작동기가 여닫는다.
 const LAMP_LIT := 16
 
-const COUNT := 17
+## 궤짝. 물건을 넣어 둔다. 손이 모자라야 왕복에 값이 붙고, 넣어 둘 곳이
+## 있어야 손이 모자란 것이 짜증이 아니라 살림이 된다.
+const CHEST := 17
+
+const COUNT := 18
 
 const _NAMES: PackedStringArray = [
     "empty", "ground", "ore", "wood",
     "door_closed", "door_open", "detector", "actuator", "repeater", "box", "branch", "field", "crop",
-    "bundle", "rock", "lamp_dark", "lamp_lit",
+    "bundle", "rock", "lamp_dark", "lamp_lit", "chest",
 ]
 
 
@@ -106,8 +110,8 @@ static func is_part(type: int) -> bool:
 
 ## 종류 번호만으로는 어느 것인지 가려지지 않는 부품인가.
 ##
-## 묶음은 안에 무엇이 들었는지가 저마다 다르다. 그래서 종류별로 세는 칸에
-## 담을 수 없고 묶음 번호마다 따로 센다.
+## 묶음은 안에 무엇이 들었는지가 저마다 다르다. 인벤토리에서 종류와 함께
+## **어느 것인지**를 들고 다녀야 하고, 같은 번호끼리만 한 칸에 쌓인다.
 static func is_uniquely_made(type: int) -> bool:
     return type == BUNDLE
 

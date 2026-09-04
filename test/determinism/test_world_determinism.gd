@@ -39,10 +39,12 @@ const NORTH_EAST := Vector3i(1, -1, 0)
 ##   광석 자원지가 가운데 솟은 더미가 되어 격자가 바뀜 (멀리서 보이게)
 ##   세계의 세로가 16 → 24 로 늘고, 지표가 기복을 타며 그 아래가 돌·광맥·동굴이 됨
 ##   등 블록이 늘어 블록 종류가 둘 늘어남 (스펙 §5 의 자동 조명)
+##   인벤토리가 칸으로 나뉘고 칸마다 쌓이는 한계가 생겨 상태의 짜임이 바뀜
+##   굤짝이 늘어 블록 종류가 하나 늘고 그 안에 든 것이 상태에 추가됨
 ##
 ## 이 값이 깨졌다면 시뮬레이션 동작이 바뀐 것이다. 값을 고쳐 통과시키지 말고
 ## 무엇이 바뀌었는지 먼저 밝힌다.
-const GOLDEN_HASH := "010915fb5bd1a967971c3cd79a54faea05e11e3182f090b969c0bb2a4b61666a"
+const GOLDEN_HASH := "5eeec0e1a4777302959d169eec77609741c50efad2c4373d932249b9aaca6f52"
 
 ## 같은 실행이 끝났을 때 캐릭터가 서 있는 칸.
 ## 해시보다 읽기 쉬워서 이동 규칙이 어긋났을 때 원인을 빨리 좁혀준다.
@@ -90,7 +92,7 @@ func _scenario() -> Array:
 ## 어느 속도로도 제때 도착하기 때문이다. 걸음 도중을 함께 못박아야 타이밍이
 ## 지켜진다.
 const MID_TICK := 104 + 2
-const GOLDEN_MID_HASH := "5e136428ef1a0c884e58bec043dcc90b1bdb52fb47d5bb2c55fa86ed7fd8711f"
+const GOLDEN_MID_HASH := "39f97bd7ae5568057255f21c5dda416b943434bacfe1352835e0a50b8263262d"
 
 
 func _run(seed_value: int = SEED, scenario: Array = []) -> Simulation:

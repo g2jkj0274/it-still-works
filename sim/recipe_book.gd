@@ -27,6 +27,8 @@ const RECIPES: Array = [
     [BlockType.BRANCH, 1, [[BlockType.ORE, 2], [BlockType.WOOD, 2]]],
     # 등은 여럿 필요하다. 땅속을 밝히려면 몇 칸마다 하나씩 놓는다.
     [BlockType.LAMP_DARK, 2, [[BlockType.WOOD, 1], [BlockType.ORE, 1]]],
+    # 궤짝. 손이 모자란 것이 짜증이 아니라 살림이 되려면 넣어 둘 곳이 있어야 한다.
+    [BlockType.CHEST, 1, [[BlockType.WOOD, 6]]],
 ]
 
 ## 스펙이 정한 제작법 수의 상한.
@@ -87,6 +89,9 @@ static func has_materials(inventory: Inventory, index: int) -> bool:
 ## 반쯤 쓰고 실패하면 재료만 사라진다. 되돌릴 길이 없으므로 먼저 다 보고 뺀다.
 static func make(inventory: Inventory, index: int) -> bool:
     if not has_materials(inventory, index):
+        return false
+    # 만든 것을 받을 자리도 있어야 한다. 재료만 쓰고 결과가 사라지면 안 된다.
+    if not inventory.has_room_for(output_of(index)):
         return false
 
     for entry: Array in RECIPES[index][2] as Array:

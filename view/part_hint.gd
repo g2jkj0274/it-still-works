@@ -166,9 +166,17 @@ static func line_for(controller: InputController) -> String:
         return aimed_line(aimed)
 
     var block_type := controller.selected_block()
+    if block_type == BlockType.EMPTY:
+        return "번 손 — 손에 잡힐 칸을 1~9 로 고른다   [만들기 X/C: %s]" % _craft_note(controller)
+
     var line := "%s — %s" % [PartWords.name_of(block_type), PartWords.description_of(block_type)]
     if controller.has_part_setting():
         line += "   [지금: %s]" % controller.part_setting_name()
-    if controller.selected_can_be_made():
-        line += "   [만들기 C: %s]" % PartWords.recipe_line(block_type)
+    line += "   [만들기 X/C: %s]" % _craft_note(controller)
     return line
+
+
+## 지금 뭐를 만들려는지와 드는 재료.
+static func _craft_note(controller: InputController) -> String:
+    var output := controller.recipe_output()
+    return "%s = %s" % [PartWords.name_of(output), PartWords.recipe_line(output)]

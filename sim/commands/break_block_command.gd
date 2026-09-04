@@ -5,6 +5,10 @@ extends SimCommand
 ##
 ## 섬의 바닥층은 부술 수 없다. 부술 수 있으면 딛을 곳이 없는 칸이 생겨
 ## 캐릭터가 갇힌다.
+##
+## **손이 차 있어도 부수지 못한다.** 부순 것을 받을 자리가 없으면 그대로 둔다.
+##
+## **안이 빈 궤짝만 걷어낼 수 있다.** 부수면 안의 것이 조용히 사라진다.
 
 const TYPE := &"break_block"
 
@@ -32,6 +36,16 @@ func apply(state: WorldState) -> void:
     var part := state.circuit.part_at(position)
     var gives_material := part == null or part.yields_material()
 
+    # 안이 빈 궤짝만 걷어낼 수 있다. 부수면 안의 것이 조용히 사라지기 때문이다.
+    if broken == BlockType.CHEST and not state.chests.is_empty(position):
+        return
+
+    # **손이 차 있으면 부수지 못한다.** 부수고 나서 버리면 조용히 사라지고,
+    # 땅에 떨어뜨리자니 떨어진 것을 주울 길이 아직 없다. 부수지 않는 쪽이
+    # 잃는 것이 없다.
+    if gives_material and not _has_room(state, part, broken):
+        return
+
     state.grid.set_block(position, BlockType.EMPTY)
     if gives_material:
         # 묶음은 종류가 아니라 번호로 돌아온다. 안에 든 것이 저마다 다르다.
@@ -43,6 +57,15 @@ func apply(state: WorldState) -> void:
     # 부품을 걷어내면 거기 이어진 배선도 함께 사라진다.
     state.circuit.remove_part(position)
     state.crops.uproot(position)
+    state.chests.remove(position)
+
+
+## 부순 것을 받을 자리가 손에 있는가.
+func _has_room(state: WorldState, part: CircuitPart, broken: int) -> bool:
+    if part is BundlePart:
+        return state.inventory.has_room_for(
+            BlockType.BUNDLE, (part as BundlePart).bundle_id)
+    return state.inventory.has_room_for(BlockType.material_of(broken))
 
 
 func write_payload(data: Dictionary) -> void:

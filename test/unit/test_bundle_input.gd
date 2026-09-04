@@ -159,7 +159,7 @@ func test_a_new_bundle_lands_in_the_hand_by_itself() -> void:
     controller.submit_bundle()
     sim.step()
 
-    controller.refresh_held_bundle()
+    controller.cycle_held_bundle()
     assert_int(controller.held_bundle()).is_equal(0)
 
 
@@ -282,7 +282,7 @@ func test_the_hotbar_shows_which_bundle_is_in_hand() -> void:
     hotbar.bind(sim.state.inventory, controller)
     hotbar.sync()
 
-    var slot := InputController.PLACEABLE.find(BlockType.BUNDLE)
-    assert_int(hotbar.selected_slot()).is_equal(slot)
+    var slot := controller.selected_slot()
+    assert_int(controller.held_bundle()).is_equal(1)
     assert_str(hotbar.slot_text(slot)).contains(PartWords.name_of(BlockType.BUNDLE))
     assert_str(hotbar.slot_text(slot)).contains("2")

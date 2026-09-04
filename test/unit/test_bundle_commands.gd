@@ -102,7 +102,6 @@ func test_breaking_a_bundle_gives_the_same_bundle_back() -> void:
     sim.step()
 
     assert_int(sim.state.inventory.count_of_bundle(0)).is_equal(1)
-    assert_int(sim.state.inventory.count_of(BlockType.BUNDLE)).is_equal(0)
 
 
 func test_a_bundled_auto_door_still_opens_the_door_beside_it() -> void:
@@ -173,9 +172,11 @@ func test_losing_half_the_inventory_takes_bundles_too() -> void:
     assert_int(inventory.count_of_bundle(0)).is_equal(2)
 
 
-func test_bundles_never_pile_into_the_shared_count() -> void:
-    # 묶음은 저마다 안이 다르다. 한 칸에 몰아 세면 무엇이 몇 개인지 알 수 없다.
+func test_bundles_of_different_makes_never_pile_together() -> void:
+    # 묶음은 저마다 안이 다르다. 한 칸에 몰아 쌓으면 무엇이 몇 개인지 알 수 없다.
     var inventory := Inventory.new()
-    inventory.add(BlockType.BUNDLE, 4)
-    assert_int(inventory.count_of(BlockType.BUNDLE)).is_equal(0)
-    assert_bool(inventory.take(BlockType.BUNDLE, 1)).is_false()
+    inventory.add_bundle(0, 2)
+    inventory.add_bundle(1, 3)
+    assert_int(inventory.count_of_bundle(0)).is_equal(2)
+    assert_int(inventory.count_of_bundle(1)).is_equal(3)
+    assert_int(inventory.count_of(BlockType.BUNDLE)).is_equal(5)

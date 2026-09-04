@@ -73,4 +73,5 @@ func _work_field(state: WorldState, cell: Vector3i) -> void:
         return
     if not state.crops.harvest(cell):
         return
+    # 손이 차면 들어가는 만큼만 들어간다. 밭은 이미 거두어졌다.
     state.inventory.add(BlockType.CROP, CropField.YIELD)
