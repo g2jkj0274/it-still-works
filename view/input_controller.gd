@@ -55,6 +55,8 @@ const ACTION_TERMINAL := &"cycle_terminal"
 const ACTION_BUNDLE := &"make_bundle"
 const ACTION_HOLD_BUNDLE := &"hold_bundle"
 const ACTION_CRAFT := &"craft"
+const ACTION_SAVE := &"save_game"
+const ACTION_LOAD := &"load_game"
 
 ## 손에 쥘 수 있는 것. 고를 수 있는 차례대로.
 const PLACEABLE: Array[int] = [
@@ -110,6 +112,11 @@ const BRANCH_PRESETS: Array = [
 ]
 
 signal help_toggled(shown: bool)
+
+## 저장과 불러오기는 명령이 아니라 파일을 만지는 일이다. 입력은 알리기만 하고
+## 실제로 하는 것은 게임 화면이 맡는다.
+signal save_requested
+signal load_requested
 
 var _simulation: Simulation
 var _camera: Camera3D
@@ -540,6 +547,8 @@ static func install_actions() -> void:
     _install(ACTION_BUNDLE, [KEY_G])
     _install(ACTION_HOLD_BUNDLE, [KEY_N])
     _install(ACTION_CRAFT, [KEY_C])
+    _install(ACTION_SAVE, [KEY_F5])
+    _install(ACTION_LOAD, [KEY_F9])
 
     var keys: Array = [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_0]
     for i in SELECT_ACTIONS.size():
@@ -622,6 +631,10 @@ func _poll_actions() -> void:
         cycle_held_bundle()
     if Input.is_action_just_pressed(ACTION_CRAFT):
         submit_craft()
+    if Input.is_action_just_pressed(ACTION_SAVE):
+        save_requested.emit()
+    if Input.is_action_just_pressed(ACTION_LOAD):
+        load_requested.emit()
 
 
 func _poll_camera() -> void:

@@ -61,6 +61,16 @@ const STARTING_BLOCKS := 64
 const STARTING_CROPS := 8
 
 
+## 새 판 하나. 시뮬레이션을 만들고 섬을 세워 돌려준다.
+##
+## 게임 화면과 불러오기가 같은 자리에서 판을 시작해야 한다. 두 곳에서 따로
+## 세우면 언젠가 어긋나고, 그러면 불러온 판이 저장한 판과 달라진다.
+static func start(p_seed: int) -> Simulation:
+    var simulation := Simulation.new(p_seed)
+    populate(simulation.state)
+    return simulation
+
+
 ## 격자에 섬을 배치하고 캐릭터를 시작 위치에 세운다.
 static func populate(state: WorldState) -> void:
     build(state.grid)

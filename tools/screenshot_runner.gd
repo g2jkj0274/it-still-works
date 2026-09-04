@@ -61,6 +61,11 @@ func _process(_delta: float) -> bool:
 
 
 ## 단계 목록. 각 항목은 [이름, 준비 동작] 이다.
+##
+## 저장 단계가 앞쪽에 있는 것은 일부러다. 뒤의 단계들은 무대를 세우려고 상태를
+## 손으로 건드리는데(재료를 쥐여 주고, 밤으로 건너뛰고), 저장은 명령 기록이라
+## 그런 것을 되살리지 못한다. 게임 자체는 모든 것을 명령으로 하므로 문제가
+## 없지만, 이 검사가 뜻을 가지려면 손대기 전에 놓여야 한다.
 func _build_steps() -> Array:
     return [
         ["01_spawn", func() -> void: pass],
@@ -69,13 +74,14 @@ func _build_steps() -> Array:
         ["04_place", _place],
         ["05_break", _break],
         ["06_build_tower", _build_tower],
-        ["07_auto_door", _build_auto_door],
-        ["08_choose", _choose_the_auto_door],
-        ["09_bundle", _bundle_the_auto_door],
-        ["10_night", _fall_of_night],
-        ["11_parts", _line_up_the_parts],
-        ["12_island", _pull_back_to_the_shore],
-        ["13_craft", _make_something_by_hand],
+        ["07_save", _write_and_read_back],
+        ["08_auto_door", _build_auto_door],
+        ["09_choose", _choose_the_auto_door],
+        ["10_bundle", _bundle_the_auto_door],
+        ["11_night", _fall_of_night],
+        ["12_parts", _line_up_the_parts],
+        ["13_island", _pull_back_to_the_shore],
+        ["14_craft", _make_something_by_hand],
     ]
 
 
@@ -146,7 +152,7 @@ func _choose_the_auto_door() -> void:
     _main.bundle_marks().sync()
     var marked := _main.bundle_marks().marked_count()
     if marked != _auto_door_parts().size():
-        _fail("08_choose", "고른 칸 %d개 중 %d개만 표시됐다" % [
+        _fail("09_choose", "고른 칸 %d개 중 %d개만 표시됐다" % [
             _auto_door_parts().size(), marked])
 
 
@@ -228,6 +234,23 @@ func _make_something_by_hand() -> void:
 
     controller.select_block(BlockType.DETECTOR)
     controller.submit_craft()
+
+
+## 판을 적어 두었다 되살린다. 알림 한 줄이 화면에 뜨는지, 되살린 판이 그대로
+## 그려지는지 본다.
+func _write_and_read_back() -> void:
+    if not _main.save_game():
+        _fail("07_save", "판을 적어 두지 못했다")
+        return
+
+    var saved: String = _main.simulation.state_hash()
+    _main.simulation.advance(40)
+
+    if not _main.load_game():
+        _fail("07_save", "적어 둔 판을 불러오지 못했다")
+        return
+    if _main.simulation.state_hash() != saved:
+        _fail("07_save", "불러온 판이 적어 둔 판과 다르다")
 
 
 func _begin_step() -> void:

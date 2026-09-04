@@ -25,6 +25,7 @@ const LINES: PackedStringArray = [
     "묶음 쥐기     N",
     "당기고 밀기   마우스 휠",
     "시점 돌리기   [  ]",
+    "저장 / 불러오기  F5 / F9",
     "이 안내       H",
 ]
 
