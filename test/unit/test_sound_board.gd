@@ -220,3 +220,47 @@ func test_an_unknown_sound_is_ignored() -> void:
     var board := _board(_sim())
     board.play(&"no_such_sound")
     assert_array(board.played()).contains([&"no_such_sound"])
+
+
+func test_walking_a_cell_makes_a_footstep() -> void:
+    var sim := _sim()
+    var board := _board(sim)
+
+    sim.submit(MoveCharacterCommand.create(Vector3i(1, 0, 0)))
+    var heard: Array[StringName] = []
+    for i in 8:
+        sim.step()
+        board.sync()
+        heard.append_array(board.played())
+        board.forget()
+    assert_int(_count_steps(heard)).is_equal(1)
+
+
+func test_falling_does_not_sound_like_running() -> void:
+    # 떨어지는 동안에는 발이 땅에 닿지 않는다. 칸마다 울리면 벼랑을 내려오는
+    # 것이 뛰어가는 소리가 된다. 닿는 순간 한 번이면 족하다.
+    var sim := _sim()
+    # 서 있는 자리만 기둥으로 올린다. 옆으로 나가면 세 칸을 떨어진다.
+    for z in range(2, 5):
+        sim.state.grid.set_block(Vector3i(HERE.x, HERE.y, z), BlockType.GROUND)
+    sim.state.character.place_at(Vector3i(HERE.x, HERE.y, 5))
+    var board := _board(sim)
+
+    sim.submit(MoveCharacterCommand.create(Vector3i(1, 0, 0)))
+    var heard: Array[StringName] = []
+    for i in 20:
+        sim.step()
+        board.sync()
+        heard.append_array(board.played())
+        board.forget()
+
+    assert_int(sim.state.character.cell().z).is_equal(2)
+    assert_int(_count_steps(heard)).is_equal(1)
+
+
+func _count_steps(heard: Array[StringName]) -> int:
+    var count := 0
+    for kind in heard:
+        if kind == &"step_a" or kind == &"step_b":
+            count += 1
+    return count

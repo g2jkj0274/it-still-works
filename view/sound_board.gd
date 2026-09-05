@@ -64,6 +64,7 @@ var _last_fullness: int = 0
 var _last_night: bool = false
 var _last_links: int = 0
 var _step_flip: bool = false
+var _was_falling: bool = false
 
 ## 배선마다 지금 흐르고 있는지. 총 개수가 아니라 하나하나를 들고 있어야
 ## 하나 켜지고 하나 꺼지는 순간에도 소리가 난다.
@@ -156,12 +157,25 @@ func sync() -> void:
 
     _sound_for_signals(state)
 
-    var cell := state.character.cell()
-    if cell != _last_cell:
-        play_at(&"step_a" if _step_flip else &"step_b", cell)
-        _step_flip = not _step_flip
+    _sound_for_footing(state)
 
     _remember(state)
+
+
+## 발소리.
+##
+## **가로로 한 칸 옮겼을 때만** 난다. 떨어지는 동안에는 발이 땅에 닿지 않는데,
+## 칸이 바뀔 때마다 울리면 벼랑을 내려오는 것이 뛰어가는 소리로 들린다.
+## 대신 닿는 순간에 한 번 낸다.
+func _sound_for_footing(state: WorldState) -> void:
+    var cell := state.character.cell()
+    var falling := MovementRules.is_falling(state.grid, cell)
+    var moved := cell.x != _last_cell.x or cell.y != _last_cell.y
+
+    if not falling and (moved or _was_falling):
+        play_at(&"step_a" if _step_flip else &"step_b", cell)
+        _step_flip = not _step_flip
+    _was_falling = falling
 
 
 ## 칸 하나가 달라졌을 때 나는 소리.
@@ -220,6 +234,7 @@ func _stream_of(kind: StringName) -> AudioStream:
 func _remember(state: WorldState) -> void:
     _seen_version = state.grid.version()
     _last_cell = state.character.cell()
+    _was_falling = MovementRules.is_falling(state.grid, _last_cell)
     _last_burnt = _count_burnt(state)
     _last_links = state.circuit.link_count()
     _last_health = state.vitals.health
