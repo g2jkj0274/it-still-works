@@ -50,7 +50,7 @@ func _ready() -> void:
         light.name = "Lamp_%d" % i
         light.omni_range = REACH
         light.light_energy = STRENGTH
-        light.light_color = Palette.LAMP_LIT
+        light.light_color = Palette.LIGHT_GLOW
         # 등마다 그림자를 치면 값이 감당이 안 된다.
         light.shadow_enabled = false
         light.visible = false

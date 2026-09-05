@@ -120,6 +120,14 @@ static func is_carryable(type: int) -> bool:
     return is_valid(type) and type != EMPTY
 
 
+## 화면에 그려지는가. 빈 칸과 손에만 드는 것만 그려지지 않는다.
+##
+## **지나갈 수 있는지와는 다른 물음이다.** 열린 문과 관솔불은 지나갈 수
+## 있지만 자리에 남아 있고, 남아 있으면 보여야 한다.
+static func is_drawn(type: int) -> bool:
+    return is_valid(type) and type != EMPTY and not is_handheld(type)
+
+
 ## 격자 한 칸에 놓일 수 있는가. 도구는 놓이지 않는다.
 static func is_placeable(type: int) -> bool:
     return is_solid(type) and not is_handheld(type)

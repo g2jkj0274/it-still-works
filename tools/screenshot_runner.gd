@@ -225,8 +225,38 @@ func _target_at(cell: Vector3i) -> BlockTarget:
 
 
 ## 밤으로 건너뛴다. 어두워지고 위협이 나오는지 본다.
+## 손에 잡히는 줄을 채운다.
+##
+## 열일곱 장 가운데 셋이 아홉 칸을 전부 비운 채로 찍혀 있었다. 스팀
+## 스크린샷에서 빈 인벤토리는 "할 게 없는 게임"으로 읽힌다. **첫 그림
+## (01_spawn)만은 비워 둔다** — 빈손으로 시작하는 것이 이 게임의 규칙이고,
+## 거기서는 그것이 사실이다.
+func _fill_the_hand() -> void:
+    var bag: Object = _main.simulation.state.inventory
+    for entry: Array in [
+        [BlockType.WOOD_PICK, 1], [BlockType.STONE_PICK, 1], [BlockType.STONE_AXE, 1],
+        [BlockType.TORCH, 12], [BlockType.PLANK, 24], [BlockType.WOOD, 8],
+        [BlockType.ROCK, 32], [BlockType.EMBER, 6], [BlockType.CROP, 4],
+    ]:
+        bag.add(int(entry[0]), int(entry[1]))
+
+
 func _fall_of_night() -> void:
     _main.simulation.advance(DayCycle.DAY_TICKS - _main.simulation.current_tick() + 20)
+
+    # **밤 그림에 빛이 하나도 없었다.** 화면이 고르게 어두워 "어둡게 칠한 낮"
+    # 으로 보였다. 대비가 있어야 밤이 밤이 된다 — 지하 그림이 강한 까닭도
+    # 등불 하나 때문이다.
+    _fill_the_hand()
+    var state: Object = _main.simulation.state
+    var here: Vector3i = state.character.cell()
+    for offset in [Vector3i(-2, -1, 0), Vector3i(2, 2, 0), Vector3i(-1, 3, 0)]:
+        var cell: Vector3i = here + offset
+        if state.grid.is_empty_cell(cell) and state.grid.is_solid(cell - VoxelGrid.UP):
+            state.grid.set_block(cell, BlockType.TORCH)
+    _main.world_view().rebuild()
+    _main.lamp_lights().look_at_point(_main.character_view().target_position())
+    _main.lamp_lights().sync()
 
 
 ## 부품을 나란히 늘어놓고 가까이 본다.
@@ -396,6 +426,11 @@ func _pose_for_the_store() -> void:
     # 어둠에 묻힌다. 상점 첫 그림은 분위기가 아니라 **장치가 도는 것**을
     # 보여야 한다. 밤 그림은 따로 있다(11_night).
     state.tick = DayCycle.DAY_TICKS / 4
+    # **틱을 직접 쓰면 날이 밝는 순간을 건너뛴다.** 그래서 밤에 나온 위협이
+    # 그대로 남아 상점 그림에 한낮의 괴물이 서 있었다. 재어 보면 틱만 옮겼을
+    # 때 넷이 그대로고, 하루를 마저 돌리면 0 이다. 건너뛴 만큼 손으로 치운다.
+    state.threats.clear()
+    _fill_the_hand()
 
     # 요 45도에서 화면 오른쪽은 격자 (1,-1), 화면 아래는 격자 (1,1) 이다.
     # 카메라가 사람을 따라가므로 사람을 가운데 두고 그 둘레에 세운다.
@@ -403,22 +438,35 @@ func _pose_for_the_store() -> void:
     var right := Vector3i(1, -1, 0)
     var down := Vector3i(1, 1, 0)
 
-    for dy in range(-6, 7):
-        for dx in range(-6, 7):
+    for dy in range(-8, 9):
+        for dx in range(-8, 9):
             var floor_cell := here + Vector3i(dx, dy, -1)
             state.grid.set_block(floor_cell, BlockType.GROUND)
             state.grid.set_block(floor_cell + VoxelGrid.UP, BlockType.EMPTY)
 
-    # 회로 한 줄을 화면 가로로 눕힌다. 사람 한 칸 아래다.
+    # **회로를 한 줄로 늘어놓지 않는다.**
+    #
+    # 다섯을 나란히 붙여 두었더니 배선 길이가 사실상 0 이 되어, 노란 막대
+    # 하나가 부품 여섯을 관통하는 그림이 나왔다. 그것은 회로가 아니라
+    # "물건을 늘어놓은 것"으로 읽힌다. 레드스톤 그림이 회로로 보이는 까닭은
+    # **꺾이고 사이가 벌어져** 있기 때문이다.
+    #
+    # 그래서 한 칸씩 띄우고 한 번 꺾는다. 배선이 실제로 보이는 길이를 갖고,
+    # 신호 점이 달려가는 구간이 생긴다.
     #
     # 감지기는 사람을 세 칸 안에서 본다. 신호가 실제로 흐르는 순간을 찍으려면
     # 그 안에 들어와야 한다. 배선이 흐린 색이면 아무것도 증명하지 못한다.
+    # 오른쪽으로 둘, 아래로 꺾고, 다시 왼쪽으로 돌아온다 — **ㄷ자**다.
+    # 한쪽으로만 뻗으면 화면 밖으로 나가고, 되돌아오면 꺾이는 마디가 셋이 된다.
+    #
+    # 눈은 줄의 첫머리에 둔다. 사람과 두 칸이라 [constant DetectorPart.SENSE_RADIUS]
+    # 안이다. 여기를 벌리면 감지기가 사람을 못 봐 회로가 통째로 죽는다.
     var row := here + down
-    var eye := row + right * -1
-    var branch := row
-    var repeater := row + right
-    var box := row + right * 2
-    var hand := row + right * 3
+    var eye := row
+    var branch := row + right * 2
+    var repeater := branch + right * 2
+    var box := repeater + down * 2
+    var hand := box - right * 2
     # **문은 작동기와 격자에서 맞닿아야 한다.** 화면의 오른쪽은 격자로 (1,-1)
     # 이라 대각선이고, 작동기는 맞닿은 여섯 쪽만 건드린다. 화면에서 나란히
     # 보이던 문이 실은 손이 닿지 않는 자리에 있어서 열리지 않았다.
@@ -472,7 +520,13 @@ func _pose_for_the_store() -> void:
         and state.grid.get_block(lamp) == BlockType.LAMP_LIT)
     _main.lamp_lights().look_at_point(_main.character_view().target_position())
 
-    _main.camera().zoom_by(-8)
+    # 회로를 ㄷ자로 펴면서 차지하는 자리가 넓어졌다. 당겨 보면 아래 팔이
+    # 화면 밖과 밑동 글줄에 잘린다. 회로 전체가 한 프레임에 들어와야
+    # "저것이 하나로 도는 것"이 읽힌다.
+    _main.camera().zoom_by(6)
+    _main.camera().focus_on(_main.character_view().target_position()
+        + SimViewCoords.cell_to_world(Vector3i(3, 1, 0))
+        - SimViewCoords.cell_to_world(Vector3i.ZERO))
     _main.world_view().rebuild()
     _main.canopy_view().rebuild()
     _main.ground_cover().rebuild()
@@ -526,9 +580,17 @@ func _dig_down() -> void:
     _main.camera().focus_on(_main.character_view().target_position())
 
     # 등을 켠다. 작동기가 켜는 것과 같은 결과다.
-    for offset in [Vector3i(0, -3, 0), Vector3i(0, 3, 0), Vector3i(-4, 2, 0)]:
+    for offset in [Vector3i(0, -3, 0), Vector3i(-4, 2, 0)]:
         state.grid.set_block(bottom + offset, BlockType.LAMP_LIT)
+    # **관솔불도 함께 놓는다.** 첫 굴의 빛은 등이 아니라 이쪽이다 — 등은
+    # 광석이 들고 광석은 돌 곡괭이가 있어야 캐는데, 파고 내려오기 시작하는
+    # 것은 나무 곡괭이일 때다. 굴 그림에 그것이 없으면 새로 넣은 단이
+    # 열일곱 장 어디에도 나오지 않는다.
+    for offset in [Vector3i(0, 3, 0), Vector3i(0, 1, 0)]:
+        state.grid.set_block(bottom + offset, BlockType.TORCH)
 
+    _fill_the_hand()
+    _main.input_controller().select_block(BlockType.TORCH)
     _ore_in_sight = _count_ore_on_the_walls(bottom)
 
     _main.camera().zoom_by(-4)

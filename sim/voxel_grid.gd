@@ -170,13 +170,20 @@ func is_free(pos: Vector3i) -> bool:
 ## 이웃 한 곳이라도 비어 있으면 표면이다.
 ## 표현 레이어가 속에 묻힌 블록을 그리지 않도록 걸러내는 데 쓴다.
 func is_exposed(pos: Vector3i) -> bool:
-    # 관솔불은 지나갈 수 있지만 그려져야 한다. 통과 여부와 그려짐은 다른 물음이다.
-    if get_block(pos) != BlockType.TORCH and not is_solid(pos):
+    # **통과 여부와 그려짐은 다른 물음이다.**
+    #
+    # 오래 걸려 찾은 결함이 여기 있었다. 이 판정이 [method is_solid] 를 물어
+    # 왔기 때문에 **열린 문이 한 번도 그려지지 않았다.** 메시는 서른여섯
+    # 꼭짓점으로 만들어져 있는데 화면에 나간 적이 없다. 자동문이 열리면
+    # 문이 열린 것이 아니라 사라진 것으로 보였다 — 코어 루프의 유일한
+    # 보상이 그 그림이다. 스펙 §3.1 도 "열린 문은 자리에 남아 있다"고 적는다.
+    if not BlockType.is_drawn(get_block(pos)):
         return false
     for offset in NEIGHBOURS:
         if not is_solid(pos + offset):
             return true
     return false
+
 
 
 ## 그 기둥에서 가장 높은 단단한 칸. 아무것도 없으면 -1.
