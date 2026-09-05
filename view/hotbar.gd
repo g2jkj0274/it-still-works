@@ -20,11 +20,11 @@ extends CanvasLayer
 
 const SLOT_HEIGHT := 58.0
 const SLOT_WIDTH := 92.0
-const SLOT_GAP := 6.0
-const BOTTOM_MARGIN := 20.0
+const SLOT_GAP := UiTheme.GAP_TIGHT
+const BOTTOM_MARGIN := UiTheme.GAP_EDGE
 
 ## 양옆에 남겨 둘 여백. 좁은 창에서도 칸이 화면 밖으로 나가지 않게 한다.
-const SIDE_MARGIN := 12.0
+const SIDE_MARGIN := UiTheme.GAP_EDGE
 
 ## 고른 칸이 위로 솟는 높이.
 const CHOSEN_LIFT := 6.0
@@ -40,17 +40,17 @@ const SHAKE_WIDTH := 6.0
 const CHOSEN_TINT := Color(1.0, 1.0, 1.0, 1.0)
 ## 고르지 않은 칸도 그림은 읽혀야 한다. 이름이 없어진 뒤로 그림이 유일한
 ## 단서라 너무 흐리면 줄 전체가 빈 회색 상자로 보인다.
-const IDLE_TINT := Color(1.0, 1.0, 1.0, 0.85)
+const IDLE_TINT := Color(1.0, 1.0, 1.0, 0.88)
 
-const TEXT_COLOUR := Color(0.12, 0.14, 0.18)
-const EMPTY_TEXT_COLOUR := Color(0.42, 0.44, 0.48)
+## 든 칸과 빈 칸. **빈 칸이 더 어둡다** — 무엇이 비었는지가 한눈에 보여야
+## 아홉 칸이 "쓸 수 있는 자리"로 읽힌다.
+const FILLED_SLOT := Color(0.14, 0.16, 0.20, 0.86)
+const EMPTY_SLOT := Color(0.08, 0.09, 0.12, 0.62)
 
-## 빈 칸의 바탕. 무엇이 비어 있는지 보여야 한다.
-const EMPTY_SLOT_COLOUR := Color(0.86, 0.86, 0.84, 0.55)
-const CHOSEN_BORDER := Color(0.15, 0.17, 0.22)
+## 고른 칸. 테두리를 게임의 배선 빛깔로 두른다 — 화면에서 눈이 가야 할 곳이다.
+const CHOSEN_SLOT := Color(0.20, 0.22, 0.27, 0.94)
 
 ## 누를 키 표시. 열째 칸은 0 이고, 숫자 너머의 것은 제 키로 고른다.
-## 등은 L, 묶음은 N 이다.
 const _KEY_LABELS: PackedStringArray = ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
 var _inventory: Inventory
@@ -103,15 +103,21 @@ func sync() -> void:
         _icons[slot].show_block(kind if held > 0 else BlockType.EMPTY)
         # 하나뿐인 것에 "1" 을 적지 않는다. 셀 것이 있을 때만 숫자가 뜬다.
         _labels[slot].text = str(held) if held > 1 else ""
-        _labels[slot].add_theme_color_override(
-            "font_color", TEXT_COLOUR if held > 0 else EMPTY_TEXT_COLOUR)
+        UiTheme.apply(_labels[slot], UiTheme.TEXT,
+            UiTheme.INK if held > 0 else UiTheme.INK_FAINT)
         _keys[slot].text = _KEY_LABELS[slot]
-        _style_of(slot).bg_color = EMPTY_SLOT_COLOUR
 
         var is_chosen := slot == _selected_slot
+        var style := _style_of(slot)
+        if is_chosen:
+            style.bg_color = CHOSEN_SLOT
+            style.border_color = UiTheme.ACCENT
+            style.set_border_width_all(2)
+        else:
+            style.bg_color = FILLED_SLOT if held > 0 else EMPTY_SLOT
+            style.border_color = UiTheme.PANEL_EDGE
+            style.set_border_width_all(1)
         _panels[slot].modulate = CHOSEN_TINT if is_chosen else IDLE_TINT
-        _style_of(slot).border_width_bottom = 4 if is_chosen else 0
-        _style_of(slot).border_width_top = 4 if is_chosen else 0
         _panels[slot].position.y = _row_top() - (CHOSEN_LIFT if is_chosen else 0.0)
 
 
@@ -169,10 +175,14 @@ func selected_slot() -> int:
 
 
 ## 고른 칸이 눈에 띄게 표시되어 있는가.
+## 그 칸이 고른 칸으로 표시돼 있는가.
+##
+## 예전에는 테두리가 있고 없고로 갈렸다. 이제는 칸마다 테두리가 있고
+## **빛깔로 갈린다** — 고른 칸만 배선 빛깔을 두른다.
 func slot_is_marked(slot: int) -> bool:
     if slot < 0 or slot >= _panels.size():
         return false
-    return _style_of(slot).border_width_bottom > 0
+    return _style_of(slot).border_color.is_equal_approx(UiTheme.ACCENT)
 
 
 ## 그 칸이 화면에서 차지하는 자리.
@@ -234,11 +244,8 @@ func _style_of(slot: int) -> StyleBoxFlat:
 
 
 func _add_slot(slot: int) -> void:
-    var style := StyleBoxFlat.new()
-    style.bg_color = EMPTY_SLOT_COLOUR
-    style.set_corner_radius_all(6)
-    style.set_content_margin_all(6)
-    style.border_color = CHOSEN_BORDER
+    var style := UiTheme.slot_style(EMPTY_SLOT, UiTheme.PANEL_EDGE, UiTheme.RADIUS_SMALL)
+    style.set_content_margin_all(UiTheme.GAP)
 
     var panel := PanelContainer.new()
     panel.name = "Slot_%d" % slot
@@ -263,7 +270,7 @@ func _add_slot(slot: int) -> void:
     label.set_anchors_preset(Control.PRESET_FULL_RECT)
     label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
     label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-    label.add_theme_color_override("font_color", TEXT_COLOUR)
+    UiTheme.apply(label, UiTheme.TEXT, UiTheme.INK)
     label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     stack.add_child(label)
 
@@ -273,8 +280,7 @@ func _add_slot(slot: int) -> void:
     key.set_anchors_preset(Control.PRESET_FULL_RECT)
     key.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
     key.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-    key.add_theme_color_override("font_color", EMPTY_TEXT_COLOUR)
-    key.add_theme_font_size_override("font_size", 11)
+    UiTheme.apply(key, UiTheme.TEXT_SMALL, UiTheme.INK_FAINT)
     key.mouse_filter = Control.MOUSE_FILTER_IGNORE
     stack.add_child(key)
 

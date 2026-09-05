@@ -54,10 +54,6 @@ const ACTION_HALF := &"take_half"
 const ACTION_CLOSE := &"close_screen"
 const ACTION_TURN_LEFT := &"turn_left"
 const ACTION_TURN_RIGHT := &"turn_right"
-const ACTION_CHOOSE := &"choose_for_bundle"
-const ACTION_TERMINAL := &"cycle_terminal"
-const ACTION_BUNDLE := &"make_bundle"
-const ACTION_HOLD_BUNDLE := &"hold_bundle"
 const ACTION_CRAFT := &"craft"
 const ACTION_RECIPE := &"cycle_recipe"
 const ACTION_BAG := &"open_bag"
@@ -82,18 +78,11 @@ const PLACEABLE: Array[int] = [
     BlockType.FIELD,
     BlockType.LAMP_DARK,
     BlockType.CHEST,
-    BlockType.BUNDLE,
 ]
-
-## 고른 칸이 묶음에서 맡을 몫.
-const ROLE_PLAIN := 0
-const ROLE_ENTRY := 1
-const ROLE_EXIT := 2
-const ROLE_COUNT := 3
 
 ## 설정을 고를 수 있는 부품들.
 const PARTS_WITH_SETTINGS: Array[int] = [
-    BlockType.DETECTOR, BlockType.REPEATER, BlockType.BOX, BlockType.BRANCH, BlockType.BUNDLE,
+    BlockType.DETECTOR, BlockType.REPEATER, BlockType.BOX, BlockType.BRANCH,
 ]
 
 const SELECT_ACTIONS: Array = [
@@ -178,13 +167,7 @@ var _has_link_source: bool = false
 var _link_port: int = BranchPart.PORT_TRUE
 var _help_shown: bool = false
 
-## 묶으려고 고른 칸들. 고른 차례 그대로다.
-var _chosen: Array[Vector3i] = []
 
-## 고른 칸이 저마다 맡은 몫. [member _chosen] 과 나란히 간다.
-var _roles: PackedInt32Array = PackedInt32Array()
-
-## 지금 손에 쥔 묶음 번호. 아무것도 안 쥐었으면 -1.
 
 
 func bind(p_simulation: Simulation) -> void:
@@ -328,8 +311,6 @@ func part_setting_name() -> String:
             return PartWords.shape_name(_box_shape)
         BlockType.BRANCH:
             return PartWords.branch_setting_name(_branch_preset)
-        BlockType.BUNDLE:
-            return PartWords.bundle_name(selected_variant())
         _:
             return ""
 
@@ -347,8 +328,6 @@ func part_settings() -> PackedInt32Array:
     if chosen == BlockType.BRANCH:
         var branch: Array = BRANCH_PRESETS[_branch_preset]
         return PackedInt32Array([branch[0], branch[1]])
-    if chosen == BlockType.BUNDLE:
-        return PackedInt32Array([selected_variant()])
     return PackedInt32Array()
 
 
@@ -533,119 +512,6 @@ func submit_link() -> void:
         var port := _link_port if wiring_from_branch() else 0
         _simulation.submit(ConnectPartsCommand.create(_link_source, cell, port))
     clear_link_source()
-
-
-## 묶으려고 고른 칸들. 고른 차례 그대로다.
-func chosen_cells() -> Array[Vector3i]:
-    return _chosen.duplicate()
-
-
-## 그 칸이 묶음에서 맡은 몫.
-func role_of(cell: Vector3i) -> int:
-    var at := _chosen.find(cell)
-    if at < 0:
-        return ROLE_PLAIN
-    return _roles[at]
-
-
-## 값이 들어오는 자리들. 고른 차례가 곧 배선이 닿는 차례다.
-func bundle_entries() -> Array[Vector3i]:
-    return _cells_with_role(ROLE_ENTRY)
-
-
-## 값이 나가는 자리들. 고른 차례가 곧 출구 번호다.
-func bundle_exits() -> Array[Vector3i]:
-    return _cells_with_role(ROLE_EXIT)
-
-
-## 지금 묶으려고 고르는 중인가.
-func is_choosing() -> bool:
-    return not _chosen.is_empty()
-
-
-func clear_chosen() -> void:
-    _chosen.clear()
-    _roles.clear()
-
-
-## 겨냥한 칸을 고르거나 놓는다. 부품이 없는 칸은 고를 수 없다.
-func toggle_chosen() -> void:
-    if _simulation == null:
-        return
-
-    var cell := break_cell()
-    var at := _chosen.find(cell)
-    if at >= 0:
-        _chosen.remove_at(at)
-        _roles.remove_at(at)
-        return
-
-    if not _simulation.state.circuit.has_part(cell):
-        return
-    _chosen.append(cell)
-    _roles.append(ROLE_PLAIN)
-
-
-## 겨냥한 칸이 맡을 몫을 다음 것으로 넘긴다. 고르지 않은 칸에는 몫이 없다.
-func cycle_role() -> void:
-    var at := _chosen.find(break_cell())
-    if at < 0:
-        return
-    _roles[at] = (_roles[at] + 1) % ROLE_COUNT
-
-
-## 고른 것을 하나의 묶음으로 압축한다.
-func submit_bundle() -> void:
-    if _simulation == null or _chosen.is_empty():
-        return
-    _simulation.submit(BundlePartsCommand.create(_chosen, bundle_entries(), bundle_exits()))
-    clear_chosen()
-
-
-func held_bundle() -> int:
-    if selected_block() != BlockType.BUNDLE:
-        return -1
-    return selected_variant()
-
-
-func owned_bundles() -> PackedInt32Array:
-    var owned := PackedInt32Array()
-    if _simulation == null:
-        return owned
-    var inventory := _simulation.state.inventory
-    for slot in inventory.slot_count():
-        if inventory.kind_at(slot) != BlockType.BUNDLE:
-            continue
-        var id := inventory.variant_at(slot)
-        if not owned.has(id):
-            owned.append(id)
-    owned.sort()
-    return owned
-
-
-func cycle_held_bundle() -> void:
-    if _simulation == null:
-        return
-    var inventory := _simulation.state.inventory
-    for i in Inventory.HOTBAR_SLOTS:
-        var slot := (_selected_slot + 1 + i) % Inventory.HOTBAR_SLOTS
-        if inventory.kind_at(slot) == BlockType.BUNDLE:
-            _selected_slot = slot
-            return
-
-
-func refresh_held_bundle() -> void:
-    pass
-
-
-func _cells_with_role(role: int) -> Array[Vector3i]:
-    var cells: Array[Vector3i] = []
-    for i in _chosen.size():
-        if _roles[i] == role:
-            cells.append(_chosen[i])
-    return cells
-
-
 ## 눌린 키를 읽어 명령을 만든다. 표현 레이어의 프레임 루프에서 부른다.
 func poll(current_tick: int) -> void:
     if _simulation == null:
@@ -675,10 +541,6 @@ static func install_actions() -> void:
     _install(ACTION_HELP, [KEY_H, KEY_F1])
     _install(ACTION_TURN_LEFT, [KEY_BRACKETLEFT])
     _install(ACTION_TURN_RIGHT, [KEY_BRACKETRIGHT])
-    _install(ACTION_CHOOSE, [KEY_V])
-    _install(ACTION_TERMINAL, [KEY_B])
-    _install(ACTION_BUNDLE, [KEY_G])
-    _install(ACTION_HOLD_BUNDLE, [KEY_N])
     _install(ACTION_CRAFT, [KEY_C])
     _install(ACTION_RECIPE, [KEY_X])
     _install(ACTION_BAG, [KEY_TAB, KEY_I])
@@ -787,14 +649,6 @@ func _poll_actions(current_tick: int) -> void:
         submit_eat()
     if Input.is_action_just_pressed(ACTION_HELP):
         toggle_help()
-    if Input.is_action_just_pressed(ACTION_CHOOSE):
-        toggle_chosen()
-    if Input.is_action_just_pressed(ACTION_TERMINAL):
-        cycle_role()
-    if Input.is_action_just_pressed(ACTION_BUNDLE):
-        submit_bundle()
-    if Input.is_action_just_pressed(ACTION_HOLD_BUNDLE):
-        cycle_held_bundle()
     if Input.is_action_just_pressed(ACTION_CRAFT):
         submit_craft()
     if Input.is_action_just_pressed(ACTION_RECIPE):
@@ -825,7 +679,7 @@ func step_slot(by: int) -> void:
     _selected_slot = posmod(_selected_slot + by, Inventory.HOTBAR_SLOTS)
 
 
-## 숫자 키는 열 개뿐이다. 그 너머의 것은 제 키로 고른다. 묶음은 N 이다.
+## 숫자 키는 아홉 개다. 손에 잡히는 줄이 그만큼이다.
 func _poll_selection() -> void:
     for i in SELECT_ACTIONS.size():
         if Input.is_action_just_pressed(SELECT_ACTIONS[i]):

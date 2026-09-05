@@ -25,7 +25,7 @@ func _main() -> GameMain:
         BlockType.REPEATER, BlockType.BOX,
     ]
     for type in InputController.PLACEABLE:
-        if BlockType.is_uniquely_made(type) or wanted.has(type):
+        if wanted.has(type):
             continue
         wanted.append(type)
     for type in wanted:
@@ -192,25 +192,15 @@ func test_the_player_starts_empty_handed() -> void:
 
 func test_everything_in_hand_can_be_gathered_or_made() -> void:
     # 손에 쥘 수 있는 것마다 얻을 길이 있어야 한다. 길이 없으면 빈손으로
-    # 시작할 수 없다. 묶음만은 회로를 압축해 얻는다.
+    # 시작할 수 없다.
     var gathered: Array[int] = [
         BlockType.GROUND, BlockType.ORE, BlockType.WOOD,
         BlockType.SAND, BlockType.EMBER,
     ]
     for block_type in InputController.PLACEABLE:
-        if block_type == BlockType.BUNDLE:
-            continue
         assert_bool(gathered.has(block_type) or RecipeBook.can_be_made(block_type)
             ).override_failure_message(
                 "%s 를 얻을 길이 없다" % BlockType.name_of(block_type)).is_true()
-
-
-func test_the_player_starts_with_no_bundle() -> void:
-    # 묶음은 지급하지 못한다. 안에 무엇이 들었는지를 사람이 정하는 것이 묶음이다.
-    # 쥐여 주려면 회로를 대신 지어 주는 셈이 된다.
-    var main := _main()
-    assert_int(main.simulation.state.inventory.count_of(BlockType.BUNDLE)).is_equal(0)
-    assert_int(main.simulation.state.bundles.count()).is_equal(0)
 
 
 func test_the_hotbar_shows_the_front_of_the_inventory() -> void:

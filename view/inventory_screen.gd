@@ -24,17 +24,18 @@ const PADDING := 16.0
 ## 손에 잡히는 줄과 나머지 사이를 벌린다.
 const HOTBAR_GAP := 10.0
 
-const BACKDROP := Color(0.16, 0.17, 0.21, 0.86)
-const PANEL := Color(0.93, 0.93, 0.91, 0.96)
-const SLOT_EMPTY := Color(0.80, 0.80, 0.78)
-const TEXT_COLOUR := Color(0.14, 0.16, 0.20)
-const TITLE_COLOUR := Color(0.96, 0.96, 0.94)
+## 화면 전체를 덮는 그늘. 가방이 열리면 세계가 뒤로 물러난다.
+const BACKDROP := Color(0.05, 0.06, 0.08, 0.72)
+const PANEL := Color(0.11, 0.12, 0.16, 0.96)
+const SLOT_EMPTY := Color(0.16, 0.18, 0.22, 0.9)
+const TEXT_COLOUR := UiTheme.INK
+const TITLE_COLOUR := UiTheme.INK
 
 ## 이름표가 마우스에서 얼마나 떨어져 따라오는가.
 const HOVER_OFFSET := Vector2(16.0, 14.0)
 
 ## 이름표 바탕. 격자 위에 떠도 글자가 읽혀야 한다.
-const HOVER_BACKDROP := Color(0.10, 0.11, 0.14, 0.92)
+const HOVER_BACKDROP := Color(0.04, 0.05, 0.07, 0.94)
 
 ## 무엇을 가리키는가.
 const WHERE_HAND := 0
@@ -321,8 +322,6 @@ func hovered_name() -> String:
 func _name_in(inventory: Inventory, slot: int) -> String:
     var kind := inventory.kind_at(slot)
     var name := PartWords.name_of(kind)
-    if kind == BlockType.BUNDLE:
-        name = "%s %s" % [name, PartWords.bundle_name(inventory.variant_at(slot))]
     return name
 
 
@@ -403,10 +402,18 @@ func _lay_out() -> void:
     # 눈이 다시 찾아야 한다.
     var recipe_left := left + grid_width + PADDING * 2.0
     var row_height := CELL * 0.6 + GAP
+
+    # **줄이 화면 밖으로 넘치면 목록이 아니라 잘린 목록이다.**
+    # 제작법이 열다섯이고 앞으로 더 는다. 화면 높이에 맞춰 줄을 눌러 담는다.
+    var room := screen.y - UiTheme.GAP_EDGE * 2.0
+    var needed := _recipe_rows.size() * row_height
+    if needed > room:
+        row_height = room / _recipe_rows.size()
+    var row_size := Vector2(CELL * 3.4, maxf(row_height - GAP * 0.5, 12.0))
     var recipe_top := (screen.y - _recipe_rows.size() * row_height) * 0.5
     for i in _recipe_rows.size():
         _recipe_rows[i].position = Vector2(recipe_left, recipe_top + i * row_height)
-        _recipe_rows[i].size = Vector2(CELL * 3.4, CELL * 0.6)
+        _recipe_rows[i].size = row_size
 
         # 넓은 줄에서는 그림이 왼쪽에 서고 글이 그 옆에 눕는다.
         var icon := _icon_in(_recipe_rows[i])

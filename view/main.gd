@@ -28,7 +28,6 @@ var _lamp_lights: LampLights
 var _character_view: CharacterView
 var _camera: IsometricCamera
 var _highlight: BlockHighlight
-var _bundle_marks: BundleMarks
 var _input: InputController
 var _wire_view: WireView
 var _part_marks: PartMarks
@@ -67,6 +66,9 @@ func _physics_process(_delta: float) -> void:
     # 화면이 열려 있는 동안에는 겨냥도 조작도 하지 않는다. 마우스가 화면에
     # 매여 있는데 그대로 겨냥이 되면 엉뚱한 곳을 부순다.
     if _bag.is_open():
+        # 가방이 화면을 덮는 동안 하단 한 줄은 숨긴다. 가방은 그 자리에
+        # 손에 잡히는 줄을 그리므로 둘이 겹쳐 글자가 칸을 가렸다.
+        _part_hint.visible = false
         _poll_bag()
         simulation.advance(driver.pump(elapsed))
         sync_views()
@@ -106,10 +108,6 @@ func pick_target(screen_position: Vector2 = Vector2(-1, -1)) -> BlockTarget:
 
 func block_highlight() -> BlockHighlight:
     return _highlight
-
-
-func bundle_marks() -> BundleMarks:
-    return _bundle_marks
 
 
 func hotbar() -> Hotbar:
@@ -168,7 +166,6 @@ func sync_views() -> void:
     _character_view.sync(CHARACTER_FOLLOW)
     _wire_view.sync()
     _part_marks.sync()
-    _bundle_marks.sync()
     _threat_view.sync()
     _sky_view.apply(simulation.current_tick())
     _day_clock.apply(simulation.current_tick())
@@ -176,6 +173,7 @@ func sync_views() -> void:
     _hotbar.visible = not _bag.is_open()
     _hotbar.sync()
     _bag.sync()
+    _part_hint.visible = not _bag.is_open()
     _part_hint.sync()
     _vitals_bar.sync()
     _camera.follow(_character_view.target_position(), CAMERA_FOLLOW)
@@ -300,9 +298,6 @@ func _build_views() -> void:
     _highlight.name = "Highlight"
     add_child(_highlight)
 
-    _bundle_marks = BundleMarks.new()
-    _bundle_marks.name = "BundleMarks"
-    add_child(_bundle_marks)
 
 
 func _build_input() -> void:
@@ -318,7 +313,6 @@ func _build_input() -> void:
     add_child(_input)
     _input.bind(simulation)
     _input.bind_camera(_camera)
-    _bundle_marks.bind(_input)
     _input.help_toggled.connect(_on_help_toggled)
     _input.crafted.connect(_sound_board.note_crafted)
     _input.balked.connect(_on_balked)
@@ -485,7 +479,6 @@ func adopt_simulation() -> void:
     _first_steps.bind(simulation, _notice)
     _sound_board.bind(simulation)
     _input.bind(simulation)
-    _input.clear_chosen()
     _input.clear_link_source()
     _hotbar.bind(state.inventory, _input)
     _bag.bind(state.inventory)

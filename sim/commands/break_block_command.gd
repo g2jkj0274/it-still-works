@@ -66,11 +66,7 @@ func apply(state: WorldState) -> void:
 
     state.grid.set_block(position, BlockType.EMPTY)
     if gives_material:
-        # 묶음은 종류가 아니라 번호로 돌아온다. 안에 든 것이 저마다 다르다.
-        if part is BundlePart:
-            state.inventory.add_bundle((part as BundlePart).bundle_id, 1)
-        else:
-            state.inventory.add(BlockType.material_of(broken), 1)
+        state.inventory.add(BlockType.material_of(broken), 1)
 
     # 부품을 걷어내면 거기 이어진 배선도 함께 사라진다.
     state.circuit.remove_part(position)
@@ -79,10 +75,7 @@ func apply(state: WorldState) -> void:
 
 
 ## 부순 것을 받을 자리가 손에 있는가.
-func _has_room(state: WorldState, part: CircuitPart, broken: int) -> bool:
-    if part is BundlePart:
-        return state.inventory.has_room_for(
-            BlockType.BUNDLE, (part as BundlePart).bundle_id)
+func _has_room(state: WorldState, _part: CircuitPart, broken: int) -> bool:
     return state.inventory.has_room_for(BlockType.material_of(broken))
 
 

@@ -21,7 +21,7 @@ func test_all_types_are_distinct_and_contiguous() -> void:
         BlockType.EMPTY, BlockType.GROUND, BlockType.ORE, BlockType.WOOD,
         BlockType.DOOR_CLOSED, BlockType.DOOR_OPEN, BlockType.DETECTOR, BlockType.ACTUATOR,
         BlockType.REPEATER, BlockType.BOX, BlockType.BRANCH,
-        BlockType.FIELD, BlockType.CROP, BlockType.BUNDLE, BlockType.ROCK,
+        BlockType.FIELD, BlockType.CROP, BlockType.ROCK,
         BlockType.LAMP_DARK, BlockType.LAMP_LIT, BlockType.CHEST,
         BlockType.SAND, BlockType.EMBER, BlockType.PLANK, BlockType.TORCH,
         BlockType.WOOD_PICK, BlockType.STONE_PICK, BlockType.STONE_AXE, BlockType.STONE_SHOVEL,

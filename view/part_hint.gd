@@ -24,14 +24,13 @@ extends CanvasLayer
 ## 대신 글자 너비를 직접 재서 칸을 잡고, 화면보다 길면 잘라 낸다.
 
 ## 핫바 위로 띄울 높이.
-const BOTTOM_MARGIN := 96.0
-const SIDE_MARGIN := 12.0
+const BOTTOM_MARGIN := 104.0
+const SIDE_MARGIN := UiTheme.GAP_EDGE
 
 ## 글 둘레에 둘 여백.
-const PADDING := 8.0
+const PADDING := UiTheme.GAP_WIDE
 
-const TEXT_COLOUR := Color(0.16, 0.18, 0.22)
-const BACKDROP := Color(1.0, 1.0, 1.0, 0.78)
+## 빛깔과 치수는 [UiTheme] 이 정한다. 여기서 색을 만들지 않는다.
 
 var _controller: InputController
 var _label: Label
@@ -46,9 +45,7 @@ func _ready() -> void:
     _anchor.mouse_filter = Control.MOUSE_FILTER_IGNORE
     add_child(_anchor)
 
-    var style := StyleBoxFlat.new()
-    style.bg_color = BACKDROP
-    style.set_corner_radius_all(6)
+    var style := UiTheme.panel_style()
 
     _panel = Panel.new()
     _panel.name = "Line"
@@ -63,7 +60,7 @@ func _ready() -> void:
     _label.clip_text = true
     _label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     _label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-    _label.add_theme_color_override("font_color", TEXT_COLOUR)
+    UiTheme.apply(_label, UiTheme.TEXT, UiTheme.INK)
     _label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _panel.add_child(_label)
 
@@ -151,12 +148,6 @@ static func aimed_line(part: CircuitPart) -> String:
 
 ## 고른 것의 이름과 한 줄 설명. 설정이 있으면 그것도 붙인다.
 static func line_for(controller: InputController) -> String:
-    if controller.is_choosing():
-        return "묶는 중 — 고른 칸 %d, 들어오는 자리 %d, 나가는 자리 %d.  B 로 자리를 정하고 G 로 묶는다" % [
-            controller.chosen_cells().size(),
-            controller.bundle_entries().size(),
-            controller.bundle_exits().size(),
-        ]
     if controller.wiring_from_branch():
         return "잇는 중 — %s 쪽으로 나간다.  T 로 바꾸고, 이을 부품에 R" % [
             controller.link_port_name()]

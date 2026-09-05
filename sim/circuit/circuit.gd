@@ -100,7 +100,7 @@ func is_linked(from: Vector3i, to: Vector3i, port: int = 0) -> bool:
 ## 모든 부품이 지금 흐르는 신호만 보고 다음 신호를 정한 뒤, 한꺼번에 반영한다.
 ## 그래서 신호가 한 틱에 한 부품씩만 나아간다.
 ##
-## [param external] 은 배선이 아니라 바깥에서 들어오는 신호다. 묶음이 자기
+## [param external] 은 배선이 아니라 바깥에서 들어오는 신호다. 바깥에서
 ## 안쪽 회로를 돌릴 때 쓴다. 항목은 [닿는 칸, 신호] 이고 순서가 있다.
 func tick(state: WorldState, external: Array = []) -> void:
     tick_compute(state, external)

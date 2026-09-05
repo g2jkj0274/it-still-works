@@ -51,18 +51,6 @@ const MARK_COMPARE := 10
 const MARK_BOTH := 11
 const MARK_EITHER := 12
 
-## 묶음. 안에 든 것이 많을수록 높이 쌓인다.
-##
-## 묶음은 밖에서 보면 전부 같은 상자다. 부품 셋을 접은 것과 열둘을 접은 것이
-## 같아 보이면, 판에 놓인 묶음 다섯 개 가운데 어느 것이 큰 장치인지 알 수
-## 없다. 숫자를 적지 않는다 — 쌓인 높이로 보인다.
-const MARK_BUNDLE := 13
-const MARK_BUNDLE_BIG := 16
-const MARK_BUNDLE_HUGE := 17
-
-## 묶음 표시가 한 단 높아지는 부품 수.
-const BUNDLE_STEP := 4
-
 const MARK_COUNT := 18
 
 ## 감지기 대상 번호 → 표시.
@@ -158,19 +146,9 @@ static func mark_for(part: CircuitPart) -> int:
             return _EYES.get((part as DetectorPart).target, -1)
         BlockType.BRANCH:
             return _JUDGEMENTS.get((part as BranchPart).mode, -1)
-        BlockType.BUNDLE:
-            return bundle_mark_for((part as BundlePart).inner_part_count())
         _:
             return -1
 
-
-## 안에 든 것이 그만큼일 때 얹히는 표시.
-static func bundle_mark_for(inner: int) -> int:
-    if inner >= BUNDLE_STEP * 2:
-        return MARK_BUNDLE_HUGE
-    if inner >= BUNDLE_STEP:
-        return MARK_BUNDLE_BIG
-    return MARK_BUNDLE
 
 
 func mark_count(kind: int) -> int:
@@ -211,8 +189,6 @@ static func colour_for(kind: int) -> Color:
             return Palette.PART_MARK_JUDGE
         MARK_ENDLESS, MARK_TURNS, MARK_WHILE:
             return Palette.PART_MARK_TURN
-        MARK_BUNDLE, MARK_BUNDLE_BIG, MARK_BUNDLE_HUGE:
-            return Palette.PART_MARK_BUNDLE
         _:
             # 상자 모양 셋. 형변환 손실을 가르치는 표시라 기본색을 지킨다.
             return Palette.PART_MARK
@@ -285,13 +261,6 @@ func mesh_for(kind: int) -> Mesh:
             arc.height = MARK_SIZE * 0.24
             arc.radial_segments = 6
             return arc
-        MARK_BUNDLE:
-            # 묶음. 접혀 들어간 것을 층으로 보인다.
-            return _cube(Vector3(MARK_SIZE * 0.8, MARK_SIZE * 0.5, MARK_SIZE * 0.8))
-        MARK_BUNDLE_BIG:
-            return _cube(Vector3(MARK_SIZE * 0.8, MARK_SIZE * 1.0, MARK_SIZE * 0.8))
-        MARK_BUNDLE_HUGE:
-            return _cube(Vector3(MARK_SIZE * 0.8, MARK_SIZE * 1.6, MARK_SIZE * 0.8))
         _:
             return _cube(Vector3.ONE * MARK_SIZE)
 

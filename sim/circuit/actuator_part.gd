@@ -10,7 +10,6 @@ extends CircuitPart
 ## "신호가 있다"이다. 지금 작동시킬 수 있는 것은 문과 밭과 등이다.
 ##
 ## 무엇에 닿는지는 놓인 칸이 아니라 [member CircuitPart.anchor] 에서 잰다.
-## 묶음 안에 들어가면 묶음이 놓인 칸에 맞닿은 것을 움직인다.
 
 var _wants_open: bool = false
 

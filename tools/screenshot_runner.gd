@@ -31,17 +31,24 @@ var _index := 0
 var _phase := 0
 var _wait := 0
 
-## 회로가 문을 열어야 하는 단계에서, 실제로 열렸는가.
+## 회로가 나오는 단계에서, 그 회로가 실제로 일을 했는가.
 ##
 ## **닫힌 문 앞에 선 그림은 아무것도 증명하지 못한다.** 이 검사가 상점 그림에만
 ## 걸려 있던 동안, 자동문 그림 석 장이 죽은 회로를 찍고 있는 것을 아무도
 ## 잡지 못했다. 회로가 나오는 단계라면 어디든 걸린다.
-var _door_open: Dictionary[String, bool] = {}
+##
+## 무엇을 보는지는 장치마다 다르다 — 문은 열렸는지, 등은 켜졌는지, 밭은
+## 거두어졌는지. 장치가 늘면 여기에 한 줄이 는다.
+var _worked: Dictionary[String, bool] = {}
 var _with_subject: Image
 var _report: Array[String] = []
 
 ## 08 단계가 실제로 놓은 작동기와 감지기의 자리. 다시 계산하지 않고 적어 둔다.
 var _door_parts: Array[Vector3i] = []
+
+## 09 · 10 단계가 세운 등과 밭. 회로가 실제로 한 일을 찍기 직전에 본다.
+var _lamp_cells: Array[Vector3i] = []
+var _field_cells: Array[Vector3i] = []
 
 ## 자동문 단계가 세운 문. 실제로 열렸는지 찍기 직전에 본다.
 var _door_cell: Vector3i = Vector3i.ZERO
@@ -103,8 +110,8 @@ func _build_steps() -> Array:
         ["06_build_tower", _build_tower],
         ["07_save", _write_and_read_back],
         ["08_auto_door", _build_auto_door],
-        ["09_choose", _choose_the_auto_door],
-        ["10_bundle", _bundle_the_auto_door],
+        ["09_lamp", _build_the_porch_lamp],
+        ["10_farm", _build_the_farm],
         ["11_night", _fall_of_night],
         ["12_parts", _line_up_the_parts],
         ["13_island", _pull_back_to_the_shore],
@@ -178,42 +185,107 @@ func _build_auto_door() -> void:
     _door_cell = door
 
 
-## 자동문을 이룬 두 부품을 고른다. 고른 표시가 화면에 나오는지 본다.
-func _choose_the_auto_door() -> void:
-    var controller := _main.input_controller()
-    for cell in _auto_door_parts():
-        controller.set_target(_target_at(cell))
-        controller.toggle_chosen()
-    # 마지막에 고른 칸을 값이 나가는 자리로 삼아 색이 갈리는지 본다.
-    controller.cycle_role()
-    controller.cycle_role()
+## 다가가면 켜지는 등. 감지기(사람) → 작동기 → 등 셋.
+##
+## **부품 셋으로 다른 기계가 나온다는 것이 이 그림의 전부다.** 자동문과 같은
+## 감지기·작동기인데 붙인 블록이 달라 하는 일이 달라진다 — 스펙 §4.2 가
+## "블록을 추가해도 회로 부품은 늘지 않는다"고 적은 자리다.
+func _build_the_porch_lamp() -> void:
+    var state: Object = _main.simulation.state
+    var here: Vector3i = state.character.cell()
+    for dy in range(-4, 5):
+        for dx in range(-4, 5):
+            var floor_cell := here + Vector3i(dx, dy, -1)
+            state.grid.set_block(floor_cell, BlockType.GROUND)
+            state.grid.set_block(floor_cell + VoxelGrid.UP, BlockType.EMPTY)
 
-    # 고른 칸이 실제로 표시되는지는 그림만 봐서는 가려질 수 있다. 수로 확인한다.
-    _main.bundle_marks().sync()
-    var marked := _main.bundle_marks().marked_count()
-    if marked != _auto_door_parts().size():
-        _fail("09_choose", "고른 칸 %d개 중 %d개만 표시됐다" % [
-            _auto_door_parts().size(), marked])
+    # **작동기는 맞닿은 여섯 칸만 건드린다.** 화면의 오른쪽은 격자로 (1,-1)
+    # 이라 대각선이고, 거기 등을 놓으면 손이 닿지 않아 회로가 죽는다.
+    # 화면에서 나란해 보이는 것과 격자에서 맞닿는 것은 다른 이야기다.
+    # **격자 (-1,-1) 이 화면 위쪽이다.** 사람 뒤에 세워야 장치가 화면 위로
+    # 올라가고, 아래에 세우면 밑동 글줄과 손에 잡히는 줄에 잘린다.
+    var eye := here + Vector3i(-1, -1, 0)
+    var hand := here + Vector3i(-3, -3, 0)
+    _lamp_cells = [
+        hand + Vector3i(1, 0, 0), hand + Vector3i(-1, 0, 0), hand + Vector3i(0, -1, 0),
+    ]
+    for cell in _lamp_cells:
+        state.grid.set_block(cell, BlockType.LAMP_DARK)
+
+    _put(eye, BlockType.DETECTOR, PackedInt32Array([DetectorPart.TARGET_PLAYER]))
+    _put(hand, BlockType.ACTUATOR, PackedInt32Array())
+    state.circuit.link(eye, hand)
+
+    for i in 24:
+        _main.simulation.step()
+        if state.grid.get_block(_lamp_cells[0]) == BlockType.LAMP_LIT:
+            break
+
+    # **사람이 장치를 가리면 안 된다.** 카메라는 사람을 따라가므로 그대로
+    # 두면 회로가 화면 밑동으로 밀려 글줄과 손에 잡히는 줄에 잘린다.
+    # 사람과 장치 사이를 본다.
+    _look_between(here, hand)
+    _main.world_view().rebuild()
+    _main.wire_view().rebuild()
+    _main.lamp_lights().look_at_point(_main.character_view().target_position())
+    _main.lamp_lights().sync()
 
 
-## 고른 것을 묶어 한 칸에 다시 놓는다. 스펙 §4.3, §6 의 마지막 검증 단계다.
-func _bundle_the_auto_door() -> void:
-    var controller := _main.input_controller()
-    var spot: Vector3i = _auto_door_parts()[0]
+## 자동 농장. 감지기(작물) → 되풀이 → 작동기 → 밭.
+##
+## 부품이 셋으로 늘고 **되풀이가 처음 나온다.** 사람이 없어도 도는 것이
+## 무엇인지 이 그림이 말해야 한다.
+func _build_the_farm() -> void:
+    var state: Object = _main.simulation.state
+    var here: Vector3i = state.character.cell()
+    for dy in range(-5, 6):
+        for dx in range(-5, 6):
+            var floor_cell := here + Vector3i(dx, dy, -1)
+            state.grid.set_block(floor_cell, BlockType.GROUND)
+            state.grid.set_block(floor_cell + VoxelGrid.UP, BlockType.EMPTY)
 
-    controller.submit_bundle()
-    _main.simulation.step()
-    controller.refresh_held_bundle()
-    controller.cycle_held_bundle()
+    # 감지기는 세 칸 안의 다 자란 작물을 본다. 작동기는 맞닿은 여섯 칸을
+    # 거둔다. **둘을 함께 만족하는 자리에 밭이 있어야** 회로가 돈다.
+    # 격자 (-1,-1) 이 화면 위쪽이다. 사람 뒤에 세운다.
+    var eye := here + Vector3i(-2, -2, 0)
+    var turns := here + Vector3i(-5, -2, 0)
+    var hand := here + Vector3i(-3, -3, 0)
+    _field_cells = [
+        hand + Vector3i(1, 0, 0), hand + Vector3i(0, 1, 0), hand + Vector3i(0, -1, 0),
+    ]
+    for cell in _field_cells:
+        state.grid.set_block(cell, BlockType.FIELD)
+        state.crops.plant(cell)
 
-    # 방금 비워진 작동기 자리에 그대로 놓는다. 문 옆이라 다시 여닫힌다.
-    controller.set_target(_target_at(spot - VoxelGrid.UP))
-    controller.submit_place()
+    _put(eye, BlockType.DETECTOR, PackedInt32Array([DetectorPart.TARGET_CROP]))
+    _put(turns, BlockType.REPEATER, PackedInt32Array([RepeaterPart.MODE_FOREVER, 0, 10]))
+    _put(hand, BlockType.ACTUATOR, PackedInt32Array())
+    state.circuit.link(eye, turns)
+    state.circuit.link(turns, hand)
+
+    # **다 자란 작물이 있어야 감지기가 본다.** 갓 심은 밭 앞에서는 배선이
+    # 내내 흐린 색이고, 그러면 죽은 회로를 찍는 것이다.
+    _main.simulation.advance(CropField.MATURE_TICKS + 40)
+
+    _look_between(here, hand)
+    _main.world_view().rebuild()
+    _main.wire_view().rebuild()
 
 
 ## 08 단계가 놓은 작동기와 감지기의 자리.
 func _auto_door_parts() -> Array[Vector3i]:
     return _door_parts
+
+
+## 사람과 장치 사이를 본다.
+##
+## 카메라는 사람을 따라간다. 장치를 사람 옆에 세우면 그대로는 화면 한쪽으로
+## 밀려 밑동 글줄과 손에 잡히는 줄에 잘린다. 둘의 가운데를 잡고 조금 물린다.
+func _look_between(person: Vector3i, device: Vector3i) -> void:
+    var middle := SimViewCoords.cell_to_world(person).lerp(
+        SimViewCoords.cell_to_world(device), 0.5)
+    _main.camera().zoom_by(-4)
+    _main.camera().focus_on(middle)
 
 
 func _target_at(cell: Vector3i) -> BlockTarget:
@@ -406,7 +478,7 @@ func _write_and_read_back() -> void:
 ## 칸으로 압축해 다시 쓴다."** 그 근거가 한 그림에 다 들어가야 한다.
 ##
 ## 해 질 녘. 밭과 문이 있고, 감지기에서 갈림길·되풀이·상자를 지나 작동기까지
-## 배선이 훤히 보이며 신호가 흐른다. 그 옆에 같은 회로를 압축한 묶음 한 칸이
+## 배선이 훤히 보이며 신호가 흐른다. 회로가 실제로 한 일이
 ## 나란히 놓여 "저게 저 한 칸이 됐다"가 그림만으로 읽힌다.
 ##
 ## 러너가 결정론적으로 같은 그림을 다시 뽑아 주므로, 아트가 바뀔 때마다
@@ -488,35 +560,13 @@ func _pose_for_the_store() -> void:
     for pair in [[eye, branch], [branch, repeater], [repeater, box], [box, hand]]:
         state.circuit.link(pair[0], pair[1])
 
-    # 같은 회로를 압축한 묶음을 **회로 줄 아래**에 홀로 놓는다.
-    #
-    # 줄 끝에 나란히 세워 두었더니 여섯째 부품과 구별되는 것이 아무것도
-    # 없었다 — 배선도 안 닿아 있고 크기도 같아서, 이 게임이 복셀 게임 백 개와
-    # 갈리는 단 하나의 문장(스펙 §4.3)이 그림에서 사라졌다. 위 다섯과 아래
-    # 하나가 **아래위로** 놓여야 "저것이 이것이 됐다"로 읽힌다.
-    var cells: Array[Vector3i] = [eye, branch, repeater, box, hand]
-    var blueprint := BundleBlueprint.capture(
-        state.circuit, cells, [] as Array[Vector3i], [] as Array[Vector3i])
-    var bundle_id: int = state.bundles.define(blueprint)
-    # 다섯을 삼킨 그 한 칸을 줄 한가운데 **위**에 둔다. 둘레를 비워 홀로 선다.
-    # 아래로 내리면 화면 밑동의 글줄과 손에 잡히는 줄에 가린다.
-    var folded := row - down + right * 2
-    for dx in range(-2, 3):
-        state.grid.set_block(folded + right * dx, BlockType.EMPTY)
-        state.grid.set_block(folded + right * dx + VoxelGrid.UP, BlockType.EMPTY)
-    _put(folded, BlockType.BUNDLE, PackedInt32Array([bundle_id]))
-
-    controller.select_block(BlockType.BUNDLE)
-    state.inventory.add_bundle(bundle_id, 2)
-    controller.cycle_held_bundle()
-
     # 신호가 끝까지 닿아 문이 열릴 때까지 돌린다. **닫힌 문 앞에 선 그림은
     # 아무것도 증명하지 못한다.** 회로가 한 일이 화면에 남아야 한다.
     for i in 24:
         _main.simulation.step()
         if state.grid.get_block(door) == BlockType.DOOR_OPEN:
             break
-    _door_open["17_store"] = (state.grid.get_block(door) == BlockType.DOOR_OPEN
+    _worked["17_store"] = (state.grid.get_block(door) == BlockType.DOOR_OPEN
         and state.grid.get_block(lamp) == BlockType.LAMP_LIT)
     _main.lamp_lights().look_at_point(_main.character_view().target_position())
 
@@ -537,7 +587,7 @@ func _pose_for_the_store() -> void:
 ## 무대에 부품 하나를 세운다. 재료를 세지 않는다. 그림을 위한 자리다.
 func _put(cell: Vector3i, part_type: int, settings: PackedInt32Array) -> void:
     var state: Object = _main.simulation.state
-    var part := CircuitPartFactory.create(part_type, cell, settings, state.bundles)
+    var part := CircuitPartFactory.create(part_type, cell, settings)
     if part == null:
         return
     state.grid.set_block(cell, part_type)
@@ -680,9 +730,16 @@ func _evaluate(without_subject: Image) -> void:
 
     # 자동문을 세운 단계들은 그 문이 열려 있어야 한다. 감지기가 사람을 보고
     # 작동기가 문을 여는 것이 스펙 §5 의 첫 장치다.
-    if name in ["08_auto_door", "09_choose", "10_bundle"]:
-        _door_open[name] = (_main.simulation.state.grid.get_block(_door_cell)
-            == BlockType.DOOR_OPEN)
+    var state: Object = _main.simulation.state
+    match name:
+        "08_auto_door":
+            _worked[name] = state.grid.get_block(_door_cell) == BlockType.DOOR_OPEN
+        "09_lamp":
+            _worked[name] = (not _lamp_cells.is_empty()
+                and state.grid.get_block(_lamp_cells[0]) == BlockType.LAMP_LIT)
+        "10_farm":
+            # 거둔 것이 손에 들어왔으면 회로가 실제로 돈 것이다.
+            _worked[name] = state.inventory.count_of(BlockType.CROP) > 0
 
     var path := "%s/%s.png" % [OUT_DIR, name]
     _with_subject.save_png(path)
@@ -705,8 +762,8 @@ func _evaluate(without_subject: Image) -> void:
 
     # 회로를 보이는 단계는 회로가 한 일도 함께 보여야 한다.
     # 닫힌 문 앞에 선 그림은 아무것도 증명하지 못한다.
-    if _door_open.has(name) and not _door_open[name]:
-        _fail(name, "회로가 문을 열지 못했다. 장치가 한 일이 화면에 없다")
+    if _worked.has(name) and not _worked[name]:
+        _fail(name, "회로가 한 일이 화면에 없다. 죽은 회로를 찍고 있다")
 
     # 파고 내려온 보람이 화면에 있어야 한다. 벽이 회색뿐이면 갈 까닭이 없다.
     if name == "15_underground" and _ore_in_sight <= 0:

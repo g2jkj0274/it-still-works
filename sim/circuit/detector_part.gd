@@ -11,7 +11,6 @@ extends CircuitPart
 ## 모든 대상이 이제 실제로 동작한다.
 ##
 ## 무엇을 보는지는 놓인 칸이 아니라 [member CircuitPart.anchor] 에서 잰다.
-## 묶음 안에 들어가면 묶음이 놓인 칸에서 본다.
 
 const TARGET_PLAYER := 0
 const TARGET_THREAT := 1

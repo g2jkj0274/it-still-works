@@ -12,8 +12,7 @@ const SECONDS := 2.0
 const TOP_MARGIN := 24.0
 const PADDING := 10.0
 
-const TEXT_COLOUR := Color(0.16, 0.18, 0.22)
-const BACKDROP := Color(1.0, 1.0, 1.0, 0.86)
+## 빛깔과 치수는 [UiTheme] 이 정한다.
 
 var _label: Label
 var _panel: Panel
@@ -28,9 +27,7 @@ func _ready() -> void:
     _anchor.mouse_filter = Control.MOUSE_FILTER_IGNORE
     add_child(_anchor)
 
-    var style := StyleBoxFlat.new()
-    style.bg_color = BACKDROP
-    style.set_corner_radius_all(6)
+    var style := UiTheme.panel_style()
 
     _panel = Panel.new()
     _panel.name = "Line"
@@ -45,7 +42,7 @@ func _ready() -> void:
     _label.clip_text = true
     _label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     _label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-    _label.add_theme_color_override("font_color", TEXT_COLOUR)
+    UiTheme.apply(_label, UiTheme.TEXT, UiTheme.INK)
     _label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _panel.add_child(_label)
 
