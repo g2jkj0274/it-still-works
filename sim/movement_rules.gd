@@ -44,6 +44,19 @@ static func is_supported(grid: VoxelGrid, feet: Vector3i) -> bool:
     return grid.is_solid(feet - VoxelGrid.UP)
 
 
+## 발이 뜬 채인가.
+##
+## 딛을 것이 없고 내려앉을 자리가 있으면 떨어지는 중이다. 격자 바닥에서는
+## 더 내려갈 곳이 없으므로 떨어지지 않는다. 아래가 막혀 있어도 마찬가지다 —
+## 거기서까지 걸음을 막으면 갇힌다.
+static func is_falling(grid: VoxelGrid, feet: Vector3i) -> bool:
+    if VoxelGrid.is_bedrock(feet):
+        return false
+    if is_supported(grid, feet):
+        return false
+    return can_occupy(grid, feet - VoxelGrid.UP)
+
+
 ## 지지될 때까지 떨어뜨린다. 격자 바닥 아래로는 내려가지 않는다.
 static func settle(grid: VoxelGrid, feet: Vector3i) -> Vector3i:
     var result := feet
@@ -54,11 +67,19 @@ static func settle(grid: VoxelGrid, feet: Vector3i) -> Vector3i:
 
 ## 한 걸음 뒤에 도착할 칸. 갈 수 없으면 제자리를 돌려준다.
 ##
-## 한 칸 턱은 오른다. 떨어지는 것은 여기서 처리하지 않는다. 걸음은 걸음이고
-## 낙하는 낙하다. 다만 떨어진 끝에 딛을 곳이 없다면 애초에 나가지 않는다.
-## 그래서 섬 밖 바다로 걸어 나갈 수 없다.
+## **한 칸 턱은 오르고, 한 칸 턱은 내려선다.** 오르내리는 손맛이 같아야
+## 비탈이 계단으로 느껴지지 않는다. 두 칸 이상 아래는 턱이 아니라 벼랑이라
+## 같은 높이로 걸어 나가고, 떨어지는 일은 시뮬레이션이 뒤이어 맡는다.
+##
+## 떨어지는 중에는 걸음이 시작되지 않는다. 그러지 않으면 이동 키를 누르고
+## 있는 동안 낙하가 차례를 얻지 못해 그 높이 그대로 허공을 걸어간다.
+##
+## 떨어진 끝에 딛을 곳이 없다면 애초에 나가지 않는다. 그래서 섬 밖 바다로
+## 걸어 나갈 수 없다.
 static func resolve_walk(grid: VoxelGrid, feet: Vector3i, dir: Vector3i) -> Vector3i:
     if not is_direction(dir):
+        return feet
+    if is_falling(grid, feet):
         return feet
     if is_diagonal(dir):
         return _resolve_diagonal(grid, feet, dir)
@@ -67,7 +88,7 @@ static func resolve_walk(grid: VoxelGrid, feet: Vector3i, dir: Vector3i) -> Vect
     var stepped := feet
 
     if can_occupy(grid, target):
-        stepped = target
+        stepped = _stepped_down(grid, target)
     elif can_occupy(grid, target + VoxelGrid.UP) and grid.is_free(feet + VoxelGrid.UP * CharacterState.HEIGHT):
         stepped = target + VoxelGrid.UP
     else:
@@ -78,21 +99,35 @@ static func resolve_walk(grid: VoxelGrid, feet: Vector3i, dir: Vector3i) -> Vect
     return stepped
 
 
+## 한 칸 턱을 내려선 자리. 그보다 깊으면 [param target] 을 그대로 돌려준다.
+##
+## 걸어 나간 뒤 떨어지는 것과 내려서는 것을 여기서 가른다. 깊이 하나까지가
+## 걸음이다.
+static func _stepped_down(grid: VoxelGrid, target: Vector3i) -> Vector3i:
+    if is_supported(grid, target):
+        return target
+    var lowered := target - VoxelGrid.UP
+    if is_supported(grid, lowered) and can_occupy(grid, lowered):
+        return lowered
+    return target
+
+
 ## 대각선 걸음.
 ##
 ## **양옆이 모두 열려 있어야 지나간다.** 한쪽이라도 막혀 있으면 벽 모서리를
 ## 뚫고 지나가는 꼴이 된다. 이것은 화면에 어떻게 보이는지와 무관한 격자의
 ## 문제다. 시점을 돌려도 대각선은 대각선이다.
 ##
-## 곧은 걸음과 마찬가지로 한 칸 턱은 오른다. 오를 때도 양옆이 열려 있어야 한다.
+## 곧은 걸음과 마찬가지로 한 칸 턱은 오르내린다. 오를 때도 양옆이 열려 있어야 한다.
 static func _resolve_diagonal(grid: VoxelGrid, feet: Vector3i, dir: Vector3i) -> Vector3i:
     var target := feet + dir
 
     # 같은 높이로 건널 수 있는 자리면, 스치는 양옆만 확인하면 된다.
+    # 모서리 판정은 건너기 전 높이에서 본다. 내려서는 것은 건넌 뒤의 일이다.
     if can_occupy(grid, target):
         if not _sides_open(grid, feet, dir, 0):
             return feet
-        return _landing(grid, feet, target)
+        return _landing(grid, feet, _stepped_down(grid, target))
 
     # 갈 자리가 막혀 있다. 한 칸 턱이면 오른다.
     # 옆이 막혀서 못 가는 경우까지 여기로 흘러들면 모서리 규칙이 새어 나간다.

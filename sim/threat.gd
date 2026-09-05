@@ -48,6 +48,7 @@ func to_hash_fields() -> Array:
 
 ## 한 틱 움직인다.
 func advance(state: WorldState) -> void:
+    _stand(state)
     _touch_countdown = maxi(_touch_countdown - 1, 0)
 
     if _is_touching(state.character.cell()):
@@ -74,13 +75,22 @@ func _is_touching(target: Vector3i) -> bool:
     return absi(offset.x) + absi(offset.y) + absi(offset.z) <= 1
 
 
+## 발밑이 사라지면 내려앉는다. 사람과 같은 규칙이다.
+##
+## 이것이 없으면 단에서 내려온 위협이 그 높이로 허공에 뜬 채 맴돌고, 밑을
+## 파낸 자리에서도 그대로 떠 있는다.
+func _stand(state: WorldState) -> void:
+    position = MovementRules.settle(state.grid, position)
+
+
 ## 목표 쪽으로 한 칸. 막히면 다른 축을 시도하고, 그래도 막히면 앞을 부순다.
 func _walk_towards(state: WorldState) -> void:
     var offset := state.character.cell() - position
     for direction in _preferred_directions(offset):
         var destination := MovementRules.resolve_walk(state.grid, position, direction)
         if destination != position:
-            position = destination
+            # 위협은 칸을 즉시 건넌다. 건넌 자리가 허공이면 그 자리에서 내려앉는다.
+            position = MovementRules.settle(state.grid, destination)
             _break_countdown = BREAK_TICKS
             return
 

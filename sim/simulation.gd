@@ -117,11 +117,7 @@ func _settle_character() -> void:
         return
 
     var here := character.cell()
-    if here.z <= VoxelGrid.BEDROCK_Z:
-        return
-    if MovementRules.is_supported(state.grid, here):
-        return
-    if not MovementRules.can_occupy(state.grid, here - VoxelGrid.UP):
+    if not MovementRules.is_falling(state.grid, here):
         return
     character.walk_to(here - VoxelGrid.UP)
 

@@ -176,12 +176,17 @@ func test_climbing_needs_headroom() -> void:
     assert_bool(MovementRules.resolve_walk(grid, start, Vector3i(-1, 0, 0)) == start).is_true()
 
 
-func test_stepping_off_a_ledge_walks_out_over_the_drop() -> void:
-    # 걸음은 같은 높이로 나간다. 떨어지는 것은 시뮬레이션이 뒤이어 처리한다.
-    var grid := _with_ledge(1)
-    var start := Vector3i(3, 4, 2)
-    assert_bool(MovementRules.resolve_walk(grid, start, Vector3i(1, 0, 0)) == Vector3i(4, 4, 2)).is_true()
-    assert_bool(MovementRules.settle(grid, Vector3i(4, 4, 2)) == Vector3i(4, 4, 1)).is_true()
+func test_stepping_off_a_deep_ledge_walks_out_over_the_drop() -> void:
+    # 두 칸 아래는 턱이 아니라 벼랑이다. 같은 높이로 걸어 나가고, 떨어지는 것은
+    # 시뮬레이션이 뒤이어 처리한다.
+    #
+    # 예전에는 한 칸 아래도 이렇게 걸어 나갔다. 그런데 이동 키를 누르고 있으면
+    # 낙하가 차례를 얻지 못해 그 높이로 허공을 걸어갔다. 한 칸은 이제 걸음의
+    # 일부로 내려선다 — test_stepping_down.gd 참조.
+    var grid := _with_ledge(2)
+    var start := Vector3i(3, 4, 3)
+    assert_bool(MovementRules.resolve_walk(grid, start, Vector3i(1, 0, 0)) == Vector3i(4, 4, 3)).is_true()
+    assert_bool(MovementRules.settle(grid, Vector3i(4, 4, 3)) == Vector3i(4, 4, 1)).is_true()
 
 
 func test_walking_into_the_void_is_refused() -> void:

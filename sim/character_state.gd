@@ -103,9 +103,13 @@ func advance() -> void:
     )
 
 
-## 지금 남은 거리에 맞는 속도. 떨어질 때가 가장 빠르고 대각선이 가장 느리다.
+## 지금 남은 거리에 맞는 속도.
+##
+## 빠른 것은 **곧게 떨어질 때**뿐이다. 가로로 나아가면서 함께 내려가는 것은
+## 한 칸 턱을 내려서는 걸음이고, 그것은 오르는 걸음과 같은 시간이 걸려야 한다.
+## 내려갈 때만 빨라지면 비탈을 내려가는 것이 미끄러지는 것처럼 보인다.
 func _speed_for(remaining: Vector3i) -> int:
-    if remaining.z < 0:
+    if remaining.x == 0 and remaining.y == 0:
         return FALL_SPEED
     if remaining.x != 0 and remaining.y != 0:
         return DIAGONAL_WALK_SPEED
