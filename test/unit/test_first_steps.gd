@@ -107,3 +107,40 @@ func test_it_stops_after_the_last_line() -> void:
         steps.check()
         notice.visible = false
     assert_int(steps.step()).is_equal(FirstSteps.line_count())
+
+
+func test_the_making_line_waits_until_something_can_be_made() -> void:
+    # **손에 무엇이든 들면 뜨고 있었다.** 그래서 흙 하나를 든 사람이
+    # "만들 것은 X 로 고르고 C 로 만든다"를 읽었는데 그 순간 만들 수 있는
+    # 것은 하나도 없었다. 시킨 것을 했더니 둔한 소리만 났다.
+    var sim := Simulation.new(1)
+    IslandBuilder.populate(sim.state)
+    var rig := _rig(sim)
+    var steps: FirstSteps = rig[0]
+
+    assert_bool(steps.is_ready(1)).override_failure_message(
+        "빈손인데 만들라고 한다").is_false()
+
+    sim.state.inventory.add(BlockType.GROUND, 1)
+    assert_bool(steps.is_ready(1)).override_failure_message(
+        "흙 하나로는 아무것도 못 만드는데 만들라고 한다").is_false()
+
+    sim.state.inventory.add(BlockType.WOOD, 1)
+    assert_bool(steps.is_ready(1)).override_failure_message(
+        "나무를 들었는데도 만들라고 하지 않는다").is_true()
+
+
+func test_the_making_line_asks_the_recipes_not_a_copy_of_them() -> void:
+    # 규칙을 옮겨 적으면 제작법이 늘 때마다 두 곳을 고쳐야 하고 언젠가 어긋난다.
+    # 무엇을 들었을 때 뜨는지가 제작법과 늘 같아야 한다.
+    for index in RecipeBook.count():
+        # 판마다 새로 시작해야 앞 제작법의 재료가 남아 섞이지 않는다.
+        var clean := Simulation.new(1)
+        IslandBuilder.populate(clean.state)
+        var fresh := _rig(clean)
+        var one: FirstSteps = fresh[0]
+        for entry: Array in RecipeBook.inputs_of(index):
+            clean.state.inventory.add(int(entry[0]), int(entry[1]))
+        assert_bool(one.is_ready(1)).override_failure_message(
+            "%s 의 재료를 다 들었는데 만들라고 하지 않는다"
+            % BlockType.name_of(RecipeBook.output_of(index))).is_true()
