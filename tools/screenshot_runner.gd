@@ -92,7 +92,7 @@ func _process(_delta: float) -> bool:
 
 
 ## 화면이 세상을 통째로 가리는 단계들. 캐릭터가 보일 리 없다.
-const COVERED_STEPS: PackedStringArray = ["16_bag"]
+const COVERED_STEPS: PackedStringArray = ["17_bag"]
 
 ## 단계 목록. 각 항목은 [이름, 준비 동작] 이다.
 ##
@@ -112,13 +112,14 @@ func _build_steps() -> Array:
         ["08_auto_door", _build_auto_door],
         ["09_lamp", _build_the_porch_lamp],
         ["10_farm", _build_the_farm],
-        ["11_night", _fall_of_night],
-        ["12_parts", _line_up_the_parts],
-        ["13_island", _pull_back_to_the_shore],
-        ["14_craft", _make_something_by_hand],
-        ["15_underground", _dig_down],
-        ["16_bag", _open_the_bag],
-        ["17_store", _pose_for_the_store],
+        ["11_smelter", _build_the_smelter],
+        ["12_night", _fall_of_night],
+        ["13_parts", _line_up_the_parts],
+        ["14_island", _pull_back_to_the_shore],
+        ["15_craft", _make_something_by_hand],
+        ["16_underground", _dig_down],
+        ["17_bag", _open_the_bag],
+        ["18_store", _pose_for_the_store],
     ]
 
 
@@ -197,7 +198,9 @@ func _build_the_porch_lamp() -> void:
         for dx in range(-4, 5):
             var floor_cell := here + Vector3i(dx, dy, -1)
             state.grid.set_block(floor_cell, BlockType.GROUND)
-            state.grid.set_block(floor_cell + VoxelGrid.UP, BlockType.EMPTY)
+            # 머리 위 세 칸을 걷는다. 한 칸만 걷으면 나무 줄기가 남아 회로를 가린다.
+            for lift in range(1, 4):
+                state.grid.set_block(floor_cell + VoxelGrid.UP * lift, BlockType.EMPTY)
 
     # **작동기는 맞닿은 여섯 칸만 건드린다.** 화면의 오른쪽은 격자로 (1,-1)
     # 이라 대각선이고, 거기 등을 놓으면 손이 닿지 않아 회로가 죽는다.
@@ -242,7 +245,9 @@ func _build_the_farm() -> void:
         for dx in range(-5, 6):
             var floor_cell := here + Vector3i(dx, dy, -1)
             state.grid.set_block(floor_cell, BlockType.GROUND)
-            state.grid.set_block(floor_cell + VoxelGrid.UP, BlockType.EMPTY)
+            # 머리 위 세 칸을 걷는다. 한 칸만 걷으면 나무 줄기가 남아 회로를 가린다.
+            for lift in range(1, 4):
+                state.grid.set_block(floor_cell + VoxelGrid.UP * lift, BlockType.EMPTY)
 
     # 감지기는 세 칸 안의 다 자란 작물을 본다. 작동기는 맞닿은 여섯 칸을
     # 거둔다. **둘을 함께 만족하는 자리에 밭이 있어야** 회로가 돈다.
@@ -284,7 +289,7 @@ func _auto_door_parts() -> Array[Vector3i]:
 func _look_between(person: Vector3i, device: Vector3i) -> void:
     var middle := SimViewCoords.cell_to_world(person).lerp(
         SimViewCoords.cell_to_world(device), 0.5)
-    _main.camera().zoom_by(-4)
+    _main.camera().zoom_by(-1)
     _main.camera().focus_on(middle)
 
 
@@ -311,6 +316,46 @@ func _fill_the_hand() -> void:
         [BlockType.ROCK, 32], [BlockType.EMBER, 6], [BlockType.CROP, 4],
     ]:
         bag.add(int(entry[0]), int(entry[1]))
+
+
+## 자동 제련소. 되풀이 → 작동기 → 화로.
+##
+## **이 게임이 마인크래프트와 갈리는 자리다.** 저쪽 화로는 연료만 있으면
+## 혼자 돌지만 여기서는 회로가 필요하다. 그림 한 장이 그것을 말해야 한다.
+func _build_the_smelter() -> void:
+    var state: Object = _main.simulation.state
+    var here: Vector3i = state.character.cell()
+
+    for dy in range(-5, 6):
+        for dx in range(-5, 6):
+            var floor_cell := here + Vector3i(dx, dy, -1)
+            state.grid.set_block(floor_cell, BlockType.GROUND)
+            # 머리 위 세 칸을 걷는다. 한 칸만 걷으면 나무 줄기가 남아 회로를 가린다.
+            for lift in range(1, 4):
+                state.grid.set_block(floor_cell + VoxelGrid.UP * lift, BlockType.EMPTY)
+
+    state.inventory.add(BlockType.ORE, 16)
+    state.inventory.add(BlockType.EMBER, 16)
+
+    # 격자 (-1,-1) 이 화면 위쪽이다. 사람 뒤에 세운다.
+    var eye := here + Vector3i(-1, -1, 0)
+    var turns := here + Vector3i(-4, -1, 0)
+    var hand := here + Vector3i(-3, -3, 0)
+    var furnace := hand + Vector3i(-1, 0, 0)
+    state.grid.set_block(furnace, BlockType.FURNACE)
+
+    _put(eye, BlockType.DETECTOR, PackedInt32Array([DetectorPart.TARGET_PLAYER]))
+    _put(turns, BlockType.REPEATER, PackedInt32Array([RepeaterPart.MODE_FOREVER, 0, 8]))
+    _put(hand, BlockType.ACTUATOR, PackedInt32Array())
+    state.circuit.link(eye, turns)
+    state.circuit.link(turns, hand)
+
+    _main.simulation.advance(30)
+    _look_between(here, hand)
+    _main.world_view().rebuild()
+    _main.wire_view().rebuild()
+    _main.lamp_lights().look_at_point(_main.character_view().target_position())
+    _main.lamp_lights().sync()
 
 
 func _fall_of_night() -> void:
@@ -365,7 +410,9 @@ func _line_up_the_parts() -> void:
         for dx in range(-5, 6):
             var floor_cell := centre + Vector3i(dx, dy, -1)
             state.grid.set_block(floor_cell, BlockType.GROUND)
-            state.grid.set_block(floor_cell + VoxelGrid.UP, BlockType.EMPTY)
+            # 머리 위 세 칸을 걷는다. 한 칸만 걷으면 나무 줄기가 남아 회로를 가린다.
+            for lift in range(1, 4):
+                state.grid.set_block(floor_cell + VoxelGrid.UP * lift, BlockType.EMPTY)
 
     # 한 칸씩 띄운다. 붙여 놓으면 키 큰 것이 뒤의 것을 가려 견줄 수가 없다.
     for i in kinds.size():
@@ -422,7 +469,9 @@ func _make_something_by_hand() -> void:
         for dx in range(-3, 4):
             var floor_cell := here + Vector3i(dx, dy, -1)
             state.grid.set_block(floor_cell, BlockType.GROUND)
-            state.grid.set_block(floor_cell + VoxelGrid.UP, BlockType.EMPTY)
+            # 머리 위 세 칸을 걷는다. 한 칸만 걷으면 나무 줄기가 남아 회로를 가린다.
+            for lift in range(1, 4):
+                state.grid.set_block(floor_cell + VoxelGrid.UP * lift, BlockType.EMPTY)
 
     state.inventory.add(BlockType.WOOD, 12)
     state.inventory.add(BlockType.ORE, 6)
@@ -496,7 +545,7 @@ func _pose_for_the_store() -> void:
 
     # **한낮으로 맞춘다.** 해 질 녘은 색이 곱지만 무엇을 하는 게임인지가
     # 어둠에 묻힌다. 상점 첫 그림은 분위기가 아니라 **장치가 도는 것**을
-    # 보여야 한다. 밤 그림은 따로 있다(11_night).
+    # 보여야 한다. 밤 그림은 따로 있다(12_night).
     state.tick = DayCycle.DAY_TICKS / 4
     # **틱을 직접 쓰면 날이 밝는 순간을 건너뛴다.** 그래서 밤에 나온 위협이
     # 그대로 남아 상점 그림에 한낮의 괴물이 서 있었다. 재어 보면 틱만 옮겼을
@@ -514,7 +563,9 @@ func _pose_for_the_store() -> void:
         for dx in range(-8, 9):
             var floor_cell := here + Vector3i(dx, dy, -1)
             state.grid.set_block(floor_cell, BlockType.GROUND)
-            state.grid.set_block(floor_cell + VoxelGrid.UP, BlockType.EMPTY)
+            # 머리 위 세 칸을 걷는다. 한 칸만 걷으면 나무 줄기가 남아 회로를 가린다.
+            for lift in range(1, 4):
+                state.grid.set_block(floor_cell + VoxelGrid.UP * lift, BlockType.EMPTY)
 
     # **회로를 한 줄로 늘어놓지 않는다.**
     #
@@ -566,7 +617,7 @@ func _pose_for_the_store() -> void:
         _main.simulation.step()
         if state.grid.get_block(door) == BlockType.DOOR_OPEN:
             break
-    _worked["17_store"] = (state.grid.get_block(door) == BlockType.DOOR_OPEN
+    _worked["18_store"] = (state.grid.get_block(door) == BlockType.DOOR_OPEN
         and state.grid.get_block(lamp) == BlockType.LAMP_LIT)
     _main.lamp_lights().look_at_point(_main.character_view().target_position())
 
@@ -740,6 +791,8 @@ func _evaluate(without_subject: Image) -> void:
         "10_farm":
             # 거둔 것이 손에 들어왔으면 회로가 실제로 돈 것이다.
             _worked[name] = state.inventory.count_of(BlockType.CROP) > 0
+        "11_smelter":
+            _worked[name] = state.inventory.count_of(BlockType.INGOT) > 0
 
     var path := "%s/%s.png" % [OUT_DIR, name]
     _with_subject.save_png(path)
@@ -766,7 +819,7 @@ func _evaluate(without_subject: Image) -> void:
         _fail(name, "회로가 한 일이 화면에 없다. 죽은 회로를 찍고 있다")
 
     # 파고 내려온 보람이 화면에 있어야 한다. 벽이 회색뿐이면 갈 까닭이 없다.
-    if name == "15_underground" and _ore_in_sight <= 0:
+    if name == "16_underground" and _ore_in_sight <= 0:
         _fail(name, "굴 벽에 드러난 광석이 없다. 파고 내려올 까닭이 화면에 없다")
 
     # 만든 것이 세상에 서 있어야 한다. 손에 잡히는 줄의 숫자만 바뀌면

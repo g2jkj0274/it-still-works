@@ -42,6 +42,34 @@ func act(state: WorldState) -> void:
         _work_door(state, neighbour)
         _work_field(state, neighbour)
         _work_lamp(state, neighbour)
+        _work_furnace(state, neighbour)
+
+
+## 화로는 신호가 닿는 동안 불이 붙고, 붙는 순간 한 번 굽는다.
+##
+## **손으로는 돌아가지 않는다.** 이것이 이 게임이 마인크래프트와 갈리는
+## 자리다(스펙 §3.6). 되풀이 → 작동기 → 화로가 곧 자동 제련소이고,
+## 되풀이의 간격이 그대로 제련 속도가 된다.
+##
+## 무엇을 구울지는 손에 든 것이 정한다. 화로에 넣어 두는 칸은 없다 —
+## 넣어 두는 것은 궤짝이다. 구울 수 있는 것이 여럿이면 제작법에 적힌
+## 차례가 이긴다. 차례가 고정이므로 언제 돌려도 같은 것이 나온다.
+func _work_furnace(state: WorldState, cell: Vector3i) -> void:
+    var kind := state.grid.get_block(cell)
+    if not BlockType.is_furnace(kind):
+        return
+
+    var lit := BlockType.FURNACE_LIT if _wants_open else BlockType.FURNACE
+    var was_dark := kind != BlockType.FURNACE_LIT
+    state.grid.set_block(cell, lit)
+
+    # 불이 막 붙은 그 틱에만 굽는다. 켜져 있는 내내 구우면 되풀이의 간격이
+    # 뜻을 잃고 손에 든 것이 순식간에 사라진다.
+    if not _wants_open or not was_dark:
+        return
+    var index := RecipeBook.first_makeable(state.inventory, RecipeBook.FURNACE)
+    if index >= 0:
+        RecipeBook.make(state.inventory, index)
 
 
 ## 문은 신호가 오면 열리고 오지 않으면 닫힌다.
@@ -51,7 +79,9 @@ func _work_door(state: WorldState, cell: Vector3i) -> void:
     # 닫으려는 자리에 캐릭터가 서 있으면 그대로 둔다. 몸이 블록에 갇히면 안 된다.
     if not _wants_open and state.character.occupies(cell):
         return
-    state.grid.set_block(cell, BlockType.opened_door() if _wants_open else BlockType.closed_door())
+    var kind := state.grid.get_block(cell)
+    state.grid.set_block(cell, BlockType.opened_door(kind) if _wants_open
+        else BlockType.closed_door(kind))
 
 
 ## 등은 신호가 오면 켜지고 오지 않으면 꺼진다.

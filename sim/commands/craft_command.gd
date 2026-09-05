@@ -26,7 +26,38 @@ func get_type() -> StringName:
 
 
 func apply(state: WorldState) -> void:
-    RecipeBook.make(state.inventory, RecipeBook.index_for(output))
+    var index := RecipeBook.index_for(output)
+    if not _can_reach_the_place(state, index):
+        return
+    RecipeBook.make(state.inventory, index)
+
+
+## 그것을 만들 자리에 서 있는가.
+##
+## **어디서 만들 수 있는가가 곧 테크트리의 마디다**(스펙 §3.6).
+## 화로에서 굽는 것은 손으로 만들지 못한다 — 작동기가 때려야 돈다.
+## 작업대에서 만드는 것은 작업대 곁에 서야 한다.
+##
+## 왜 안 되는지는 말하지 않는다. 세상이 그대로면 화면이 알아서 알린다(§1).
+func _can_reach_the_place(state: WorldState, index: int) -> bool:
+    match RecipeBook.station_of(index):
+        RecipeBook.HAND:
+            return true
+        RecipeBook.BENCH:
+            return _stands_by(state, BlockType.BENCH)
+    return false
+
+
+## 그 블록이 손 닿는 거리에 있는가.
+static func _stands_by(state: WorldState, block_type: int) -> bool:
+    var here := state.character.cell()
+    var reach := RecipeBook.BENCH_REACH
+    for dz in range(-1, 2):
+        for dy in range(-reach, reach + 1):
+            for dx in range(-reach, reach + 1):
+                if state.grid.get_block(here + Vector3i(dx, dy, dz)) == block_type:
+                    return true
+    return false
 
 
 func write_payload(data: Dictionary) -> void:
