@@ -158,7 +158,10 @@ var _recipe: int = 0
 ## 방금 낸 명령을 지켜보는 자리. 지켜보지 않으면 -1.
 var _watch_tick: int = -1
 var _watch_version: int = 0
-var _watch_stock: int = 0
+var _watch_stock: String = ""
+
+## 지켜보는 것이 만들기인가. 만들기는 성공했을 때도 따로 알린다.
+var _watch_craft: bool = false
 var _next_move_tick: int = 0
 var _next_dig_tick: int = 0
 var _target: BlockTarget = null
@@ -435,10 +438,16 @@ func submit_break() -> void:
 ## 규칙을 여기에 옮겨 적지 않는다. 손이 찼는지, 궤짝이 비었는지, 바위인지를
 ## 표현 레이어가 다시 판단하면 언젠가 시뮬레이션과 어긋나고, 어긋난 신호는
 ## 없느니만 못하다. **낸 다음에 세상이 그대로인지만 본다.**
-func _watch_this_attempt() -> void:
+func _watch_this_attempt(is_craft: bool = false) -> void:
     _watch_tick = _simulation.state.tick
     _watch_version = _simulation.state.grid.version()
-    _watch_stock = _simulation.state.inventory.total()
+    _watch_stock = _stock_print()
+    _watch_craft = is_craft
+
+
+## 손에 든 것의 지문. 총 개수만 보면 넷이 하나가 되는 만들기를 놓칠 수 있다.
+func _stock_print() -> String:
+    return SimHash.hash_fields(_simulation.state.inventory.to_hash_fields())
 
 
 ## 지켜보던 틱이 지났는데 아무것도 안 바뀌었으면 알린다.
@@ -447,10 +456,15 @@ func _watch_for_balk() -> void:
         return
 
     var still := (_simulation.state.grid.version() == _watch_version
-        and _simulation.state.inventory.total() == _watch_stock)
+        and _stock_print() == _watch_stock)
+    var was_craft := _watch_craft
     _watch_tick = -1
+    _watch_craft = false
+
     if still:
         balked.emit()
+    elif was_craft:
+        crafted.emit()
 
 
 ## 지금 만들려는 것.
@@ -470,14 +484,16 @@ func cycle_recipe() -> void:
 
 
 ## 만든다. 재료가 모자라면 아무 일도 일어나지 않는다.
+##
+## **재료를 여기서 미리 세지 않는다.** 부수기·놓기와 달리 만들기만 규칙을
+## 옮겨 적고 있었다. 시뮬레이션이 다른 까닭으로 거절하면 소리는 "만들었다"고
+## 말했다 — 화면과 소리가 다른 것을 말하는 자리다. 낸 다음에 손이 바뀌었는지만
+## 본다.
 func submit_craft() -> void:
     if _simulation == null:
         return
-    if not RecipeBook.has_materials(_simulation.state.inventory, _recipe):
-        balked.emit()
-        return
     _simulation.submit(CraftCommand.create(recipe_output()))
-    crafted.emit()
+    _watch_this_attempt(true)
 
 
 ## 작물을 먹는다. 배가 찬다.

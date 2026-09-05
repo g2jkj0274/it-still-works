@@ -20,10 +20,13 @@ extends Node3D
 ## 회로를 읽기만 한다. 격자가 아니라 회로를 읽으므로 설정까지 알 수 있다.
 
 ## 표시가 부품 꼭대기에서 얼마나 위에 앉는가.
-const LIFT := 0.46
+const LIFT := 0.50
 
 ## 표시 하나하나의 크기.
-const MARK_SIZE := 0.30
+##
+## 0.30 은 기본 배율에서 열두 픽셀이라, 스무 개 놓이면 알갱이 스무 개로
+## 보였다. 부품 몸통을 가리지 않는 선에서 키운다.
+const MARK_SIZE := 0.40
 
 ## 표시 갈래. 순서가 곧 층 번호다.
 const MARK_SQUARE := 0
@@ -195,12 +198,32 @@ func _read_signature() -> String:
     return "|".join(marks)
 
 
+## 표시 갈래마다의 색.
+##
+## **한 색으로 통일했더니 열두 픽셀짜리 알갱이 열여덟 종이 되었다.** 형태만으로
+## 갈리기에는 화면에서 너무 작다. 형태로 갈래 안을 가르고, 색으로 갈래끼리
+## 가른다. 금지된 것은 글자와 기호이지 색이 아니다.
+static func colour_for(kind: int) -> Color:
+    match kind:
+        MARK_EYE_PLAYER, MARK_EYE_THREAT, MARK_EYE_TIME, MARK_EYE_CROP,         MARK_EYE_ITEM:
+            return Palette.PART_MARK_EYE
+        MARK_TRUTH, MARK_COMPARE, MARK_BOTH, MARK_EITHER:
+            return Palette.PART_MARK_JUDGE
+        MARK_ENDLESS, MARK_TURNS, MARK_WHILE:
+            return Palette.PART_MARK_TURN
+        MARK_BUNDLE, MARK_BUNDLE_BIG, MARK_BUNDLE_HUGE:
+            return Palette.PART_MARK_BUNDLE
+        _:
+            # 상자 모양 셋. 형변환 손실을 가르치는 표시라 기본색을 지킨다.
+            return Palette.PART_MARK
+
+
 ## 표시마다의 생김새.
 ##
 ## 그림도 글자도 쓰지 않는다. 화면에 프로그래밍 용어를 내보내지 않는다는 규칙은
 ## 기호에도 걸린다. 서 있는 것 · 웅크린 것 · 하늘을 보는 것 · 싹 · 쌓인 것처럼
 ## 뜻이 형태에 담긴 것만 쓴다.
-func _mesh_for(kind: int) -> Mesh:
+func mesh_for(kind: int) -> Mesh:
     match kind:
         MARK_ROUND:
             return _ball(MARK_SIZE * 0.5)
@@ -218,8 +241,13 @@ func _mesh_for(kind: int) -> Mesh:
             # 사람. 서 있는 것.
             return _cube(Vector3(MARK_SIZE * 0.34, MARK_SIZE * 1.3, MARK_SIZE * 0.34))
         MARK_EYE_THREAT:
-            # 밤에 오는 것. 납작하고 넓다 — 위협을 그린 것과 같은 실루엣이다.
-            return _ball(MARK_SIZE * 0.62)
+            # 밤에 오는 것. 위로 뾰족하다 — 위협을 그린 것과 같은 실루엣이다.
+            var spike := CylinderMesh.new()
+            spike.top_radius = 0.0
+            spike.bottom_radius = MARK_SIZE * 0.62
+            spike.height = MARK_SIZE * 0.9
+            spike.radial_segments = 4
+            return spike
         MARK_EYE_TIME:
             # 밤. 하늘을 보는 접시.
             return _cube(Vector3(MARK_SIZE * 1.3, MARK_SIZE * 0.22, MARK_SIZE * 1.3))
@@ -244,8 +272,8 @@ func _mesh_for(kind: int) -> Mesh:
             # 둘 다 와야 한다. 나란히 선 둘.
             return _cube(Vector3(MARK_SIZE * 1.2, MARK_SIZE * 0.4, MARK_SIZE * 1.2))
         MARK_EITHER:
-            # 하나라도 오면 된다. 하나뿐.
-            return _ball(MARK_SIZE * 0.42)
+            # 하나라도 오면 된다. 하나뿐, 옆으로 누웠다.
+            return _cube(Vector3(MARK_SIZE * 0.5, MARK_SIZE * 0.4, MARK_SIZE * 1.2))
         MARK_TURNS:
             # 정해진 횟수만 돈다. 끝이 있는 막대.
             return _cube(Vector3(MARK_SIZE * 0.26, MARK_SIZE * 0.9, MARK_SIZE * 0.26))
@@ -285,9 +313,9 @@ func _ball(radius: float) -> SphereMesh:
 
 func _make_layer(kind: int) -> MultiMeshInstance3D:
     var material := StandardMaterial3D.new()
-    material.albedo_color = Palette.PART_MARK
+    material.albedo_color = colour_for(kind)
 
-    var mesh := _mesh_for(kind)
+    var mesh := mesh_for(kind)
     if mesh is PrimitiveMesh:
         (mesh as PrimitiveMesh).material = material
 

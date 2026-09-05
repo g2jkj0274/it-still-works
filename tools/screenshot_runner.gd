@@ -31,13 +31,26 @@ var _index := 0
 var _phase := 0
 var _wait := 0
 
-## 상점 그림에서 회로가 문을 실제로 열었는가.
-var _store_door_open := false
+## 회로가 문을 열어야 하는 단계에서, 실제로 열렸는가.
+##
+## **닫힌 문 앞에 선 그림은 아무것도 증명하지 못한다.** 이 검사가 상점 그림에만
+## 걸려 있던 동안, 자동문 그림 석 장이 죽은 회로를 찍고 있는 것을 아무도
+## 잡지 못했다. 회로가 나오는 단계라면 어디든 걸린다.
+var _door_open: Dictionary[String, bool] = {}
 var _with_subject: Image
 var _report: Array[String] = []
 
 ## 08 단계가 실제로 놓은 작동기와 감지기의 자리. 다시 계산하지 않고 적어 둔다.
 var _door_parts: Array[Vector3i] = []
+
+## 자동문 단계가 세운 문. 실제로 열렸는지 찍기 직전에 본다.
+var _door_cell: Vector3i = Vector3i.ZERO
+
+## 지하 그림에서 굴 벽에 드러난 광석 칸 수.
+var _ore_in_sight: int = 0
+
+## 만들기 그림에서 손으로 만들어 세운 것의 수.
+var _made_by_hand: int = 0
 var _failures := 0
 
 
@@ -142,10 +155,14 @@ func _build_auto_door() -> void:
     state.inventory.add(BlockType.DETECTOR, 2)
     state.inventory.add(BlockType.ACTUATOR, 2)
 
+    # **감지기가 사람을 볼 수 있는 자리여야 한다.** 넉 칸 떨어뜨려 놓았더니
+    # ([constant DetectorPart.SENSE_RADIUS] 는 3) 감지기가 사람을 못 봤고,
+    # 자동문 그림 석 장이 전부 죽은 회로를 찍고 있었다. 스펙 §8 이 "1번이
+    # 재미없으면 부품을 늘려도 소용없다"고 지목한 그 판정 지점이다.
     var here: Vector3i = state.character.cell()
-    var door := here + Vector3i(2, 0, 0)
-    var actuator := here + Vector3i(3, 0, 0)
-    var detector := here + Vector3i(4, 0, 0)
+    var door := here + Vector3i(1, 0, 0)
+    var actuator := here + Vector3i(2, 0, 0)
+    var detector := here + Vector3i(3, 0, 0)
 
     # 무대를 비운다. 저절로 난 작물이 자리를 차지하고 있으면 놓이지 않는다.
     for cell in [door, actuator, detector]:
@@ -158,6 +175,7 @@ func _build_auto_door() -> void:
     _main.simulation.submit_at(
         PlacePartCommand.create(detector, BlockType.DETECTOR, PackedInt32Array([DetectorPart.TARGET_PLAYER])), start + 4)
     _main.simulation.submit_at(ConnectPartsCommand.create(detector, actuator), start + 6)
+    _door_cell = door
 
 
 ## 자동문을 이룬 두 부품을 고른다. 고른 표시가 화면에 나오는지 본다.
@@ -215,26 +233,51 @@ func _fall_of_night() -> void:
 ##
 ## 파스텔은 폭이 좁아 색만으로는 종류가 흐려진다. 생김새로 갈리는지는 멀리서
 ## 보아서는 알 수 없으므로 이 단계만 카메라를 당긴다.
+##
+## **회로에 넣어 세운다.** 격자에만 놓았을 때에는 지붕 위 설정 표시가 하나도
+## 붙지 않았다 — [PartMarks] 는 격자가 아니라 회로를 읽기 때문이다. 그 표시를
+## 보여야 할 그림에 그 표시가 없었다. 설정도 서로 다르게 준다. 같은 감지기
+## 다섯이 저마다 다른 것을 보고 있는 줄이 이 게임의 깊이를 가장 잘 말한다.
 func _line_up_the_parts() -> void:
     var state: Object = _main.simulation.state
-    var centre: Vector3i = state.character.cell() + Vector3i(2, -2, 0)
+    # 카메라는 사람을 따라간다. 무대를 사람 옆에 바짝 붙여야 화면에 들어온다.
+    var centre: Vector3i = state.character.cell() + Vector3i(1, -1, 0)
 
     # 낮으로 되돌린다. 밤 화면에서는 형태가 아니라 어둠이 보인다.
     state.tick = 0
 
-    # 키 큰 것을 뒤에 둔다. 앞의 것이 뒤의 것을 가리면 견줄 수가 없다.
-    var kinds: Array[int] = [
-        BlockType.DOOR_CLOSED, BlockType.DOOR_OPEN, BlockType.DETECTOR,
-        BlockType.ACTUATOR, BlockType.REPEATER, BlockType.BOX,
-        BlockType.BRANCH, BlockType.BUNDLE, BlockType.FIELD,
+    # [블록, 설정]. 부품은 회로에 들어가고 나머지는 격자에만 놓인다.
+    var kinds: Array = [
+        [BlockType.DETECTOR, PackedInt32Array([DetectorPart.TARGET_PLAYER])],
+        [BlockType.DETECTOR, PackedInt32Array([DetectorPart.TARGET_THREAT])],
+        [BlockType.DETECTOR, PackedInt32Array([DetectorPart.TARGET_TIME])],
+        [BlockType.DETECTOR, PackedInt32Array([DetectorPart.TARGET_CROP])],
+        [BlockType.BRANCH, PackedInt32Array([BranchPart.MODE_TRUTH, 0])],
+        [BlockType.BRANCH, PackedInt32Array([BranchPart.MODE_AND, 0])],
+        [BlockType.REPEATER, PackedInt32Array([RepeaterPart.MODE_COUNT, 3, 10])],
+        [BlockType.REPEATER, PackedInt32Array([RepeaterPart.MODE_FOREVER, 0, 10])],
     ]
+    # 바닥을 고른다. 기복 위에 늘어놓으면 부품이 저마다 다른 높이에 서서
+    # 줄로 읽히지 않는다. 견주려고 세운 무대이므로 바닥이 평평해야 한다.
+    for dy in range(-3, 4):
+        for dx in range(-5, 6):
+            var floor_cell := centre + Vector3i(dx, dy, -1)
+            state.grid.set_block(floor_cell, BlockType.GROUND)
+            state.grid.set_block(floor_cell + VoxelGrid.UP, BlockType.EMPTY)
+
+    # 한 칸씩 띄운다. 붙여 놓으면 키 큰 것이 뒤의 것을 가려 견줄 수가 없다.
     for i in kinds.size():
-        var cell := centre + Vector3i(i % 3 - 1, i / 3 - 1, 0)
+        var cell := centre + Vector3i((i % 4) * 2 - 3, (i / 4) * 2 - 1, 0)
         state.grid.set_block(cell - VoxelGrid.UP, BlockType.GROUND)
-        state.grid.set_block(cell, kinds[i])
+        var kind: int = kinds[i][0]
+        if BlockType.is_part(kind):
+            _put(cell, kind, kinds[i][1])
+        else:
+            state.grid.set_block(cell, kind)
 
     _main.camera().zoom_by(-20)
     _main.world_view().rebuild()
+    _main.part_marks().rebuild()
 
 
 ## 멀리 물러나 물가를 본다.
@@ -245,16 +288,54 @@ func _pull_back_to_the_shore() -> void:
 
 
 ## 모은 재료로 부품을 만든다. 드는 재료가 화면 아래 한 줄에 뜨는지 본다.
+## 손으로 만들고, 만든 것을 세워 본다.
+##
+## **앞 단계와 같은 그림이 나오고 있었다.** 만들었다는 사실이 손에 잡히는 줄의
+## 숫자로만 나타나서, 화면에서는 아무 일도 일어나지 않았다. 열일곱 장 가운데
+## 두 장이 같은 그림이면 상점에 걸 장수가 두 장 준다.
+##
+## 만든 것을 실제로 세운다. 스펙 §3.6 의 "나무 넷이 문 하나가 된다"가
+## 그림으로 읽혀야 한다.
 func _make_something_by_hand() -> void:
+    _main.simulation = IslandBuilder.start(GameMain.SEED)
+    _main.adopt_simulation()
+    _main.first_steps().silence()
+    _main.notice().visible = false
+
     var state: Object = _main.simulation.state
     var controller := _main.input_controller()
+    var here: Vector3i = state.character.cell()
 
-    _main.camera().zoom_by(-20)
-    state.inventory.add(BlockType.ORE, 4)
-    state.inventory.add(BlockType.WOOD, 4)
+    # 무대를 고른다. 세운 것이 기복에 묻히면 만든 보람이 안 보인다.
+    for dy in range(-3, 4):
+        for dx in range(-3, 4):
+            var floor_cell := here + Vector3i(dx, dy, -1)
+            state.grid.set_block(floor_cell, BlockType.GROUND)
+            state.grid.set_block(floor_cell + VoxelGrid.UP, BlockType.EMPTY)
 
-    controller.select_block(BlockType.DETECTOR)
-    controller.submit_craft()
+    state.inventory.add(BlockType.WOOD, 12)
+    state.inventory.add(BlockType.ORE, 6)
+
+    # 문 넷을 만들어 나란히 세운다. 나무가 문이 되는 것이 스펙 §3.6 이다.
+    for i in 3:
+        controller.submit_craft()
+        _main.simulation.advance(2)
+
+    # 하나는 손에 남긴다. 손이 비면 화면 밑동 한 줄이 "빈 손"이라고 적어,
+    # 방금 만든 것이 무엇인지 그림이 말하지 못한다.
+    var made := 0
+    for dx in range(-1, 2):
+        var spot := here + Vector3i(dx, -2, 0)
+        if state.inventory.count_of(BlockType.DOOR_CLOSED) <= 1:
+            break
+        state.inventory.take(BlockType.DOOR_CLOSED, 1)
+        state.grid.set_block(spot, BlockType.DOOR_CLOSED)
+        made += 1
+    _made_by_hand = made
+
+    controller.select_block(BlockType.DOOR_CLOSED)
+    _main.camera().zoom_by(-14)
+    _main.world_view().rebuild()
 
 
 ## 판을 적어 두었다 되살린다. 알림 한 줄이 화면에 뜨는지, 되살린 판이 그대로
@@ -333,8 +414,6 @@ func _pose_for_the_store() -> void:
 
     state.grid.set_block(door, BlockType.DOOR_CLOSED)
     state.grid.set_block(lamp, BlockType.LAMP_DARK)
-    for i in 3:
-        state.grid.set_block(here - down + right * i, BlockType.FIELD)
 
     _put(eye, BlockType.DETECTOR, PackedInt32Array([DetectorPart.TARGET_PLAYER]))
     _put(branch, BlockType.BRANCH, PackedInt32Array([BranchPart.MODE_TRUTH, 0]))
@@ -346,14 +425,23 @@ func _pose_for_the_store() -> void:
     for pair in [[eye, branch], [branch, repeater], [repeater, box], [box, hand]]:
         state.circuit.link(pair[0], pair[1])
 
-    # 같은 회로를 압축한 묶음을 아래에 나란히 놓는다.
-    # "저 다섯이 이 한 칸이 됐다"가 그림만으로 읽혀야 한다.
+    # 같은 회로를 압축한 묶음을 **회로 줄 아래**에 홀로 놓는다.
+    #
+    # 줄 끝에 나란히 세워 두었더니 여섯째 부품과 구별되는 것이 아무것도
+    # 없었다 — 배선도 안 닿아 있고 크기도 같아서, 이 게임이 복셀 게임 백 개와
+    # 갈리는 단 하나의 문장(스펙 §4.3)이 그림에서 사라졌다. 위 다섯과 아래
+    # 하나가 **아래위로** 놓여야 "저것이 이것이 됐다"로 읽힌다.
     var cells: Array[Vector3i] = [eye, branch, repeater, box, hand]
     var blueprint := BundleBlueprint.capture(
         state.circuit, cells, [] as Array[Vector3i], [] as Array[Vector3i])
     var bundle_id: int = state.bundles.define(blueprint)
-    # 다섯을 삼킨 그 한 칸을 바로 옆에 둔다.
-    _put(row + right * -2, BlockType.BUNDLE, PackedInt32Array([bundle_id]))
+    # 다섯을 삼킨 그 한 칸을 줄 한가운데 **위**에 둔다. 둘레를 비워 홀로 선다.
+    # 아래로 내리면 화면 밑동의 글줄과 손에 잡히는 줄에 가린다.
+    var folded := row - down + right * 2
+    for dx in range(-2, 3):
+        state.grid.set_block(folded + right * dx, BlockType.EMPTY)
+        state.grid.set_block(folded + right * dx + VoxelGrid.UP, BlockType.EMPTY)
+    _put(folded, BlockType.BUNDLE, PackedInt32Array([bundle_id]))
 
     controller.select_block(BlockType.BUNDLE)
     state.inventory.add_bundle(bundle_id, 2)
@@ -365,7 +453,7 @@ func _pose_for_the_store() -> void:
         _main.simulation.step()
         if state.grid.get_block(door) == BlockType.DOOR_OPEN:
             break
-    _store_door_open = (state.grid.get_block(door) == BlockType.DOOR_OPEN
+    _door_open["17_store"] = (state.grid.get_block(door) == BlockType.DOOR_OPEN
         and state.grid.get_block(lamp) == BlockType.LAMP_LIT)
     _main.lamp_lights().look_at_point(_main.character_view().target_position())
 
@@ -391,6 +479,11 @@ func _put(cell: Vector3i, part_type: int, settings: PackedInt32Array) -> void:
 ##
 ## 지하가 대낮처럼 밝으면 파고 내려가는 일이 아무 느낌이 없고 등을 만들
 ## 이유도 없다. 어두운지, 그리고 등이 실제로 밝히는지 본다.
+##
+## **널찍한 방을 파고 찍고 있었다.** 아홉 칸 사방을 통째로 비우면 그 안의
+## 광맥까지 지워져서, 파고 내려온 보람이 화면에 남지 않는 빈 회색 방이
+## 나왔다. 좁은 굴을 뚫는다 — 벽이 생성기가 만든 그대로 남아야 거기 박힌
+## 광석이 보이고, 그래야 자기가 만든 지형을 검증하는 그림이 된다.
 func _dig_down() -> void:
     _main.simulation = IslandBuilder.start(GameMain.SEED)
     _main.adopt_simulation()
@@ -400,13 +493,17 @@ func _dig_down() -> void:
     var state: Object = _main.simulation.state
     var here: Vector3i = state.character.cell()
 
-    # 널찍한 방을 판다. 위가 뚫려 있으면 볕이 들어 어둠이 보이지 않으므로
+    # 좁은 굴을 뚫는다. 위가 뚫려 있으면 볕이 들어 어둠이 보이지 않으므로
     # 지붕은 남겨 둔다.
     var floor_z: int = VoxelGrid.BEDROCK_Z + 1
-    for dy in range(-4, 5):
-        for dx in range(-4, 5):
-            for z in range(floor_z, here.z - 3):
+    for dy in range(-5, 6):
+        for dx in range(-1, 2):
+            for z in range(floor_z, floor_z + 3):
                 state.grid.set_block(Vector3i(here.x + dx, here.y + dy, z), BlockType.EMPTY)
+    # 갈래 하나를 옆으로 낸다. 굴이 이어진다는 것이 보여야 한다.
+    for dx in range(-5, 2):
+        for z in range(floor_z, floor_z + 3):
+            state.grid.set_block(Vector3i(here.x + dx, here.y + 2, z), BlockType.EMPTY)
 
     var bottom := Vector3i(here.x, here.y, floor_z)
     state.character.place_at(bottom)
@@ -414,8 +511,10 @@ func _dig_down() -> void:
     _main.camera().focus_on(_main.character_view().target_position())
 
     # 등을 켠다. 작동기가 켜는 것과 같은 결과다.
-    for offset in [Vector3i(-3, -2, 0), Vector3i(2, 2, 0), Vector3i(3, -3, 0)]:
+    for offset in [Vector3i(0, -3, 0), Vector3i(0, 3, 0), Vector3i(-4, 2, 0)]:
         state.grid.set_block(bottom + offset, BlockType.LAMP_LIT)
+
+    _ore_in_sight = _count_ore_on_the_walls(bottom)
 
     _main.camera().zoom_by(-4)
     _main.world_view().rebuild()
@@ -423,7 +522,27 @@ func _dig_down() -> void:
     _main.lamp_lights().sync()
 
 
-## 가진 것을 펼쳐 보고 굤짝을 열어 본다.
+## 뚫은 굴의 벽에 광석이 몇 칸이나 드러나 있는가.
+##
+## 스펙 §3.1 이 "벽에 박힌 광석이 눈에 걸려야 그것이 목적지가 된다"고 적었다.
+## 하나도 없으면 파고 내려온 보람이 화면에 없는 것이다.
+func _count_ore_on_the_walls(bottom: Vector3i) -> int:
+    var grid: Object = _main.simulation.state.grid
+    var found := 0
+    for dy in range(-7, 8):
+        for dx in range(-7, 8):
+            for dz in range(0, 4):
+                var cell := bottom + Vector3i(dx, dy, dz)
+                if grid.get_block(cell) != BlockType.ORE:
+                    continue
+                for step: Vector3i in VoxelGrid.NEIGHBOURS:
+                    if grid.get_block(cell + step) == BlockType.EMPTY:
+                        found += 1
+                        break
+    return found
+
+
+## 가진 것을 펼쳐 보고 궤짝을 열어 본다.
 ##
 ## 손이 모자라야 왕복에 값이 붙고(스펙 §3.6), 넣어 둘 곳이 있어야
 ## 그것이 짜증이 아니라 살림이 된다.
@@ -440,7 +559,7 @@ func _open_the_bag() -> void:
         state.grid.set_block(Vector3i(spot.x, spot.y, z), BlockType.EMPTY)
     state.grid.set_block(spot - VoxelGrid.UP, BlockType.GROUND)
 
-    # 손에 이것저것 채워 넣고 굤짝을 하나 놓는다.
+    # 손에 이것저것 채워 넣고 궤짝을 하나 놓는다.
     for pair in [
         [BlockType.GROUND, 64], [BlockType.ROCK, 37], [BlockType.WOOD, 22],
         [BlockType.ORE, 15], [BlockType.LAMP_DARK, 6], [BlockType.DOOR_CLOSED, 3],
@@ -482,6 +601,12 @@ func _evaluate(without_subject: Image) -> void:
         _fail(name, "화면을 캡처하지 못했다. 렌더링 드라이버를 확인할 것")
         return
 
+    # 자동문을 세운 단계들은 그 문이 열려 있어야 한다. 감지기가 사람을 보고
+    # 작동기가 문을 여는 것이 스펙 §5 의 첫 장치다.
+    if name in ["08_auto_door", "09_choose", "10_bundle"]:
+        _door_open[name] = (_main.simulation.state.grid.get_block(_door_cell)
+            == BlockType.DOOR_OPEN)
+
     var path := "%s/%s.png" % [OUT_DIR, name]
     _with_subject.save_png(path)
 
@@ -501,10 +626,19 @@ func _evaluate(without_subject: Image) -> void:
     if not _main.part_hint().is_single_line():
         _fail(name, "부품 설명이 가로 한 줄이 아니다")
 
-    # 상점 첫 그림은 분위기가 아니라 장치가 도는 것을 보여야 한다.
+    # 회로를 보이는 단계는 회로가 한 일도 함께 보여야 한다.
     # 닫힌 문 앞에 선 그림은 아무것도 증명하지 못한다.
-    if name == "17_store" and not _store_door_open:
-        _fail(name, "회로가 문을 열고 등을 켜지 못했다. 상점 그림에 장치가 한 일이 없다")
+    if _door_open.has(name) and not _door_open[name]:
+        _fail(name, "회로가 문을 열지 못했다. 장치가 한 일이 화면에 없다")
+
+    # 파고 내려온 보람이 화면에 있어야 한다. 벽이 회색뿐이면 갈 까닭이 없다.
+    if name == "15_underground" and _ore_in_sight <= 0:
+        _fail(name, "굴 벽에 드러난 광석이 없다. 파고 내려올 까닭이 화면에 없다")
+
+    # 만든 것이 세상에 서 있어야 한다. 손에 잡히는 줄의 숫자만 바뀌면
+    # 화면에서는 아무 일도 일어나지 않은 것이다.
+    if name == "14_craft" and _made_by_hand <= 0:
+        _fail(name, "만든 것이 화면에 없다. 숫자만 바뀌었다")
 
     if problems.is_empty():
         _report.append("  OK   %s  (색 %d종, 밝기 %.2f, 어둠 %.2f)" % [

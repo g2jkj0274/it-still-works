@@ -33,12 +33,15 @@ func test_a_wire_climbs_over_the_parts_it_joins() -> void:
     assert_float(path[2].y).is_greater(cell_top)
 
 
-func test_a_wire_is_drawn_in_three_pieces() -> void:
+func test_a_wire_is_drawn_in_many_pieces() -> void:
+    # 마디마다 하나씩만 세우면 굵기가 토막 단위로 정해져, 맞닿은 두 부품
+    # 사이에서는 가운데 토막 하나뿐이라 방향이 전혀 보이지 않는다.
     var circuit := _circuit()
     circuit.link(A, B)
     var view := _view(circuit)
     assert_int(view.wire_count()).is_equal(1)
-    assert_int(view.piece_count()).is_equal(WireView.PIECES)
+    assert_int(view.piece_count()).is_equal(WireView.SEGMENTS)
+    assert_int(WireView.SEGMENTS).is_greater(WireView.PIECES)
 
 
 func test_a_wire_is_thick_enough_to_see() -> void:
@@ -214,3 +217,29 @@ func test_a_still_wire_shows_no_signal() -> void:
     var view := _view(circuit)
     view.sync()
     assert_int(view.spark_count()).is_equal(0)
+
+
+func test_the_signal_dot_is_brighter_than_the_wire_it_runs_on() -> void:
+    # **배선과 같은 색으로 칠했더니 없는 것과 같았다.** 흐르는 배선 넷 위를
+    # 점 넷이 달리는데 정지 화면에 아무것도 남지 않았다.
+    var circuit := _branch_circuit()
+    var view := _view(circuit)
+    for link: Array in circuit.links():
+        var wire := view.colour_of(link)
+        var spark := WireView.SPARK_COLOUR
+        assert_float(spark.r + spark.g + spark.b).is_greater(wire.r + wire.g + wire.b)
+
+
+func test_the_signal_dot_is_fatter_than_the_wire() -> void:
+    assert_float(WireView.SPARK_SIZE).is_greater(WireView.THICKNESS * 1.5)
+
+
+func test_a_wire_thins_all_the_way_along_not_in_steps() -> void:
+    # 눈에 보이는 것은 가운데 건너가는 구간이다. 그 안에서도 가늘어져야 한다.
+    var link: Array = [A, B, 0]
+    var middle_start := WireView.point_along(link, 0.34)
+    var middle_end := WireView.point_along(link, 0.66)
+    # 가운데 구간이 실제로 길이를 가진다 — 굵기가 여기서 변해야 뜻이 있다.
+    assert_float(middle_start.distance_to(middle_end)).is_greater(0.5)
+    # 그 구간이 여러 토막으로 나뉜다.
+    assert_int(WireView.SEGMENTS).is_greater_equal(6)

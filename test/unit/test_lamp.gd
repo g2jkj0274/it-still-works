@@ -181,3 +181,65 @@ func test_no_lamp_ever_burns_brighter_than_full() -> void:
     for z in [VoxelGrid.BEDROCK_Z + 1, VoxelGrid.SIZE_Z - 1]:
         assert_float(lights.strength_at(Vector3i(AT.x, AT.y, z))).is_less_equal(
             LampLights.STRENGTH + 0.001)
+
+
+## --- 등 목록을 따라가는 법 ---
+##
+## **세계를 통째로 훑고 있었다.** 9만 8천 칸을 도는 일이 블록을 하나 부술
+## 때마다 벌어졌다. 파고 내려가는 것이 새로 붙인 유인인데 그 동작이 프레임을
+## 가장 자주 흔들었다.
+
+func test_a_new_lamp_is_picked_up_without_a_full_sweep() -> void:
+    var state := _world()
+    var lights := _lights(state.grid)
+    assert_int(lights.lit_count()).is_equal(0)
+
+    state.grid.set_block(AT, BlockType.LAMP_LIT)
+    lights.sync()
+    assert_int(lights.lit_count()).is_equal(1)
+
+
+func test_a_lamp_that_goes_out_leaves_the_list() -> void:
+    var state := _world()
+    state.grid.set_block(AT, BlockType.LAMP_LIT)
+    var lights := _lights(state.grid)
+    assert_int(lights.lit_count()).is_equal(1)
+
+    state.grid.set_block(AT, BlockType.LAMP_DARK)
+    lights.sync()
+    assert_int(lights.lit_count()).is_equal(0)
+
+
+func test_a_broken_lamp_leaves_the_list() -> void:
+    var state := _world()
+    state.grid.set_block(AT, BlockType.LAMP_LIT)
+    var lights := _lights(state.grid)
+
+    state.grid.set_block(AT, BlockType.EMPTY)
+    lights.sync()
+    assert_int(lights.lit_count()).is_equal(0)
+
+
+func test_it_catches_up_when_more_changed_than_it_remembers() -> void:
+    # 변경 기록은 오래된 것을 버린다. 그보다 많이 밀렸으면 통째로 훑어야 한다.
+    var state := _world()
+    var lights := _lights(state.grid)
+
+    state.grid.set_block(AT, BlockType.LAMP_LIT)
+    for i in VoxelGrid.CHANGE_MEMORY + 20:
+        var cell := Vector3i(i % VoxelGrid.SIZE_X, 1, 1)
+        state.grid.set_block(cell, BlockType.ROCK)
+
+    lights.sync()
+    assert_int(lights.lit_count()).is_equal(1)
+
+
+func test_the_same_lamp_is_not_counted_twice() -> void:
+    var state := _world()
+    var lights := _lights(state.grid)
+    state.grid.set_block(AT, BlockType.LAMP_LIT)
+    lights.sync()
+    state.grid.set_block(AT, BlockType.LAMP_DARK)
+    state.grid.set_block(AT, BlockType.LAMP_LIT)
+    lights.sync()
+    assert_int(lights.lit_count()).is_equal(1)

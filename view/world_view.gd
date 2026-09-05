@@ -50,6 +50,14 @@ const DARK_DEPTH := 5
 ## 가장 깊은 곳의 밝기. 완전히 검게 하면 아무것도 안 보인다.
 const DEEPEST_SHADE := 0.30
 
+## 광석이 어둠에 눌릴 수 있는 한계.
+##
+## **광맥이 벽에 박혀 있어도 어둠에 먹혀 검은 벽과 구별되지 않았다.** 스펙
+## §3.1 이 광맥을 "눈이 목적지를 잡는" 것으로 정의했는데, 목적지가 안 보이면
+## 굴을 파도 어디로 갈지 모른 채 아무 데나 파게 된다. 등불 밖에서도 형체가
+## 남을 만큼만 띄운다 — 대낮처럼 밝히는 것이 아니다.
+const ORE_FLOOR_SHADE := 0.62
+
 ## 지금 보고 있는 자리와, 그 자리에서 머리 위를 걷어내고 있는지.
 var _eye: Vector3i = Vector3i(-1, -1, -1)
 var _cutting: bool = false
@@ -235,7 +243,11 @@ func _write_instance(block_type: int, at: int, cell: Vector3i) -> void:
     # 색은 면이 정하므로(BlockMeshes) 여기서는 배수만 넘긴다.
     # 켜진 등은 스스로 빛나므로 깊이에 눌리지 않는다.
     var lit := block_type == BlockType.LAMP_LIT
-    var shade := Palette.variation_of(cell) * (1.0 if lit else _daylight_at(cell))
+    var daylight := 1.0 if lit else _daylight_at(cell)
+    # 광석은 어둠을 덜 먹는다. 캄캄한 벽에서도 여기가 목적지임이 보여야 한다.
+    if block_type == BlockType.ORE:
+        daylight = maxf(daylight, ORE_FLOOR_SHADE)
+    var shade := Palette.variation_of(cell) * daylight
     multimesh.set_instance_color(at, Color(shade, shade, shade))
 
 

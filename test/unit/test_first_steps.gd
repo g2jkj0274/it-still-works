@@ -15,10 +15,15 @@ func _rig(sim: Simulation) -> Array:
     return [steps, notice]
 
 
-func test_the_very_first_line_names_the_first_keys() -> void:
+func test_the_very_first_line_teaches_walking_and_the_mouse() -> void:
+    # **마우스를 살려 놓고 게임은 키를 가리키고 있었다.** 안 알려준 기능은
+    # 없는 기능이다. 그리고 걷는 법이 부수는 법보다 먼저 나와야 한다.
     var line := FirstSteps.line_at(0)
-    assert_str(line).contains("Q")
+    assert_str(line).contains("WASD")
+    assert_str(line).contains("좌클릭")
+    assert_str(line).contains("우클릭")
     assert_str(line).contains("H")
+    assert_int(line.find("WASD")).is_less(line.find("좌클릭"))
 
 
 func test_it_says_at_most_three_things() -> void:

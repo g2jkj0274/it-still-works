@@ -31,22 +31,41 @@ extends Node3D
 ## 표현일 뿐이라 결정론과 무관하다.
 
 ## 한 칸이 화면에서 사십 픽셀 남짓이다. 0.08 은 세 픽셀이라 보이지 않았다.
-const THICKNESS := 0.15
+##
+## 0.15 도 여섯 픽셀이라, 상점 그림처럼 바짝 당겨 찍은 것에서만 보였다. 사람이
+## 보통 서 있는 거리에서 **회로를 그린 선이 화면에 없으면** 부품 스무 개짜리
+## 판을 만들어도 파스텔 상자 스무 개가 흩어져 있는 것으로 보인다.
+const THICKNESS := 0.22
 
 ## 부품 지붕에서 얼마나 더 위로 띄울 것인가. 칸 절반이 0.5 다.
 const LIFT := 0.62
 
-## 배선 하나를 이루는 토막 수. 올라가고, 건너가고, 내려온다.
+## 배선 하나가 꺾이는 마디 수. 올라가고, 건너가고, 내려온다.
 const PIECES := 3
 
+## 배선 하나를 그리는 데 쓰는 토막 수.
+##
+## 꺾이는 마디마다 하나씩(셋)만 세웠더니 굵기가 **토막 단위**로 정해졌다.
+## 눈에 보이는 것은 가운데 건너가는 토막인데 그 토막은 처음부터 끝까지 굵기가
+## 한결같아서, 맞닿은 두 부품 사이에서는 방향이 전혀 보이지 않았다. 잘게
+## 쪼개어 토막 안에서도 가늘어지게 한다.
+const SEGMENTS := 12
+
 ## 도착 쪽 굵기의 배수. 1 보다 작아야 어느 쪽으로 흐르는지 보인다.
-const TAIL := 0.45
+const TAIL := 0.40
 
 ## 신호 점이 배선 하나를 지나는 데 걸리는 시간(초).
-const SPARK_SECONDS := 0.28
+const SPARK_SECONDS := 0.34
 
-## 신호 점의 크기.
-const SPARK_SIZE := 0.26
+## 신호 점의 크기. 배선보다 뚜렷이 굵어야 "구슬이 줄을 탄다"로 읽힌다.
+const SPARK_SIZE := 0.42
+
+## 신호 점의 색.
+##
+## **배선과 같은 색으로 칠했더니 없는 것과 같았다.** 흐르는 배선 넷 위를
+## 점 넷이 달리는데 정지 화면에 아무것도 남지 않았다. 점은 배선보다 밝아야
+## 점이다.
+const SPARK_COLOUR := Color(1.0, 1.0, 0.94)
 
 const LIVE_COLOUR := Palette.WIRE_LIVE
 const IDLE_COLOUR := Palette.WIRE_IDLE
@@ -122,7 +141,7 @@ func _run_sparks() -> void:
         _reserve_sparks(shown + 1)
         multimesh.set_instance_transform(
             shown, Transform3D(Basis(), _point_along(links[i], along)))
-        multimesh.set_instance_color(shown, colour_of(links[i]))
+        multimesh.set_instance_color(shown, SPARK_COLOUR)
         shown += 1
 
     multimesh.visible_instance_count = shown
@@ -147,7 +166,7 @@ func rebuild() -> void:
 
     var links := _circuit.links()
     var multimesh := _node.multimesh
-    multimesh.instance_count = links.size() * PIECES
+    multimesh.instance_count = links.size() * SEGMENTS
 
     _live.resize(links.size())
     _live.fill(0)
@@ -155,12 +174,13 @@ func rebuild() -> void:
     _since.fill(0.0)
 
     for i in links.size():
-        var corners := path_of(links[i])
-        for piece in PIECES:
+        for piece in SEGMENTS:
             # 도착 쪽으로 갈수록 가늘어진다. 어느 쪽으로 흐르는지가 보여야 한다.
-            var thin := lerpf(1.0, TAIL, (piece + 0.5) / PIECES)
-            multimesh.set_instance_transform(
-                i * PIECES + piece, _span(corners[piece], corners[piece + 1], thin))
+            var thin := lerpf(1.0, TAIL, (piece + 0.5) / float(SEGMENTS))
+            multimesh.set_instance_transform(i * SEGMENTS + piece, _span(
+                point_along(links[i], float(piece) / SEGMENTS),
+                point_along(links[i], float(piece + 1) / SEGMENTS),
+                thin))
 
     _last_signature = _signature()
     _build_count += 1
@@ -183,8 +203,8 @@ func refresh_flow() -> void:
     var multimesh := _node.multimesh
     for i in links.size():
         var colour := colour_of(links[i])
-        for piece in PIECES:
-            var at := i * PIECES + piece
+        for piece in SEGMENTS:
+            var at := i * SEGMENTS + piece
             if at < multimesh.instance_count:
                 multimesh.set_instance_color(at, colour)
 
@@ -225,7 +245,7 @@ func live_count() -> int:
 
 ## 그려진 배선의 수. 토막이 아니라 배선을 센다.
 func wire_count() -> int:
-    return _node.multimesh.instance_count / PIECES
+    return _node.multimesh.instance_count / SEGMENTS
 
 
 ## 그려진 토막의 수. 배선 하나가 여러 토막이다.

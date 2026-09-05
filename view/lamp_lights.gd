@@ -76,11 +76,37 @@ func set_darkness(darkness: float) -> void:
 func sync() -> void:
     if _grid == null:
         return
-    if _grid.version() != _last_version:
-        _find_lamps()
-        _last_version = _grid.version()
+
+    var version := _grid.version()
+    if version != _last_version:
+        _follow(version)
+        _last_version = version
     _light_the_nearest()
     _last_darkness = _darkness
+
+
+## 등 목록을 바뀐 칸만큼만 고친다.
+##
+## **세계를 통째로 훑고 있었다.** 9만 8천 칸을 삼중 루프로 도는 일이 블록을
+## 하나 부술 때마다 벌어졌고, 누르고 있으면 초당 네 번이었다. 파고 내려가는
+## 것이 새로 붙인 유인인데 그 동작이 프레임을 가장 자주 흔들었다.
+##
+## 변경 기록은 오래된 것을 버리므로([constant VoxelGrid.CHANGE_MEMORY]),
+## 그보다 많이 밀렸으면 놓친 것이 있을 수 있다. 그때만 통째로 훑는다.
+func _follow(version: int) -> void:
+    if _last_version < 0 or version - _last_version > VoxelGrid.CHANGE_MEMORY:
+        _find_lamps()
+        return
+
+    for change: Array in _grid.changes_since(_last_version):
+        var cell: Vector3i = change[0]
+        var was := int(change[1])
+        var now := int(change[2])
+        if now == BlockType.LAMP_LIT:
+            if not _lit.has(cell):
+                _lit.append(cell)
+        elif was == BlockType.LAMP_LIT:
+            _lit.erase(cell)
 
 
 func lit_count() -> int:
