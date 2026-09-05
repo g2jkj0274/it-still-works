@@ -36,7 +36,7 @@ const BOX_BUNDLE := DETECTOR
 ##
 ## 이 값이 깨졌다면 시뮬레이션 동작이 바뀐 것이다. 값을 고쳐 통과시키지 말고
 ## 무엇이 바뀌었는지 먼저 밝힌다.
-const GOLDEN_HASH := "7d03a10add33abac4d8da8d90fdcb0b5cd0ae315f9fbf2541a109121e377a7e1"
+const GOLDEN_HASH := "1668000518c1f18265bae6363f690b658bb144a2524b78cc3a92a9a873f1a96d"
 
 
 func _cells(values: Array) -> Array[Vector3i]:

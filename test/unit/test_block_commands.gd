@@ -56,8 +56,29 @@ func test_place_refuses_out_of_bounds() -> void:
 func test_break_clears_a_solid_cell() -> void:
     var state := _state()
     state.grid.set_block(Vector3i(5, 4, 1), BlockType.ORE)
-    BreakBlockCommand.create(Vector3i(5, 4, 1)).apply(state)
+    BreakBlockCommand.create(Vector3i(5, 4, 1), BlockType.STONE_PICK).apply(state)
     assert_int(state.grid.get_block(Vector3i(5, 4, 1))).is_equal(BlockType.EMPTY)
+
+
+func test_the_wrong_tool_leaves_the_cell_alone() -> void:
+    # 맞는 도구가 없으면 부숴지지도 않는다(스펙 §3.6). 부숴는 지는데 아무것도
+    # 안 나오는 쪽은 "고장 났나"로 읽힌다.
+    var state := _state()
+    state.grid.set_block(Vector3i(5, 4, 1), BlockType.ORE)
+    BreakBlockCommand.create(Vector3i(5, 4, 1), BlockType.WOOD_PICK).apply(state)
+    assert_int(state.grid.get_block(Vector3i(5, 4, 1))).is_equal(BlockType.ORE)
+    assert_int(state.inventory.total()).is_equal(0)
+
+
+func test_a_bare_hand_still_takes_the_soft_things() -> void:
+    # 나무 · 흙 · 모래 · 작물은 맨손으로 얻는다. 그러지 않으면 첫 곡괭이를
+    # 만들 나무조차 없어 게임이 시작되지 않는다.
+    for soft in [BlockType.WOOD, BlockType.GROUND, BlockType.SAND, BlockType.CROP]:
+        var state := _state()
+        state.grid.set_block(Vector3i(5, 4, 1), soft)
+        BreakBlockCommand.create(Vector3i(5, 4, 1)).apply(state)
+        assert_int(state.grid.get_block(Vector3i(5, 4, 1))).override_failure_message(
+            "%s 를 맨손으로 얻지 못한다" % BlockType.name_of(soft)).is_equal(BlockType.EMPTY)
 
 
 func test_break_on_empty_cell_changes_nothing() -> void:
@@ -146,7 +167,7 @@ func test_a_refused_placement_keeps_the_material() -> void:
 func test_breaking_yields_the_material() -> void:
     var state := _state()
     state.grid.set_block(Vector3i(5, 4, 1), BlockType.ORE)
-    BreakBlockCommand.create(Vector3i(5, 4, 1)).apply(state)
+    BreakBlockCommand.create(Vector3i(5, 4, 1), BlockType.STONE_PICK).apply(state)
     assert_int(state.inventory.count_of(BlockType.ORE)).is_equal(1)
 
 

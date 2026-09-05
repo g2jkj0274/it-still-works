@@ -24,7 +24,7 @@ const RUN_TICKS := 400
 ##   궤짝이 늘어 블록 종류가 하나 늘고 그 안에 든 것이 상태에 추가됨
 ##   광맥이 드러난 동굴 벽에 더 잘 들어 격자가 바뀜 (땅속에 들어갈 까닭)
 ##   위협이 나오는 거리에 위 한계가 생겨 자리 고르기가 바뀜 (다가오는 것이 보이게)
-const GOLDEN_HASH := "73a260f5a4802db65b0600482aa264da42ecd7e223cb1339ccb5e0381817e0ba"
+const GOLDEN_HASH := "7099b34f0e558811b22fd45cd76857c5da14585faf9af118bc3e6b759e6fc9d9"
 
 
 func _scenario() -> Array:

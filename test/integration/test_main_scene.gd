@@ -15,11 +15,36 @@ func _main() -> GameMain:
     add_child(main)
     main.set_physics_process(false)
     # 테스트가 쓰려고 쥐여 준다. 시작 지급이 아니다.
+    #
+    # **손에 잡히는 줄은 아홉 칸인데 놓을 수 있는 것은 열일곱이다.**
+    # 앞에서부터 담으면 뒤엣것이 줄 밖으로 밀려 select_block 이 못 찾는다.
+    # 그래서 이 스위트가 고르는 것부터 담는다.
+    var wanted: Array[int] = [
+        BlockType.GROUND, BlockType.ORE, BlockType.WOOD, BlockType.PLANK,
+        BlockType.DOOR_CLOSED, BlockType.DETECTOR, BlockType.ACTUATOR,
+        BlockType.REPEATER, BlockType.BOX,
+    ]
     for type in InputController.PLACEABLE:
-        if BlockType.is_uniquely_made(type):
+        if BlockType.is_uniquely_made(type) or wanted.has(type):
             continue
+        wanted.append(type)
+    for type in wanted:
         main.simulation.state.inventory.add(type, 8)
     return main
+
+
+## 만들 것을 고른다.
+##
+## 만들기 고르기(C)는 제작법을 차례로 돈다. 손에 든 칸과는 상관이 없다 —
+## 빈 칸을 잡고도 만들 수 있어야 하기 때문이다(InputController.recipe_output).
+func _choose_recipe(main: GameMain, wanted: int) -> void:
+    var controller := main.input_controller()
+    for i in RecipeBook.count():
+        if controller.recipe_output() == wanted:
+            return
+        controller.cycle_recipe()
+    assert_int(controller.recipe_output()).override_failure_message(
+        "%s 를 만들 법이 없다" % BlockType.name_of(wanted)).is_equal(wanted)
 
 
 func _advance(main: GameMain, ticks: int) -> void:
@@ -168,7 +193,10 @@ func test_the_player_starts_empty_handed() -> void:
 func test_everything_in_hand_can_be_gathered_or_made() -> void:
     # 손에 쥘 수 있는 것마다 얻을 길이 있어야 한다. 길이 없으면 빈손으로
     # 시작할 수 없다. 묶음만은 회로를 압축해 얻는다.
-    var gathered: Array[int] = [BlockType.GROUND, BlockType.ORE, BlockType.WOOD]
+    var gathered: Array[int] = [
+        BlockType.GROUND, BlockType.ORE, BlockType.WOOD,
+        BlockType.SAND, BlockType.EMBER,
+    ]
     for block_type in InputController.PLACEABLE:
         if block_type == BlockType.BUNDLE:
             continue
@@ -208,8 +236,11 @@ func test_only_the_chosen_slot_is_marked() -> void:
     main.input_controller().select_block(BlockType.DETECTOR)
     main.hotbar().sync()
 
-    var chosen := InputController.PLACEABLE.find(BlockType.DETECTOR)
-    assert_int(main.hotbar().selected_slot()).is_equal(chosen)
+    # 고른 칸이 몇 번째인지는 무엇을 담아 두었는가에 달렸다. 그것을 여기서
+    # 다시 셈하면 담는 차례를 바꿀 때마다 이 테스트가 깨진다.
+    # **묻는 것은 고른 칸 하나만 표시되는가다.**
+    var chosen := main.hotbar().selected_slot()
+    assert_int(main.simulation.state.inventory.kind_at(chosen)).is_equal(BlockType.DETECTOR)
     for slot in main.hotbar().slot_count():
         assert_bool(main.hotbar().slot_is_marked(slot)).is_equal(slot == chosen)
 
@@ -355,15 +386,28 @@ func test_a_player_can_gather_and_make_a_door_by_hand() -> void:
         _advance(main, 2)
     assert_int(state.inventory.count_of(BlockType.WOOD)).is_equal(4)
 
-    # 모은 나무로 문을 만든다.
-    controller.select_block(BlockType.DOOR_CLOSED)
+    # 모은 나무를 판자로 켜고, 그 판자로 문을 만든다.
+    #
+    # 나무가 곧바로 문이 되지 않는다. **한 번 켜야 한다.** 나무 하나가 판자
+    # 넷이 되므로 한 그루면 문이 서고도 남는다 — 예전보다 오히려 가볍다.
+    _choose_recipe(main, BlockType.PLANK)
+    controller.submit_craft()
+    _advance(main, 2)
+    assert_int(state.inventory.count_of(BlockType.PLANK)).is_equal(4)
+    assert_int(state.inventory.count_of(BlockType.WOOD)).is_equal(3)
+
+    _choose_recipe(main, BlockType.DOOR_CLOSED)
     controller.submit_craft()
     _advance(main, 2)
     assert_int(state.inventory.count_of(BlockType.DOOR_CLOSED)).is_equal(1)
-    assert_int(state.inventory.count_of(BlockType.WOOD)).is_equal(0)
+    assert_int(state.inventory.count_of(BlockType.PLANK)).is_equal(0)
 
-    # 만든 문을 놓는다.
+    # 만든 문을 손에 쥐고 놓는다.
+    #
+    # 쥐는 것이 따로 필요해졌다. 예전에는 나무가 몽땅 문이 되어 빈 칸에
+    # 문이 들어와 저절로 잡혔는데, 이제 나무가 남으므로 문이 다른 칸으로 간다.
     var spot := here + Vector3i(2, 0, 0)
+    controller.select_block(BlockType.DOOR_CLOSED)
     controller.set_target(_aim_at(spot - VoxelGrid.UP))
     controller.submit_place()
     _advance(main, 2)

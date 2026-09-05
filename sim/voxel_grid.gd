@@ -170,7 +170,8 @@ func is_free(pos: Vector3i) -> bool:
 ## 이웃 한 곳이라도 비어 있으면 표면이다.
 ## 표현 레이어가 속에 묻힌 블록을 그리지 않도록 걸러내는 데 쓴다.
 func is_exposed(pos: Vector3i) -> bool:
-    if not is_solid(pos):
+    # 관솔불은 지나갈 수 있지만 그려져야 한다. 통과 여부와 그려짐은 다른 물음이다.
+    if get_block(pos) != BlockType.TORCH and not is_solid(pos):
         return false
     for offset in NEIGHBOURS:
         if not is_solid(pos + offset):

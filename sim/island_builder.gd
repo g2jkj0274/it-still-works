@@ -249,9 +249,14 @@ static func _fill_ground(grid: VoxelGrid) -> void:
             var top := surface_z(column)
             if top < 0:
                 continue
+            var shore := _is_shore(column)
             for z in top + 1:
                 # 지표 가까이는 흙, 그 아래는 돌. 바닥층은 부술 수 없는 돌이다.
                 var kind := BlockType.GROUND if z > top - SOIL_DEPTH else BlockType.ROCK
+                # 물가의 윗면은 모래다. 유리의 유일한 재료이고, 해안이 눕는
+                # 띠(SHORE_BAND)와 같은 자리라 물가가 눈에 갈린다.
+                if shore and z == top:
+                    kind = BlockType.SAND
                 grid.set_block(Vector3i(x, y, z), kind)
 
 
@@ -270,7 +275,26 @@ static func _carve_caves(grid: VoxelGrid) -> void:
                 grid.set_block(cell, BlockType.EMPTY)
 
 
-## 돌 사이에 광맥을 심는다. 깊을수록 흔하다.
+## 물가인가. 지표가 해안 높이로 눕는 띠 안이면 물가다.
+static func _is_shore(column: Vector2i) -> bool:
+    if not _within(column, CENTER, ISLAND_RADIUS):
+        return false
+    var edge := ISLAND_RADIUS - _distance_to(column, CENTER)
+    return clampi(edge - 1, 0, SHORE_BAND) < SHORE_BAND
+
+
+## 광맥 칸이 무엇이 되는지를 가르는 깊이.
+##
+## 이 위는 불씨돌, 아래는 광석이다. **불씨돌이 얕아야 첫 굴에 빛이 있다** —
+## 나무 곡괭이로 캘 수 있는 것이 얕은 쪽에 있어야 한다(스펙 §3.6).
+## 마인크래프트에서 석탄이 얕고 철이 깊은 것과 같은 모양이다.
+##
+## 스펙 §3.1 은 깊은광과 빛돌까지 넷으로 가르지만 여기서는 둘뿐이다.
+## 나머지 둘이 들어올 때 다시 가른다.
+const EMBER_FLOOR_Z := 3
+
+
+## 돌 사이에 광맥을 심는다. 얕은 띠는 불씨돌, 깊은 띠는 광석이다.
 static func _seed_veins(grid: VoxelGrid) -> void:
     for y in VoxelGrid.SIZE_Y:
         for x in VoxelGrid.SIZE_X:
@@ -285,7 +309,8 @@ static func _seed_veins(grid: VoxelGrid) -> void:
                 if _is_bare(grid, cell):
                     level -= VEIN_LEVEL_AT_WALL
                 if _smooth(cell, VEIN_SPAN_XY, VEIN_SPAN_Z, 83) >= level:
-                    grid.set_block(cell, BlockType.ORE)
+                    var mineral := BlockType.EMBER if z >= EMBER_FLOOR_Z else BlockType.ORE
+                    grid.set_block(cell, mineral)
 
 
 ## 그 칸이 빈 곳에 맞닿아 밖에서 보이는가.

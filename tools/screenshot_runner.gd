@@ -296,6 +296,15 @@ func _pull_back_to_the_shore() -> void:
 ##
 ## 만든 것을 실제로 세운다. 스펙 §3.6 의 "나무 넷이 문 하나가 된다"가
 ## 그림으로 읽혀야 한다.
+## 만들 것을 고른다. 만들기 고르기(C)는 제작법을 차례로 돈다.
+func _choose_recipe(wanted: int) -> void:
+    var controller := _main.input_controller()
+    for i in RecipeBook.count():
+        if controller.recipe_output() == wanted:
+            return
+        controller.cycle_recipe()
+
+
 func _make_something_by_hand() -> void:
     _main.simulation = IslandBuilder.start(GameMain.SEED)
     _main.adopt_simulation()
@@ -316,8 +325,14 @@ func _make_something_by_hand() -> void:
     state.inventory.add(BlockType.WOOD, 12)
     state.inventory.add(BlockType.ORE, 6)
 
-    # 문 넷을 만들어 나란히 세운다. 나무가 문이 되는 것이 스펙 §3.6 이다.
-    for i in 3:
+    # **나무를 판자로 켜고 그 판자로 문을 만든다.** 만들기가 한 단 깊어졌다(§3.6).
+    # 나무 12 로 판자 16 을 얻고, 그것으로 문 넷을 만든다.
+    _choose_recipe(BlockType.PLANK)
+    for i in 4:
+        controller.submit_craft()
+        _main.simulation.advance(2)
+    _choose_recipe(BlockType.DOOR_CLOSED)
+    for i in 4:
         controller.submit_craft()
         _main.simulation.advance(2)
 
