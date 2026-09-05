@@ -53,6 +53,17 @@ var _version: int = 0
 var _dirty: Array[Vector3i] = []
 var _dirty_overflow: bool = true
 
+## 최근에 실제로 바뀐 칸들. 각 항목은 [몇 번째 바뀜, 칸, 무엇에서, 무엇으로].
+##
+## 표현 레이어가 **무슨 일이 일어났는지**를 알아야 할 때 쓴다. 소리가 그렇다.
+## 손에 든 것의 총량이 늘고 줄었는지로 부수기와 놓기를 짐작하면, 밭을 거두거나
+## 무언가를 만들어도 곡괭이 소리가 난다. 화면과 소리가 다른 것을 말하게 된다.
+##
+## 오래된 것은 버린다. 소리는 상태가 아니므로 놓쳐도 세상이 어긋나지 않는다.
+const CHANGE_MEMORY := 256
+
+var _changes: Array = []
+
 
 func _init() -> void:
     _cells.resize(CELL_COUNT)
@@ -91,9 +102,14 @@ func set_block(pos: Vector3i, type: int) -> bool:
     if _cells[index] == type:
         return false
 
+    var was := _cells[index]
     _cells[index] = type
     _version += 1
     _mark_dirty(pos)
+
+    _changes.append([_version, pos, was, type])
+    if _changes.size() > CHANGE_MEMORY:
+        _changes = _changes.slice(_changes.size() - CHANGE_MEMORY)
     return true
 
 
@@ -119,6 +135,17 @@ func take_dirty() -> Array[Vector3i]:
     _dirty = []
     _dirty_overflow = false
     return changed
+
+
+## [param since] 번째 바뀜 뒤에 일어난 일들. [칸, 무엇에서, 무엇으로].
+##
+## 너무 뒤처져 있으면 기억에 남은 것만 돌려준다. 소리를 몇 번 놓칠 뿐이다.
+func changes_since(since: int) -> Array:
+    var found: Array = []
+    for entry: Array in _changes:
+        if int(entry[0]) > since:
+            found.append([entry[1], entry[2], entry[3]])
+    return found
 
 
 ## 하나씩 고치기보다 통째로 다시 그리는 편이 나은가.

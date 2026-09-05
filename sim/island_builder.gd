@@ -54,6 +54,14 @@ const VEIN_LEVEL_PER_DEPTH := 34
 const VEIN_SPAN_XY := 5
 const VEIN_SPAN_Z := 3
 
+## 동굴 벽에서 문턱이 이만큼 내려간다.
+##
+## **땅속에 들어갈 까닭이 있어야 한다.** 광맥이 바위 속에만 들면 굴을 파고
+## 들어가도 회색 벽뿐이라, 어디를 파야 할지 알 수 없고 그저 아무 데나 파게
+## 된다. 드러난 벽에 광석이 박혀 있으면 눈이 목적지를 잡는다 — 그것이
+## 땅속을 다니는 이유가 된다.
+const VEIN_LEVEL_AT_WALL := 120
+
 ## 동굴이 뚫리는 문턱과 뚫릴 수 있는 깊이.
 const CAVE_LEVEL := 640
 const CAVE_TOP_Z := 7
@@ -272,8 +280,30 @@ static func _seed_veins(grid: VoxelGrid) -> void:
                     continue
                 var depth := VEIN_TOP_Z - z
                 var level := VEIN_LEVEL - depth * VEIN_LEVEL_PER_DEPTH
+                # 드러난 벽에는 더 잘 든다. 광석을 바위에 묻어 두면 땅속에
+                # 들어갈 까닭이 없다.
+                if _is_bare(grid, cell):
+                    level -= VEIN_LEVEL_AT_WALL
                 if _smooth(cell, VEIN_SPAN_XY, VEIN_SPAN_Z, 83) >= level:
                     grid.set_block(cell, BlockType.ORE)
+
+
+## 그 칸이 빈 곳에 맞닿아 밖에서 보이는가.
+##
+## 광석을 넣어도 빈 칸이 되지는 않으므로, 넣는 차례가 결과를 바꾸지 않는다.
+static func _is_bare(grid: VoxelGrid, cell: Vector3i) -> bool:
+    for step: Vector3i in _NEIGHBOURS:
+        if grid.get_block(cell + step) == BlockType.EMPTY:
+            return true
+    return false
+
+
+## 맞닿은 여섯 쪽. 차례가 결과를 바꾸지 않지만 늘 같아야 한다.
+const _NEIGHBOURS: Array[Vector3i] = [
+    Vector3i(1, 0, 0), Vector3i(-1, 0, 0),
+    Vector3i(0, 1, 0), Vector3i(0, -1, 0),
+    Vector3i(0, 0, 1), Vector3i(0, 0, -1),
+]
 
 
 ## 자리에서 뽑은 값. 난수가 아니라 뒤섞기라 실행마다 같은 섬이 나온다.

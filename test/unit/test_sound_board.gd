@@ -76,6 +76,41 @@ func test_placing_something_rings_differently() -> void:
     assert_array(board.played()).not_contains([&"break"])
 
 
+func test_harvesting_never_sounds_like_mining() -> void:
+    # 손에 든 것의 총량으로 짐작하던 때에는 밭을 거두어도 곡괭이 소리가 났다.
+    var sim := _sim()
+    var board := _board(sim)
+
+    sim.state.inventory.add(BlockType.CROP, 2)
+    board.sync()
+    assert_array(board.played()).not_contains([&"break"])
+
+
+func test_making_something_never_sounds_like_placing() -> void:
+    var sim := _sim()
+    sim.state.inventory.add(BlockType.WOOD, 4)
+    var board := _board(sim)
+
+    sim.submit(CraftCommand.create(BlockType.DOOR_CLOSED))
+    sim.step()
+    board.sync()
+    assert_array(board.played()).not_contains([&"place"])
+
+
+func test_a_lamp_and_a_door_have_their_own_sounds() -> void:
+    var sim := _sim()
+    var board := _board(sim)
+
+    sim.state.grid.set_block(HERE + Vector3i(1, 0, 0), BlockType.LAMP_DARK)
+    board.sync()
+    board.forget()
+
+    sim.state.grid.set_block(HERE + Vector3i(1, 0, 0), BlockType.LAMP_LIT)
+    board.sync()
+    assert_array(board.played()).contains([&"lamp"])
+    assert_array(board.played()).not_contains([&"place"])
+
+
 func test_a_place_that_never_happened_makes_no_sound() -> void:
     # 재료가 없으면 놓이지 않는다. 화면과 소리가 같은 것을 말해야 한다.
     var sim := _sim()
@@ -106,6 +141,40 @@ func test_footsteps_alternate() -> void:
     board.play(&"step_a")
     board.play(&"step_b")
     assert_array(board.played()).is_equal([&"step_a", &"step_b"])
+
+
+func test_a_signal_rings_every_time_it_turns_on() -> void:
+    # 흐르는 배선의 총 개수만 보면 계속 켜져 있는 회로는 처음 한 번 울고
+    # 영영 조용하다. 신호가 부품을 지날 때 나는 소리가 이 장르의 정체성이다.
+    var sim := _sim()
+    var first := HERE + Vector3i(1, 0, 0)
+    var second := HERE + Vector3i(2, 0, 0)
+    var box := BoxPart.create(first)
+    sim.state.circuit.add_part(box)
+    sim.state.circuit.add_part(ActuatorPart.create(second))
+    sim.state.circuit.link(first, second)
+
+    var board := _board(sim)
+    for turn in 3:
+        box.compute(sim.state, [SignalValue.of_bool(true)])
+        box.commit()
+        board.forget()
+        board.sync()
+        assert_array(board.played()).override_failure_message(
+            "%d 번째 켜짐에 소리가 없다" % (turn + 1)).contains([&"signal"])
+
+        box.compute(sim.state, [])
+        box.commit()
+        # 상자는 담긴 값을 늘 내보낸다. 부품을 지워 흐름을 끊는다.
+        sim.state.circuit.remove_part(first)
+        board.forget()
+        board.sync()
+
+        sim.state.circuit.add_part(BoxPart.create(first))
+        sim.state.circuit.link(first, second)
+        box = sim.state.circuit.part_at(first) as BoxPart
+        board.forget()
+        board.sync()
 
 
 func test_joining_two_parts_rings() -> void:

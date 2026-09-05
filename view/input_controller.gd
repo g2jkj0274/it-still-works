@@ -48,6 +48,10 @@ const ACTION_EAT := &"eat"
 const ACTION_HELP := &"toggle_help"
 const ACTION_ZOOM_IN := &"zoom_in"
 const ACTION_ZOOM_OUT := &"zoom_out"
+const ACTION_NEXT_SLOT := &"next_slot"
+const ACTION_PREV_SLOT := &"prev_slot"
+const ACTION_HALF := &"take_half"
+const ACTION_CLOSE := &"close_screen"
 const ACTION_TURN_LEFT := &"turn_left"
 const ACTION_TURN_RIGHT := &"turn_right"
 const ACTION_CHOOSE := &"choose_for_bundle"
@@ -96,6 +100,12 @@ const SELECT_ACTIONS: Array = [
 ## 키를 누르고 있을 때 한 걸음마다 두는 간격(틱).
 const REPEAT_TICKS := 4
 
+## 부수기·놓기를 누른 채로 있을 때 한 번마다 두는 간격(틱).
+##
+## 한 칸씩 따로 눌러야 했다. 세계가 세로로 깊어졌고 지하를 파는 것이
+## 새 유인인데, 통로 한 줄 뚷는 데 수십 번을 따로 눌러야 했다.
+const DIG_TICKS := 5
+
 ## 되풀이를 놓을 때 고를 수 있는 설정들. [갈래, 횟수, 간격].
 ## 숫자를 자유롭게 넣을 화면이 아직 없어 미리 정해 둔 몇 가지로 돌린다.
 const REPEATER_PRESETS: Array = [
@@ -127,6 +137,14 @@ signal load_requested
 signal crafted
 
 ## 인벤토리 화면을 열고 닫는다. 화면을 여는 것은 명령이 아니다.
+## 하려던 것이 일어나지 않았다.
+##
+## **아무 일도 안 일어나는 것이 가장 나쁜 답이다.** 손이 차 있으면 부수기가
+## 통째로 막히는데, 화면에서는 누르는 것이 먹히지 않는 것과 구별되지 않았다.
+## 무엇이 잘못됐는지는 말하지 않는다(스펙 §1). 다만 **눌린 것은 닿았고, 세상은
+## 그대로다**를 알린다.
+signal balked
+
 signal bag_toggled
 
 ## 겨냥한 궤짝을 열어 달라. 놓기(E)가 궤짝을 만나면 이쪽으로 간다.
@@ -136,7 +154,13 @@ var _simulation: Simulation
 var _camera: Camera3D
 var _selected_slot: int = 0
 var _recipe: int = 0
+
+## 방금 낸 명령을 지켜보는 자리. 지켜보지 않으면 -1.
+var _watch_tick: int = -1
+var _watch_version: int = 0
+var _watch_stock: int = 0
 var _next_move_tick: int = 0
+var _next_dig_tick: int = 0
 var _target: BlockTarget = null
 var _detector_target: int = DetectorPart.TARGET_PLAYER
 var _repeater_preset: int = 0
@@ -394,14 +418,39 @@ func submit_place() -> void:
         return
     if BlockType.is_part(chosen):
         _simulation.submit(PlacePartCommand.create(cell, chosen, part_settings()))
-        return
-    _simulation.submit(PlaceBlockCommand.create(cell, chosen))
+    else:
+        _simulation.submit(PlaceBlockCommand.create(cell, chosen))
+    _watch_this_attempt()
 
 
 func submit_break() -> void:
     if _simulation == null:
         return
     _simulation.submit(BreakBlockCommand.create(break_cell()))
+    _watch_this_attempt()
+
+
+## 방금 낸 명령이 세상을 바꾸는지 지켜본다.
+##
+## 규칙을 여기에 옮겨 적지 않는다. 손이 찼는지, 궤짝이 비었는지, 바위인지를
+## 표현 레이어가 다시 판단하면 언젠가 시뮬레이션과 어긋나고, 어긋난 신호는
+## 없느니만 못하다. **낸 다음에 세상이 그대로인지만 본다.**
+func _watch_this_attempt() -> void:
+    _watch_tick = _simulation.state.tick
+    _watch_version = _simulation.state.grid.version()
+    _watch_stock = _simulation.state.inventory.total()
+
+
+## 지켜보던 틱이 지났는데 아무것도 안 바뀌었으면 알린다.
+func _watch_for_balk() -> void:
+    if _watch_tick < 0 or _simulation.state.tick <= _watch_tick:
+        return
+
+    var still := (_simulation.state.grid.version() == _watch_version
+        and _simulation.state.inventory.total() == _watch_stock)
+    _watch_tick = -1
+    if still:
+        balked.emit()
 
 
 ## 지금 만들려는 것.
@@ -425,6 +474,7 @@ func submit_craft() -> void:
     if _simulation == null:
         return
     if not RecipeBook.has_materials(_simulation.state.inventory, _recipe):
+        balked.emit()
         return
     _simulation.submit(CraftCommand.create(recipe_output()))
     crafted.emit()
@@ -573,9 +623,10 @@ func _cells_with_role(role: int) -> Array[Vector3i]:
 func poll(current_tick: int) -> void:
     if _simulation == null:
         return
+    _watch_for_balk()
     _poll_selection()
     _poll_movement(current_tick)
-    _poll_actions()
+    _poll_actions(current_tick)
     _poll_camera()
 
 
@@ -586,8 +637,11 @@ static func install_actions() -> void:
     _install(&"move_left", [KEY_A, KEY_LEFT])
     _install(&"move_right", [KEY_D, KEY_RIGHT])
 
-    _install(ACTION_PLACE, [KEY_E])
-    _install(ACTION_BREAK, [KEY_Q])
+    # 마우스가 먼저다. 키는 같은 일을 하는 다른 길이다 —
+    # 마우스 없이도 놀 수 있어야 한다(스펙 §3.4).
+    _install_click(ACTION_BREAK, MOUSE_BUTTON_LEFT, [KEY_Q])
+    _install_click(ACTION_PLACE, MOUSE_BUTTON_RIGHT, [KEY_E])
+    _install(ACTION_CLOSE, [KEY_ESCAPE])
     _install(ACTION_LINK, [KEY_R])
     _install(ACTION_TARGET, [KEY_T])
     _install(ACTION_EAT, [KEY_F])
@@ -608,14 +662,35 @@ static func install_actions() -> void:
     for i in SELECT_ACTIONS.size():
         _install(SELECT_ACTIONS[i], [keys[i]])
 
-    _install_wheel(ACTION_ZOOM_IN, MOUSE_BUTTON_WHEEL_UP)
-    _install_wheel(ACTION_ZOOM_OUT, MOUSE_BUTTON_WHEEL_DOWN)
+    # 휠은 핫바 칸을 바꿀다. 마크가 그렇고, 당기고 미는 것보다
+    # 이쪽을 훨씬 자주 한다.
+    _install_wheel(ACTION_PREV_SLOT, MOUSE_BUTTON_WHEEL_UP)
+    _install_wheel(ACTION_NEXT_SLOT, MOUSE_BUTTON_WHEEL_DOWN)
+    _install_click(ACTION_HALF, MOUSE_BUTTON_RIGHT, [])
+    _install(ACTION_ZOOM_IN, [KEY_EQUAL, KEY_KP_ADD])
+    _install(ACTION_ZOOM_OUT, [KEY_MINUS, KEY_KP_SUBTRACT])
 
 
 static func _install(action: StringName, keys: Array) -> void:
     if InputMap.has_action(action):
         return
     InputMap.add_action(action)
+    for key: Key in keys:
+        var event := InputEventKey.new()
+        event.physical_keycode = key
+        InputMap.action_add_event(action, event)
+
+
+## 마우스 단추 하나와 키 몇을 함께 묶는다.
+static func _install_click(action: StringName, button: MouseButton, keys: Array) -> void:
+    if InputMap.has_action(action):
+        return
+    InputMap.add_action(action)
+
+    var click := InputEventMouseButton.new()
+    click.button_index = button
+    InputMap.action_add_event(action, click)
+
     for key: Key in keys:
         var event := InputEventKey.new()
         event.physical_keycode = key
@@ -662,11 +737,21 @@ static func combine(screen: Vector2i) -> Vector2i:
     return Vector2i(signi(screen.x), signi(screen.y))
 
 
-func _poll_actions() -> void:
+func _poll_actions(current_tick: int) -> void:
+    # 부수기와 놓기는 누른 채로 있으면 되풀이된다.
     if Input.is_action_just_pressed(ACTION_PLACE):
         submit_place()
-    if Input.is_action_just_pressed(ACTION_BREAK):
+        _next_dig_tick = current_tick + DIG_TICKS
+    elif Input.is_action_just_pressed(ACTION_BREAK):
         submit_break()
+        _next_dig_tick = current_tick + DIG_TICKS
+    elif current_tick >= _next_dig_tick:
+        if Input.is_action_pressed(ACTION_BREAK):
+            submit_break()
+            _next_dig_tick = current_tick + DIG_TICKS
+        elif Input.is_action_pressed(ACTION_PLACE):
+            submit_place()
+            _next_dig_tick = current_tick + DIG_TICKS
     if Input.is_action_just_pressed(ACTION_LINK):
         submit_link()
     if Input.is_action_just_pressed(ACTION_TARGET):
@@ -708,8 +793,17 @@ func _poll_camera() -> void:
         _camera.call("turn_by", 1)
 
 
+## 핫바 칸을 옆으로 옮긴다. 휠이 부른다.
+func step_slot(by: int) -> void:
+    _selected_slot = posmod(_selected_slot + by, Inventory.HOTBAR_SLOTS)
+
+
 ## 숫자 키는 열 개뿐이다. 그 너머의 것은 제 키로 고른다. 묶음은 N 이다.
 func _poll_selection() -> void:
     for i in SELECT_ACTIONS.size():
         if Input.is_action_just_pressed(SELECT_ACTIONS[i]):
             select_slot(i)
+    if Input.is_action_just_pressed(ACTION_NEXT_SLOT):
+        step_slot(1)
+    if Input.is_action_just_pressed(ACTION_PREV_SLOT):
+        step_slot(-1)

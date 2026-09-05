@@ -18,6 +18,9 @@ var from_slot: int = 0
 var to_where: Vector3i = IN_HAND
 var to_slot: int = 0
 
+## 절반만 옮기는가.
+var half: bool = false
+
 
 static func create(
     p_from_where: Vector3i, p_from_slot: int,
@@ -28,6 +31,16 @@ static func create(
     command.from_slot = p_from_slot
     command.to_where = p_to_where
     command.to_slot = p_to_slot
+    return command
+
+
+## 절반만 옮긴다.
+static func split(
+    p_from_where: Vector3i, p_from_slot: int,
+    p_to_where: Vector3i, p_to_slot: int
+) -> MoveItemCommand:
+    var command := create(p_from_where, p_from_slot, p_to_where, p_to_slot)
+    command.half = true
     return command
 
 
@@ -47,7 +60,14 @@ func apply(state: WorldState) -> void:
         return
 
     if source == target:
-        source.move(from_slot, to_slot)
+        if half:
+            source.split(from_slot, to_slot)
+        else:
+            source.move(from_slot, to_slot)
+        return
+
+    if half:
+        _carry_half(source, target)
         return
 
     var held := source.take_slot(from_slot)
@@ -58,6 +78,23 @@ func apply(state: WorldState) -> void:
     if int(left[1]) > 0:
         # 다 들어가지 않으면 남은 것은 있던 자리로 돌아간다. 사라지지 않는다.
         source.put_slot(from_slot, int(left[0]), int(left[1]), int(left[2]))
+
+
+## 다른 인벤토리로 절반을 옮긴다.
+func _carry_half(source: Inventory, target: Inventory) -> void:
+    var amount := source.amount_at(from_slot)
+    if amount <= 0:
+        return
+
+    var portion := maxi(amount / 2, 1)
+    var kind := source.kind_at(from_slot)
+    var variant := source.variant_at(from_slot)
+
+    var left := target.put_slot(to_slot, kind, portion, variant)
+    var moved := portion - int(left[1])
+    if moved <= 0:
+        return
+    source.take(kind, moved, variant)
 
 
 func _inventory(state: WorldState, where: Vector3i) -> Inventory:
@@ -71,6 +108,7 @@ func write_payload(data: Dictionary) -> void:
     data["fs"] = from_slot
     data["tw"] = [to_where.x, to_where.y, to_where.z]
     data["ts"] = to_slot
+    data["half"] = half
 
 
 func read_payload(data: Dictionary) -> void:
@@ -80,3 +118,4 @@ func read_payload(data: Dictionary) -> void:
     to_where = Vector3i(int(raw_to[0]), int(raw_to[1]), int(raw_to[2]))
     from_slot = int(data.get("fs", 0))
     to_slot = int(data.get("ts", 0))
+    half = bool(data.get("half", false))

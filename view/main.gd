@@ -162,6 +162,8 @@ func sync_views() -> void:
     _canopy_view.cut_above(eye.z, _world_view.is_cutting())
     _canopy_view.sync()
     _lamp_lights.look_at_point(_character_view.target_position())
+    # 한낮에는 등이 거의 힘을 쓰지 않는다. 밤과 땅속에서만 값을 한다.
+    _lamp_lights.set_darkness(_sky_view.darkness())
     _lamp_lights.sync()
     _character_view.sync(CHARACTER_FOLLOW)
     _wire_view.sync()
@@ -170,6 +172,8 @@ func sync_views() -> void:
     _threat_view.sync()
     _sky_view.apply(simulation.current_tick())
     _day_clock.apply(simulation.current_tick())
+    # 인벤토리가 열려 있으면 같은 아홉 칸이 두 줄로 겹쳐 보인다.
+    _hotbar.visible = not _bag.is_open()
     _hotbar.sync()
     _bag.sync()
     _part_hint.sync()
@@ -182,14 +186,23 @@ func sync_views() -> void:
 
 ## 화면이 열려 있을 때의 입력. 닫는 키와 마우스뿐이다.
 func _poll_bag() -> void:
-    if Input.is_action_just_pressed(InputController.ACTION_BAG):
+    if (Input.is_action_just_pressed(InputController.ACTION_BAG)
+            or Input.is_action_just_pressed(InputController.ACTION_CLOSE)):
         _bag.close()
-    if Input.is_action_just_pressed(InputController.ACTION_PLACE):
-        _bag.close()
+        return
+
+    var viewport := get_viewport()
+    if viewport == null:
+        return
+
+    # 마우스가 얹힌 칸의 이름이 아래에 뜬다.
+    _bag.hover_at(viewport.get_mouse_position())
+
+    # 좌클릭으로 집고 놓는다. 우클릭이면 절반만 간다.
     if Input.is_action_just_pressed(InputController.ACTION_BREAK):
-        var viewport := get_viewport()
-        if viewport != null:
-            _bag.click_at(viewport.get_mouse_position())
+        _bag.click_at(viewport.get_mouse_position())
+    elif Input.is_action_just_pressed(InputController.ACTION_HALF):
+        _bag.click_at(viewport.get_mouse_position(), true)
 
 
 func input_controller() -> InputController:
@@ -308,6 +321,7 @@ func _build_input() -> void:
     _bundle_marks.bind(_input)
     _input.help_toggled.connect(_on_help_toggled)
     _input.crafted.connect(_sound_board.note_crafted)
+    _input.balked.connect(_on_balked)
     _input.save_requested.connect(save_game)
     _input.load_requested.connect(load_game)
     _input.bag_toggled.connect(toggle_bag)
@@ -318,6 +332,7 @@ func _build_input() -> void:
     add_child(_bag)
     _bag.bind(simulation.state.inventory)
     _bag.move_requested.connect(_on_move_requested)
+    _bag.split_requested.connect(_on_split_requested)
     _bag.craft_requested.connect(_on_craft_requested)
 
     _hotbar = Hotbar.new()
@@ -386,8 +401,21 @@ func open_chest(cell: Vector3i) -> void:
     _bag.open_chest(cell, inside)
 
 
+## 하려던 것이 일어나지 않았다. 소리 하나와 흔들림 하나로만 알린다.
+func _on_balked() -> void:
+    _sound_board.note_balked()
+    _hotbar.shake()
+
+
 func _on_move_requested(from_where: int, from_slot: int, to_where: int, to_slot: int) -> void:
     simulation.submit(MoveItemCommand.create(
+        _where_of(from_where), from_slot, _where_of(to_where), to_slot))
+
+
+func _on_split_requested(
+    from_where: int, from_slot: int, to_where: int, to_slot: int
+) -> void:
+    simulation.submit(MoveItemCommand.split(
         _where_of(from_where), from_slot, _where_of(to_where), to_slot))
 
 

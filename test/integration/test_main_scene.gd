@@ -190,14 +190,17 @@ func test_the_hotbar_shows_the_front_of_the_inventory() -> void:
     main.hotbar().sync()
     assert_int(main.hotbar().slot_count()).is_equal(Inventory.HOTBAR_SLOTS)
 
+    # 칸에는 그림이 들고, 이름은 고른 것 하나만 줄 위에 뜬다.
     var inventory := main.simulation.state.inventory
     for slot in main.hotbar().slot_count():
         var kind := inventory.kind_at(slot)
         if kind == BlockType.EMPTY:
             continue
-        var line := main.hotbar().slot_text(slot)
-        assert_str(line).contains(PartWords.name_of(kind))
-        assert_str(line).contains(str(inventory.amount_at(slot)))
+        assert_int(main.hotbar().slot_icon(slot)).is_equal(kind)
+        assert_bool(main.hotbar().slot_icon_fits(slot)).is_true()
+        var held := inventory.amount_at(slot)
+        if held > 1:
+            assert_str(main.hotbar().slot_text(slot)).contains(str(held))
 
 
 func test_only_the_chosen_slot_is_marked() -> void:

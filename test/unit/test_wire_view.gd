@@ -156,3 +156,61 @@ func test_a_flowing_wire_is_brighter_than_a_still_one() -> void:
     for link: Array in circuit.links():
         var expected_live := int(link[2]) == BranchPart.PORT_TRUE
         assert_bool(view.is_live(link)).is_equal(expected_live)
+
+
+## --- 방향과 흐름 ---
+##
+## 스펙 §4.1: "배선은 방향이 있다. 출발에서 도착으로만 흐른다."
+## 굵기가 일정한 막대로는 어느 쪽이 출발인지 알 수 없었다.
+
+func test_a_wire_thins_towards_where_it_goes() -> void:
+    assert_float(WireView.TAIL).is_less(1.0)
+    assert_float(WireView.TAIL).is_greater(0.0)
+
+
+func test_a_signal_travels_from_the_start_to_the_end() -> void:
+    var link: Array = [A, B, 0]
+    var start := WireView.point_along(link, 0.0)
+    var middle := WireView.point_along(link, 0.5)
+    var finish := WireView.point_along(link, 1.0)
+
+    assert_bool(start.is_equal_approx(SimViewCoords.cell_to_world(A))).is_true()
+    assert_bool(finish.is_equal_approx(SimViewCoords.cell_to_world(B))).is_true()
+    # 가운데는 부품 지붕 위를 지난다.
+    assert_float(middle.y).is_greater(start.y)
+
+
+func test_the_signal_walks_the_whole_wire() -> void:
+    var link: Array = [A, B, 0]
+    var last := WireView.point_along(link, 0.0)
+    var walked := 0.0
+    for i in range(1, 21):
+        var here := WireView.point_along(link, i / 20.0)
+        walked += here.distance_to(last)
+        last = here
+    # 올라가고 건너가고 내려온 길이만큼은 지나야 한다.
+    assert_float(walked).is_greater(SimViewCoords.cell_to_world(A).distance_to(
+        SimViewCoords.cell_to_world(B)))
+
+
+func test_a_flowing_wire_always_shows_its_signal() -> void:
+    # 이미 돌고 있는 회로를 나중에 와서 본 사람에게도 흐름이 보여야 한다.
+    # 켜지는 순간에 한 번만 태워 보내면 그 사람 화면에서는 아무 일도 없다.
+    var circuit := _branch_circuit()
+    var view := _view(circuit)
+    var branch := circuit.part_at(A) as BranchPart
+    branch.compute(WorldState.new(SimRng.new(1)), [SignalValue.of_bool(true)])
+    branch.commit()
+
+    view.sync()
+    assert_int(view.spark_count()).is_equal(1)
+    view.sync()
+    assert_int(view.spark_count()).is_equal(1)
+
+
+func test_a_still_wire_shows_no_signal() -> void:
+    var circuit := _circuit()
+    circuit.link(A, B)
+    var view := _view(circuit)
+    view.sync()
+    assert_int(view.spark_count()).is_equal(0)

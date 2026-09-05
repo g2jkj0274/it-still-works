@@ -32,10 +32,11 @@ const BOX_BUNDLE := DETECTOR
 ##   등 블록이 늘어 블록 종류가 둘 늘어남 (스펙 §5 의 자동 조명)
 ##   인벤토리가 칸으로 나뉘고 칸마다 쌓이는 한계가 생겨 상태의 짜임이 바뀜
 ##   굤짝이 늘어 블록 종류가 하나 늘고 그 안에 든 것이 상태에 추가됨
+##   광맥이 드러난 동굴 벽에 더 잘 들어 격자가 바뀜 (땅속에 들어갈 까닭)
 ##
 ## 이 값이 깨졌다면 시뮬레이션 동작이 바뀐 것이다. 값을 고쳐 통과시키지 말고
 ## 무엇이 바뀌었는지 먼저 밝힌다.
-const GOLDEN_HASH := "0e2fe85b63f83c48c67787bce5c449d0a5ccc2fe2603ec759dd638221c03ddba"
+const GOLDEN_HASH := "7d03a10add33abac4d8da8d90fdcb0b5cd0ae315f9fbf2541a109121e377a7e1"
 
 
 func _cells(values: Array) -> Array[Vector3i]:

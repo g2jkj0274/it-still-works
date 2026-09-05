@@ -5,6 +5,9 @@ extends GdUnitTestSuite
 ## **핫바는 인벤토리의 앞 아홉 칸이다.** 종류마다 칸이 고정되어 있던 것이
 ## 아니다. 무엇을 앞줄에 둘지 고르는 것이 곧 무엇을 들고 다닐지 고르는 일이다.
 ##
+## **칸에는 그림이 든다.** 아홉 칸에 이름을 적어 두면 훑을 수 없고 매번
+## 읽어야 한다. 고른 것의 이름은 [PartHint] 가 줄 바로 위에서 읽어 준다.
+##
 ## 화면에 프로그래밍 용어를 내보내지 않는다. 재료 이름과 개수만 보인다.
 
 
@@ -36,13 +39,53 @@ func test_a_slot_shows_what_is_in_it() -> void:
     sim.state.inventory.add(BlockType.ORE, 7)
     var hotbar := _hotbar(sim)
 
-    assert_str(hotbar.slot_text(0)).contains(Hotbar.name_of(BlockType.ORE))
+    assert_int(hotbar.slot_icon(0)).is_equal(BlockType.ORE)
     assert_str(hotbar.slot_text(0)).contains("7")
 
 
-func test_an_empty_slot_shows_no_count() -> void:
+func test_an_empty_slot_shows_nothing_at_all() -> void:
     var hotbar := _hotbar(_sim())
-    assert_str(hotbar.slot_text(3)).not_contains("0")
+    assert_str(hotbar.slot_text(3)).is_empty()
+    assert_int(hotbar.slot_icon(3)).is_equal(BlockType.EMPTY)
+
+
+func test_a_single_thing_is_not_counted() -> void:
+    # 하나뿐인 것에 "1" 이 붙으면 눈이 읽을 것만 늘어난다.
+    var sim := _sim()
+    sim.state.inventory.add(BlockType.WOOD, 1)
+    var hotbar := _hotbar(sim)
+    assert_str(hotbar.slot_text(0)).is_empty()
+    assert_int(hotbar.slot_icon(0)).is_equal(BlockType.WOOD)
+
+
+func test_the_name_of_what_is_held_is_read_out_above_the_row() -> void:
+    # 줄 자체는 이름을 적지 않는다. 바로 위 한 줄이 이름과 쓰임을 함께 읽는다.
+    var sim := _sim()
+    sim.state.inventory.add(BlockType.ORE, 2)
+    var controller := _controller(sim)
+    controller.select_slot(0)
+    assert_str(PartHint.line_for(controller)).contains(
+        Hotbar.name_of(BlockType.ORE))
+
+
+func test_the_name_follows_the_chosen_slot() -> void:
+    var sim := _sim()
+    sim.state.inventory.put_slot(0, BlockType.WOOD, 3)
+    sim.state.inventory.put_slot(1, BlockType.ORE, 3)
+    var controller := _controller(sim)
+
+    controller.select_slot(1)
+    assert_str(PartHint.line_for(controller)).contains(Hotbar.name_of(BlockType.ORE))
+
+
+func test_every_icon_stays_inside_its_slot() -> void:
+    var sim := _sim()
+    for slot in Inventory.HOTBAR_SLOTS:
+        sim.state.inventory.put_slot(slot, InputController.PLACEABLE[
+            slot % InputController.PLACEABLE.size()], 1)
+    var hotbar := _hotbar(sim)
+    for slot in Inventory.HOTBAR_SLOTS:
+        assert_bool(hotbar.slot_icon_fits(slot)).is_true()
 
 
 func test_counts_follow_the_inventory() -> void:
@@ -77,8 +120,7 @@ func test_a_bundle_slot_says_which_bundle() -> void:
     sim.state.inventory.add_bundle(2, 1)
     var hotbar := _hotbar(sim)
 
-    assert_str(hotbar.slot_text(0)).contains(Hotbar.name_of(BlockType.BUNDLE))
-    assert_str(hotbar.slot_text(0)).contains(PartWords.bundle_name(2))
+    assert_int(hotbar.slot_icon(0)).is_equal(BlockType.BUNDLE)
 
 
 func test_every_thing_that_can_be_held_has_a_plain_name() -> void:

@@ -167,7 +167,7 @@ static func line_for(controller: InputController) -> String:
 
     var block_type := controller.selected_block()
     if block_type == BlockType.EMPTY:
-        return "번 손 — 손에 잡힐 칸을 1~9 로 고른다   [만들기 X/C: %s]" % _craft_note(controller)
+        return "빈 손 — 손에 잡힐 칸을 1~9 로 고른다   [만들기 X/C: %s]" % _craft_note(controller)
 
     var line := "%s — %s" % [PartWords.name_of(block_type), PartWords.description_of(block_type)]
     if controller.has_part_setting():

@@ -221,3 +221,52 @@ func test_island_is_neither_empty_nor_full() -> void:
                     solid += 1
     assert_int(solid).is_greater(1000)
     assert_int(solid).is_less(VoxelGrid.CELL_COUNT)
+
+
+func test_ore_shows_on_the_walls_of_the_hollows() -> void:
+    # **땅속에 들어갈 까닭이 있어야 한다.** 광맥이 바위 속에만 들면 굴을 파도
+    # 회색 벽뿐이고, 어디를 파야 할지 몰라 아무 데나 파게 된다. 드러난 벽에
+    # 광석이 박혀 있어야 눈이 목적지를 잡는다.
+    var grid := _built()
+    var bare := 0
+    var bare_ore := 0
+
+    for z in range(VoxelGrid.BEDROCK_Z + 1, IslandBuilder.VEIN_TOP_Z + 1):
+        for y in VoxelGrid.SIZE_Y:
+            for x in VoxelGrid.SIZE_X:
+                var cell := Vector3i(x, y, z)
+                var block := grid.get_block(cell)
+                if block != BlockType.ROCK and block != BlockType.ORE:
+                    continue
+                if not _is_bare(grid, cell):
+                    continue
+                bare += 1
+                if block == BlockType.ORE:
+                    bare_ore += 1
+
+    assert_int(bare).is_greater(100)
+    # 드러난 벽 스무 칸에 하나쯤은 광석이어야 눈에 걸린다.
+    assert_int(bare_ore * 20).is_greater(bare)
+
+
+func test_ore_is_not_only_on_the_walls() -> void:
+    # 벽에만 나면 캐고 나서 더 파고 들어갈 까닭이 없다.
+    var grid := _built()
+    var buried := 0
+    for z in range(VoxelGrid.BEDROCK_Z + 1, IslandBuilder.VEIN_TOP_Z + 1):
+        for y in VoxelGrid.SIZE_Y:
+            for x in VoxelGrid.SIZE_X:
+                var cell := Vector3i(x, y, z)
+                if grid.get_block(cell) == BlockType.ORE and not _is_bare(grid, cell):
+                    buried += 1
+    assert_int(buried).is_greater(50)
+
+
+func _is_bare(grid: VoxelGrid, cell: Vector3i) -> bool:
+    for step: Vector3i in [
+        Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0),
+        Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1),
+    ]:
+        if grid.get_block(cell + step) == BlockType.EMPTY:
+            return true
+    return false

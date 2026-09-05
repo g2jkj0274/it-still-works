@@ -142,3 +142,42 @@ func test_the_view_never_writes_to_the_grid() -> void:
     for i in 3:
         lights.sync()
     assert_str(state.grid.digest()).is_equal(before)
+
+
+## --- 빛의 세기 ---
+##
+## **한낮에도 같은 세기로 때리면 바닥이 하얗게 날아간다.** 켜진 등이 아니라
+## 잘못 그려진 흰 상자로 보였다. 등이 값을 하는 곳은 밤과 땅속이다.
+
+func test_a_lamp_is_dimmer_by_day_than_by_night() -> void:
+    var state := _world()
+    var lights := _lights(state.grid)
+    var high := Vector3i(AT.x, AT.y, VoxelGrid.SIZE_Z - 1)
+
+    lights.set_darkness(0.0)
+    var by_day := lights.strength_at(high)
+    lights.set_darkness(1.0)
+    var by_night := lights.strength_at(high)
+
+    assert_float(by_day).is_less(by_night)
+    assert_float(by_day).is_greater(0.0)
+
+
+func test_a_buried_lamp_burns_full_even_at_noon() -> void:
+    # 땅속은 하늘이 밝아도 캄캄하다. 파고 내려가는 보람이 여기 있다.
+    var state := _world()
+    state.grid.set_block(Vector3i(AT.x, AT.y, VoxelGrid.SIZE_Z - 1), BlockType.ROCK)
+    var lights := _lights(state.grid)
+    lights.set_darkness(0.0)
+
+    var deep := Vector3i(AT.x, AT.y, VoxelGrid.BEDROCK_Z + 1)
+    assert_float(lights.strength_at(deep)).is_equal_approx(LampLights.STRENGTH, 0.01)
+
+
+func test_no_lamp_ever_burns_brighter_than_full() -> void:
+    var state := _world()
+    var lights := _lights(state.grid)
+    lights.set_darkness(1.0)
+    for z in [VoxelGrid.BEDROCK_Z + 1, VoxelGrid.SIZE_Z - 1]:
+        assert_float(lights.strength_at(Vector3i(AT.x, AT.y, z))).is_less_equal(
+            LampLights.STRENGTH + 0.001)
