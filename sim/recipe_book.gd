@@ -12,27 +12,46 @@ extends RefCounted
 ## **묶음은 여기 없다.** 묶음은 재료로 만드는 것이 아니라 이미 지어 놓은 회로를
 ## 압축해 얻는다. 스펙 §4.3.
 ##
-## 재료의 뜻은 스펙 §3.6 을 따른다. 목재는 기본 건축과 문, 광석은 부품 제작,
-## 작물은 식량이다. 그래서 **부품에는 반드시 광석이 든다.** 광석 자원지는
-## 기지에서 떨어져 있고, 그 왕복이 자동 운반 장치를 만들 이유가 된다.
+## 재료의 뜻은 스펙 §3.6 을 따른다. 나무는 판자가 되어 거의 모든 것에 들고,
+## 광석은 부품 제작, 작물은 식량이다. 그래서 **부품에는 반드시 광석이 든다.**
+## 광석 자원지는 기지에서 떨어져 있고, 그 왕복이 자동 운반 장치를 만들 이유가 된다.
 
 ## 만드는 법 하나. [만드는 것, 한 번에 나오는 개수, [[재료, 몇 개], ...]].
+##
+## 차례가 곧 만들기 화면에서 도는 차례다. **쉬운 것부터, 첫날에 쓰는 것부터.**
 const RECIPES: Array = [
-    [BlockType.DOOR_CLOSED, 1, [[BlockType.WOOD, 4]]],
-    [BlockType.FIELD, 1, [[BlockType.GROUND, 3], [BlockType.WOOD, 1]]],
-    [BlockType.DETECTOR, 1, [[BlockType.ORE, 2], [BlockType.WOOD, 1]]],
-    [BlockType.ACTUATOR, 1, [[BlockType.ORE, 1], [BlockType.WOOD, 2]]],
-    [BlockType.REPEATER, 1, [[BlockType.ORE, 3], [BlockType.WOOD, 1]]],
-    [BlockType.BOX, 1, [[BlockType.WOOD, 3], [BlockType.ORE, 1]]],
-    [BlockType.BRANCH, 1, [[BlockType.ORE, 2], [BlockType.WOOD, 2]]],
+    # 나무 하나가 판자 넷이 된다. 이 환율이 첫날 예산을 세운다.
+    # 판자는 아래 열다섯 가운데 열둘에 든다 — 사실상 모든 것의 뿌리다.
+    [BlockType.PLANK, 4, [[BlockType.WOOD, 1]]],
+
+    # 도구. 맞는 곡괭이가 없으면 돌도 광석도 부숴지지 않는다(ToolRules).
+    [BlockType.WOOD_PICK, 1, [[BlockType.PLANK, 3]]],
+    [BlockType.STONE_PICK, 1, [[BlockType.PLANK, 2], [BlockType.ROCK, 3]]],
+    [BlockType.STONE_AXE, 1, [[BlockType.PLANK, 2], [BlockType.ROCK, 3]]],
+    [BlockType.STONE_SHOVEL, 1, [[BlockType.PLANK, 2], [BlockType.ROCK, 1]]],
+
+    # 관솔불. 첫 굴의 빛이다. 등과 달리 광석이 들지 않아 나무 곡괭이만으로 닿는다.
+    [BlockType.TORCH, 4, [[BlockType.PLANK, 1], [BlockType.EMBER, 1]]],
+
+    [BlockType.DOOR_CLOSED, 1, [[BlockType.PLANK, 4]]],
+    [BlockType.FIELD, 1, [[BlockType.GROUND, 3], [BlockType.PLANK, 1]]],
+    [BlockType.DETECTOR, 1, [[BlockType.ORE, 2], [BlockType.PLANK, 1]]],
+    [BlockType.ACTUATOR, 1, [[BlockType.ORE, 1], [BlockType.PLANK, 2]]],
+    [BlockType.REPEATER, 1, [[BlockType.ORE, 3], [BlockType.PLANK, 1]]],
+    [BlockType.BOX, 1, [[BlockType.PLANK, 3], [BlockType.ORE, 1]]],
+    [BlockType.BRANCH, 1, [[BlockType.ORE, 2], [BlockType.PLANK, 2]]],
     # 등은 여럿 필요하다. 땅속을 밝히려면 몇 칸마다 하나씩 놓는다.
-    [BlockType.LAMP_DARK, 2, [[BlockType.WOOD, 1], [BlockType.ORE, 1]]],
+    [BlockType.LAMP_DARK, 2, [[BlockType.PLANK, 1], [BlockType.ORE, 1]]],
     # 궤짝. 손이 모자란 것이 짜증이 아니라 살림이 되려면 넣어 둘 곳이 있어야 한다.
-    [BlockType.CHEST, 1, [[BlockType.WOOD, 6]]],
+    [BlockType.CHEST, 1, [[BlockType.PLANK, 6]]],
 ]
 
 ## 스펙이 정한 제작법 수의 상한.
-const MAX_RECIPES := 10
+##
+## 열 개였다. 아홉을 쓰고 있었고 그 아홉이 두 단짜리 평면이라 파낸 돌에 쓸
+## 곳이 없고 깊이 내려갈 이유가 없었다. 스펙 §6 이 서른다섯으로 다시 잡았고
+## 여기 열다섯은 그 가운데 0~2단이다.
+const MAX_RECIPES := 35
 
 
 static func count() -> int:

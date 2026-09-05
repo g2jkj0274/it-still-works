@@ -53,11 +53,48 @@ func test_place_refuses_out_of_bounds() -> void:
     assert_str(state.grid.digest()).is_equal(before)
 
 
+## 도구를 손에 쥐여 준다. 실려 온 것은 "무엇을 들었다고 하는가"일 뿐이고
+## 명령은 실제로 손에 있는지를 함께 본다.
+func _holding(state: WorldState, tool: int) -> WorldState:
+    state.inventory.add(tool, 1)
+    return state
+
+
 func test_break_clears_a_solid_cell() -> void:
+    var state := _holding(_state(), BlockType.STONE_PICK)
+    state.grid.set_block(Vector3i(5, 4, 1), BlockType.ORE)
+    BreakBlockCommand.create(Vector3i(5, 4, 1), BlockType.STONE_PICK).apply(state)
+    assert_int(state.grid.get_block(Vector3i(5, 4, 1))).is_equal(BlockType.EMPTY)
+
+
+func test_the_wrong_tool_leaves_the_cell_alone() -> void:
+    # 맞는 도구가 없으면 부숴지지도 않는다(스펙 §3.6). 부숴는 지는데 아무것도
+    # 안 나오는 쪽은 "고장 났나"로 읽힌다.
+    var state := _holding(_state(), BlockType.WOOD_PICK)
+    state.grid.set_block(Vector3i(5, 4, 1), BlockType.ORE)
+    BreakBlockCommand.create(Vector3i(5, 4, 1), BlockType.WOOD_PICK).apply(state)
+    assert_int(state.grid.get_block(Vector3i(5, 4, 1))).is_equal(BlockType.ORE)
+    assert_int(state.inventory.count_of(BlockType.ORE)).is_equal(0)
+
+
+func test_a_bare_hand_still_takes_the_soft_things() -> void:
+    # 나무 · 흙 · 모래 · 작물은 맨손으로 얻는다. 그러지 않으면 첫 곡괭이를
+    # 만들 나무조차 없어 게임이 시작되지 않는다.
+    for soft in [BlockType.WOOD, BlockType.GROUND, BlockType.SAND, BlockType.CROP]:
+        var state := _state()
+        state.grid.set_block(Vector3i(5, 4, 1), soft)
+        BreakBlockCommand.create(Vector3i(5, 4, 1)).apply(state)
+        assert_int(state.grid.get_block(Vector3i(5, 4, 1))).override_failure_message(
+            "%s 를 맨손으로 얻지 못한다" % BlockType.name_of(soft)).is_equal(BlockType.EMPTY)
+
+
+func test_a_tool_you_do_not_hold_does_nothing() -> void:
+    # 실려 온 것은 "무엇을 들었다고 하는가"일 뿐이다. 놓기가 재료를
+    # 인벤토리에서 빼는 것과 같은 자리다 — 화면의 말을 그대로 믿지 않는다.
     var state := _state()
     state.grid.set_block(Vector3i(5, 4, 1), BlockType.ORE)
-    BreakBlockCommand.create(Vector3i(5, 4, 1)).apply(state)
-    assert_int(state.grid.get_block(Vector3i(5, 4, 1))).is_equal(BlockType.EMPTY)
+    BreakBlockCommand.create(Vector3i(5, 4, 1), BlockType.STONE_PICK).apply(state)
+    assert_int(state.grid.get_block(Vector3i(5, 4, 1))).is_equal(BlockType.ORE)
 
 
 func test_break_on_empty_cell_changes_nothing() -> void:
@@ -144,9 +181,9 @@ func test_a_refused_placement_keeps_the_material() -> void:
 
 
 func test_breaking_yields_the_material() -> void:
-    var state := _state()
+    var state := _holding(_state(), BlockType.STONE_PICK)
     state.grid.set_block(Vector3i(5, 4, 1), BlockType.ORE)
-    BreakBlockCommand.create(Vector3i(5, 4, 1)).apply(state)
+    BreakBlockCommand.create(Vector3i(5, 4, 1), BlockType.STONE_PICK).apply(state)
     assert_int(state.inventory.count_of(BlockType.ORE)).is_equal(1)
 
 

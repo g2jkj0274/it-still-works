@@ -69,6 +69,10 @@ const PLACEABLE: Array[int] = [
     BlockType.GROUND,
     BlockType.ORE,
     BlockType.WOOD,
+    BlockType.SAND,
+    BlockType.EMBER,
+    BlockType.PLANK,
+    BlockType.TORCH,
     BlockType.DOOR_CLOSED,
     BlockType.DETECTOR,
     BlockType.ACTUATOR,
@@ -429,7 +433,9 @@ func submit_place() -> void:
 func submit_break() -> void:
     if _simulation == null:
         return
-    _simulation.submit(BreakBlockCommand.create(break_cell()))
+    # 손에 든 것을 그대로 실어 보낸다. 그것으로 무엇을 캘 수 있는지는
+    # 시뮬레이션이 정한다([ToolRules]). 화면이 다시 판단하지 않는다.
+    _simulation.submit(BreakBlockCommand.create(break_cell(), selected_block()))
     _watch_this_attempt()
 
 

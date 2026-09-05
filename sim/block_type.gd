@@ -61,12 +61,40 @@ const LAMP_LIT := 16
 ## 있어야 손이 모자란 것이 짜증이 아니라 살림이 된다.
 const CHEST := 17
 
-const COUNT := 18
+## 모래. 물가에 깔린다. 유리의 재료다.
+const SAND := 18
+
+## 불씨돌. 굽는 데 드는 것이자 관솔불의 재료다. 흙 아래 얕은 곳에 든다.
+const EMBER := 19
+
+## 판자. 나무를 켠 것. **제작법 대부분이 이것을 거친다.**
+const PLANK := 20
+
+## 관솔불. 놓으면 작게 밝힌다. 작동기가 여닫지 못해 늘 켜져 있다.
+##
+## 등과 갈라 둔 까닭은 **첫 굴에 빛이 있어야 하기 때문**이다. 등은 광석이
+## 들고 광석은 돌 곡괭이가 있어야 캐는데, 파고 내려가기 시작하는 것은
+## 나무 곡괭이일 때다.
+const TORCH := 21
+
+## 도구. 손에 들면 무엇을 캘 수 있는지가 달라진다.
+## 격자에 놓이지 않는다 — 물건이지 블록이 아니다.
+const WOOD_PICK := 22
+const STONE_PICK := 23
+const STONE_AXE := 24
+const STONE_SHOVEL := 25
+
+const COUNT := 26
+
+## 도구는 여기부터다. 이 아래는 전부 격자에 놓이는 블록이다.
+const FIRST_TOOL := WOOD_PICK
 
 const _NAMES: PackedStringArray = [
     "empty", "ground", "ore", "wood",
     "door_closed", "door_open", "detector", "actuator", "repeater", "box", "branch", "field", "crop",
     "bundle", "rock", "lamp_dark", "lamp_lit", "chest",
+    "sand", "ember", "plank", "torch",
+    "wood_pick", "stone_pick", "stone_axe", "stone_shovel",
 ]
 
 
@@ -74,9 +102,37 @@ static func is_valid(type: int) -> bool:
     return type >= 0 and type < COUNT
 
 
+## 손에만 드는 것인가. 격자에 놓이지 않는다.
+##
+## 이름이 `is_tool` 이 아닌 까닭은 Godot 의 `Script.is_tool()` 과 부딪히기
+## 때문이다. `BlockType.is_tool(...)` 은 조용히 그쪽으로 붙어 인자 수가 틀렸다는
+## 엉뚱한 오류만 낸다.
+static func is_handheld(type: int) -> bool:
+    return type >= FIRST_TOOL and type < COUNT
+
+
+## 손에 들 수 있는가. 빈 칸만 들 수 없다.
+##
+## **통과 여부와는 다른 물음이다.** 관솔불은 지나갈 수 있지만 손에 들리고,
+## 도구는 격자에 놓이지 않지만 손에 들린다. 인벤토리가 [method is_solid] 를
+## 쓰고 있었기 때문에 관솔불이 손에 들어오지 않았다.
+static func is_carryable(type: int) -> bool:
+    return is_valid(type) and type != EMPTY
+
+
+## 격자 한 칸에 놓일 수 있는가. 도구는 놓이지 않는다.
+static func is_placeable(type: int) -> bool:
+    return is_solid(type) and not is_handheld(type)
+
+
 ## 통과할 수 없는가. 열린 문은 자리에 있어도 지나갈 수 있다.
+##
+## 관솔불은 지나갈 수 있다. 굴을 밝히려고 놓은 것이 길을 막으면
+## 밝힌 굴을 되돌아 나올 수 없다.
 static func is_solid(type: int) -> bool:
-    return is_valid(type) and type != EMPTY and type != DOOR_OPEN
+    if type == EMPTY or type == DOOR_OPEN or type == TORCH:
+        return false
+    return is_valid(type)
 
 
 ## 부술 것이 있는가. 열린 문도 부술 수 있다.
@@ -91,6 +147,11 @@ static func is_door(type: int) -> bool:
 ## 등인가. 작동기가 켜고 끈다.
 static func is_lamp(type: int) -> bool:
     return type == LAMP_DARK or type == LAMP_LIT
+
+
+## 스스로 빛나는가. 관솔불은 회로 없이 늘 켜져 있다.
+static func is_light(type: int) -> bool:
+    return type == LAMP_LIT or type == TORCH
 
 
 static func lit_lamp() -> int:

@@ -15,9 +15,14 @@ func _controller(sim: Simulation) -> InputController:
 func _sim() -> Simulation:
     var sim := Simulation.new(1)
     IslandBuilder.populate(sim.state)
-    for type in InputController.PLACEABLE:
-        if BlockType.is_uniquely_made(type):
-            continue
+    # **손에 잡히는 줄은 아홉 칸뿐이다.** 놓을 수 있는 것이 그보다 많아졌으므로
+    # (PLACEABLE 17종) 앞에서부터 담으면 뒤엣것이 줄 밖으로 밀리고,
+    # select_block 은 줄 안만 뒤진다. 이 스위트가 고르는 것을 앞에 둔다.
+    for type in [
+        BlockType.DETECTOR, BlockType.ACTUATOR, BlockType.REPEATER,
+        BlockType.BOX, BlockType.BRANCH, BlockType.DOOR_CLOSED,
+        BlockType.GROUND, BlockType.WOOD, BlockType.ORE,
+    ]:
         sim.state.inventory.add(type, 4)
     return sim
 

@@ -114,6 +114,15 @@ func test_the_variation_stays_subtle() -> void:
 const PAIRED_STATES: Array[int] = [BlockType.DOOR_OPEN, BlockType.LAMP_LIT]
 
 
+## 이 물음에서 뺄 것.
+##
+## **도구는 세상에 놓이지 않는다.** 굴 벽에 나란히 박히는 일이 없으므로
+## 블록끼리 갈려야 한다는 규칙이 걸리지 않는다. 손에 든 그림에서만 서로
+## 갈리면 되고, 그것은 아래 test_tools_are_told_apart_in_hand 가 본다.
+func _skipped(type: int) -> bool:
+    return type == BlockType.EMPTY or PAIRED_STATES.has(type) or BlockType.is_handheld(type)
+
+
 func test_different_blocks_are_told_apart() -> void:
     # 색이 붙어 있어도 된다. 다만 그때는 **생김새가 갈려야 한다.**
     #
@@ -122,7 +131,7 @@ func test_different_blocks_are_told_apart() -> void:
     # 처음부터 키와 바닥 넓이로도 가르기로 했고, 그 규칙을 여기서도 쓴다.
     var seen: Array[int] = []
     for type in BlockType.COUNT:
-        if type == BlockType.EMPTY or PAIRED_STATES.has(type):
+        if _skipped(type):
             continue
         for other in seen:
             var apart := _distance(Palette.of_block(type), Palette.of_block(other)) > 0.12
@@ -139,13 +148,32 @@ func test_blocks_that_share_a_colour_are_a_short_list() -> void:
     var close := 0
     var seen: Array[int] = []
     for type in BlockType.COUNT:
-        if type == BlockType.EMPTY or PAIRED_STATES.has(type):
+        if _skipped(type):
             continue
         for other in seen:
             if _distance(Palette.of_block(type), Palette.of_block(other)) <= 0.12:
                 close += 1
         seen.append(type)
     assert_int(close).is_less_equal(2)
+
+
+func test_tools_are_told_apart_in_hand() -> void:
+    # 도구는 세상에 놓이지 않고 손에 든 그림으로만 보인다.
+    # 거기서는 생김새가 먼저 가른다 — 곡괭이의 가로날, 도끼의 치우친 날,
+    # 삽의 아래로 넓은 날. 색은 등급을 말한다.
+    var tools: Array[int] = []
+    for type in BlockType.COUNT:
+        if BlockType.is_handheld(type):
+            tools.append(type)
+    assert_int(tools.size()).is_greater(1)
+
+    for i in tools.size():
+        for j in range(i + 1, tools.size()):
+            var apart := _distance(Palette.of_block(tools[i]), Palette.of_block(tools[j])) > 0.12
+            var shaped := _shape_of(tools[i]) != _shape_of(tools[j])
+            assert_bool(apart or shaped).override_failure_message(
+                "%s 와 %s 가 손에서 갈리지 않는다" % [
+                    BlockType.name_of(tools[i]), BlockType.name_of(tools[j])]).is_true()
 
 
 func _shape_of(block_type: int) -> PackedVector3Array:

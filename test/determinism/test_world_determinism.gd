@@ -45,7 +45,7 @@ const NORTH_EAST := Vector3i(1, -1, 0)
 ##
 ## 이 값이 깨졌다면 시뮬레이션 동작이 바뀐 것이다. 값을 고쳐 통과시키지 말고
 ## 무엇이 바뀌었는지 먼저 밝힌다.
-const GOLDEN_HASH := "041a89147c6bb0eeb16eaf53ee81b99499266aa1cced2b928a89cb39388e1431"
+const GOLDEN_HASH := "2d4b48bf3f5a1f8c906e7038d6e9dd4c610e0a652bcafe217dd085d76abc7d54"
 
 ## 같은 실행이 끝났을 때 캐릭터가 서 있는 칸.
 ## 해시보다 읽기 쉬워서 이동 규칙이 어긋났을 때 원인을 빨리 좁혀준다.
@@ -59,27 +59,30 @@ const GOLDEN_POSITION := Vector3i(32, 30, 11)
 ##
 ## 재료가 있어야 놓을 수 있으므로 먼저 부수고 그 재료로 놓는다.
 ##
+## 부술 때 돌 곡괭이를 든다. 맞는 도구가 없으면 부숴지지 않게 되었으므로
+## (스펙 §3.6, [ToolRules]) 맨손으로는 시나리오가 아무 데도 가지 않는다.
+##
 ## 끝에서 대각선 걸음을 몇 번 넣는다. 대각선은 축별 속도가 달라 곧은 걸음과
 ## 걸리는 틱이 다르다. 그 차이까지 못박아 둔다.
 func _scenario() -> Array:
     return [
-        [0, BreakBlockCommand.create(Vector3i(32, 31, 1))],
-        [6, BreakBlockCommand.create(Vector3i(33, 32, 1))],
-        [12, BreakBlockCommand.create(Vector3i(31, 32, 1))],
+        [0, BreakBlockCommand.create(Vector3i(32, 31, 1), BlockType.STONE_PICK)],
+        [6, BreakBlockCommand.create(Vector3i(33, 32, 1), BlockType.STONE_PICK)],
+        [12, BreakBlockCommand.create(Vector3i(31, 32, 1), BlockType.STONE_PICK)],
         [18, PlaceBlockCommand.create(Vector3i(32, 31, 1), BlockType.GROUND)],
         [24, MoveCharacterCommand.create(NORTH)],
         [30, PlaceBlockCommand.create(Vector3i(32, 30, 2), BlockType.GROUND)],
         [36, MoveCharacterCommand.create(NORTH)],
-        [42, BreakBlockCommand.create(Vector3i(32, 30, 2))],
+        [42, BreakBlockCommand.create(Vector3i(32, 30, 2), BlockType.STONE_PICK)],
         [48, PlaceBlockCommand.create(Vector3i(33, 30, 2), BlockType.GROUND)],
         [54, MoveCharacterCommand.create(EAST)],
         [60, RollValueCommand.create(&"night_roll", 0, 99)],
-        [66, BreakBlockCommand.create(Vector3i(33, 30, 2))],
+        [66, BreakBlockCommand.create(Vector3i(33, 30, 2), BlockType.STONE_PICK)],
         [72, MoveCharacterCommand.create(SOUTH)],
         [78, MoveCharacterCommand.create(WEST)],
         [84, PlaceBlockCommand.create(Vector3i(32, 32, 2), BlockType.GROUND)],
         [90, MoveCharacterCommand.create(SOUTH)],
-        [96, BreakBlockCommand.create(Vector3i(32, 32, 2))],
+        [96, BreakBlockCommand.create(Vector3i(32, 32, 2), BlockType.STONE_PICK)],
         [104, MoveCharacterCommand.create(NORTH_WEST)],
         [112, MoveCharacterCommand.create(SOUTH_EAST)],
         [120, MoveCharacterCommand.create(NORTH_EAST)],
@@ -93,7 +96,7 @@ func _scenario() -> Array:
 ## 어느 속도로도 제때 도착하기 때문이다. 걸음 도중을 함께 못박아야 타이밍이
 ## 지켜진다.
 const MID_TICK := 104 + 2
-const GOLDEN_MID_HASH := "a2c67b411b17a329bd8cc09add0ff2aa55c71f1e546b13ac94a547f314db35ee"
+const GOLDEN_MID_HASH := "34e902f62a48baafe85d4347306dc616ea34daee3b25ce8eed8d1375a2322d29"
 
 
 func _run(seed_value: int = SEED, scenario: Array = []) -> Simulation:
@@ -103,6 +106,10 @@ func _run(seed_value: int = SEED, scenario: Array = []) -> Simulation:
 func _run_until(ticks: int, seed_value: int = SEED, scenario: Array = []) -> Simulation:
     var sim := Simulation.new(seed_value)
     IslandBuilder.populate(sim.state)
+    # 시나리오가 돌을 캐므로 곡괭이를 쥐여 준다. **판을 세우는 일이지 명령이
+    # 아니다** — IslandBuilder.populate 와 같은 자리다. 명령은 손에 있는
+    # 도구만 쓸 수 있으므로 이것이 없으면 시나리오가 아무 데도 가지 않는다.
+    sim.state.inventory.add(BlockType.STONE_PICK, 1)
     for entry: Array in (scenario if not scenario.is_empty() else _scenario()):
         sim.submit_at(entry[1] as SimCommand, int(entry[0]))
     sim.advance(ticks)
@@ -157,6 +164,7 @@ func test_hash_is_independent_of_step_granularity() -> void:
 
     var fine := Simulation.new(SEED)
     IslandBuilder.populate(fine.state)
+    fine.state.inventory.add(BlockType.STONE_PICK, 1)
     for entry: Array in _scenario():
         fine.submit_at(entry[1] as SimCommand, int(entry[0]))
     for i in TOTAL_TICKS:

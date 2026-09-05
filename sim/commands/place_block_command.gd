@@ -24,7 +24,8 @@ func get_type() -> StringName:
 
 
 func apply(state: WorldState) -> void:
-    if not BlockType.is_solid(block_type):
+    # 도구는 손에만 든다. 격자에 놓이지 않는다.
+    if not BlockType.is_placeable(block_type):
         return
     if not state.grid.is_empty_cell(position):
         return
@@ -32,6 +33,8 @@ func apply(state: WorldState) -> void:
         return
     if not _has_solid_neighbour(state.grid):
         return
+    # 관솔불은 지나갈 수 있으므로 사람이 선 칸에 놓여도 갇히지 않는다.
+    # 다만 다른 것과 마찬가지로 붙일 데는 있어야 한다.
 
     # 재료는 마지막에 빼다. 놓이지 않았는데 재료만 사라지면 손해다.
     if not state.inventory.take(block_type, 1):

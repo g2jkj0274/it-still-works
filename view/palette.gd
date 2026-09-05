@@ -56,6 +56,37 @@ const LAMP_LIT := Color(1.0, 0.96, 0.72)
 
 ## 궤짝. 나무로 짠 것이라 나무빛이되 조금 붉다.
 const CHEST := Color(0.86, 0.70, 0.52)
+
+## 아래 넷은 **빈자리를 찾아서** 골랐다.
+##
+## 파스텔은 쓸 수 있는 폭이 좁다(명도 0.60 이상, 채도 0.45 이하). 블록이
+## 열몇 종을 넘으면 색만으로 가를 자리가 남지 않는다. 그래서 눈으로 고르지
+## 않고, 이미 있는 열다섯 색에서 모두 0.13 넘게 떨어진 자리를 찾아서 잡았다.
+## 그 결과 **새로 겹치는 짝이 하나도 없다** (기존의 나무·궤짝 하나뿐).
+##
+## 뜻에 맞는 색이 아니라 남은 색이라는 점은 인정한다. 판자가 나무보다
+## 노란 것은 그 자리밖에 남지 않았기 때문이다.
+
+## 모래. 물가에 깔린다.
+const SAND := Color(0.96, 0.84, 0.72)
+
+## 불씨돌. 잿빛 돌 사이에서 붉게 도드라진다.
+## 광석의 푸른빛과 색상환에서 마주 보게 두어 굴 벽에서 둘이 갈린다.
+const EMBER := Color(0.92, 0.54, 0.52)
+
+## 판자. 갓 켠 것이라 나무보다 밝고 누르다.
+const PLANK := Color(0.84, 0.84, 0.48)
+
+## 관솔불. 늘 켜져 있으므로 켜진 등 가까이 두되 갈릴 만큼은 떨어뜨렸다.
+const TORCH := Color(1.0, 0.98, 0.60)
+
+## 도구. **손에만 들리므로 세상에 놓이지 않는다.**
+##
+## 그래서 블록끼리의 색 규칙에서 뺀다. 굴 벽에 나란히 박히는 일이 없고,
+## 손에 든 그림에서만 서로 갈리면 된다 — 거기서는 생김새가 먼저 가른다
+## (곡괭이는 가로날, 도끼는 치우친 날, 삽은 아래로 넓은 날).
+const TOOL_WOOD := Color(0.80, 0.68, 0.52)
+const TOOL_STONE := Color(0.74, 0.74, 0.78)
 const BUNDLE := Color(0.56, 0.93, 0.78)
 
 const CHARACTER_SKIN := Color(0.98, 0.86, 0.74)
@@ -165,6 +196,14 @@ const _BLOCKS: Dictionary[int, Color] = {
     BlockType.LAMP_LIT: LAMP_LIT,
     BlockType.CHEST: CHEST,
     BlockType.BUNDLE: BUNDLE,
+    BlockType.SAND: SAND,
+    BlockType.EMBER: EMBER,
+    BlockType.PLANK: PLANK,
+    BlockType.TORCH: TORCH,
+    BlockType.WOOD_PICK: TOOL_WOOD,
+    BlockType.STONE_PICK: TOOL_STONE,
+    BlockType.STONE_AXE: TOOL_STONE,
+    BlockType.STONE_SHOVEL: TOOL_STONE,
 }
 
 

@@ -14,10 +14,18 @@ const TYPE := &"break_block"
 
 var position: Vector3i = Vector3i.ZERO
 
+## 손에 든 것. 도구가 아니면 맨손이다.
+##
+## **무엇을 들고 있는지는 자료이고, 그것으로 무엇을 캘 수 있는지는 규칙이다.**
+## 자료는 화면이 싣고 규칙은 [ToolRules] 가 갖는다. 화면이 규칙을 다시
+## 판단하면 언젠가 시뮬레이션과 어긋난다(§1).
+var tool: int = BlockType.EMPTY
 
-static func create(p_position: Vector3i) -> BreakBlockCommand:
+
+static func create(p_position: Vector3i, p_tool: int = BlockType.EMPTY) -> BreakBlockCommand:
     var command := BreakBlockCommand.new()
     command.position = p_position
+    command.tool = p_tool
     return command
 
 
@@ -30,6 +38,16 @@ func apply(state: WorldState) -> void:
         return
     var broken := state.grid.get_block(position)
     if not BlockType.is_breakable(broken):
+        return
+
+    # 맞는 도구가 없으면 부숴지지도 않는다(스펙 §3.6).
+    #
+    # **손에 있는지도 여기서 본다.** 실려 온 것은 "무엇을 들었다고 하는가"일
+    # 뿐이다. 놓기가 재료를 인벤토리에서 빼는 것과 같은 자리다 — 그쪽이
+    # 화면의 말을 믿지 않는데 이쪽만 믿으면 규칙이 반쪽이 된다.
+    if tool != BlockType.EMPTY and state.inventory.count_of(tool) <= 0:
+        return
+    if not ToolRules.can_break(tool, broken):
         return
 
     # 타 버린 부품은 재료가 돌아오지 않는다. 소모된 자원은 돌아오지 않는다.
@@ -70,8 +88,10 @@ func _has_room(state: WorldState, part: CircuitPart, broken: int) -> bool:
 
 func write_payload(data: Dictionary) -> void:
     data["pos"] = [position.x, position.y, position.z]
+    data["tool"] = tool
 
 
 func read_payload(data: Dictionary) -> void:
     var raw: Array = data.get("pos", [0, 0, 0])
     position = Vector3i(int(raw[0]), int(raw[1]), int(raw[2]))
+    tool = int(data.get("tool", BlockType.EMPTY))

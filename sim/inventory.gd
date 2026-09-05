@@ -101,7 +101,7 @@ func has_room_for(block_type: int, variant: int = 0) -> bool:
 ##
 ## 조용히 버리지 않는다. 부른 쪽이 남은 것을 어떻게 할지 정한다.
 func add(block_type: int, amount: int, variant: int = 0) -> int:
-    if amount <= 0 or not BlockType.is_solid(block_type):
+    if amount <= 0 or not BlockType.is_carryable(block_type):
         return maxi(amount, 0)
 
     var left := amount
@@ -138,7 +138,7 @@ func add_bundle(bundle_id: int, amount: int) -> int:
 
 ## 뺀다. 모자라면 **아무것도 빼지 않고** false 를 돌려준다.
 func take(block_type: int, amount: int, variant: int = 0) -> bool:
-    if amount <= 0 or not BlockType.is_solid(block_type):
+    if amount <= 0 or not BlockType.is_carryable(block_type):
         return false
     if _held(block_type, variant) < amount:
         return false
@@ -280,7 +280,7 @@ func _held(block_type: int, variant: int) -> int:
 
 ## 더 들 수 있는 수.
 func _room_for(block_type: int, variant: int) -> int:
-    if not BlockType.is_solid(block_type):
+    if not BlockType.is_carryable(block_type):
         return 0
     var room := 0
     for slot in _kinds.size():

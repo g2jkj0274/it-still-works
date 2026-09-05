@@ -87,6 +87,31 @@ static func boxes_of(block_type: int) -> Array[Array]:
                 [Vector3(0.0, 0.02, 0.0), Vector3(0.62, 0.40, 0.62)],
                 [Vector3(0.0, 0.28, 0.0), Vector3(0.78, 0.12, 0.78)],
             ]
+        BlockType.TORCH:
+            # 관솔불. 가는 자루 끝에 불씨가 얹혔다. 지나갈 수 있으므로
+            # 바닥 넓이를 작게 잡아 길을 막는 것처럼 보이지 않게 한다.
+            return [
+                [Vector3(0.0, -0.22, 0.0), Vector3(0.16, 0.56, 0.16)],
+                [Vector3(0.0, 0.16, 0.0), Vector3(0.30, 0.24, 0.30)],
+            ]
+        BlockType.WOOD_PICK, BlockType.STONE_PICK:
+            # 곡괭이. 자루 위에 가로날이 얹혔다. 도끼와 실루엣이 갈려야 한다.
+            return [
+                [Vector3(0.0, -0.18, 0.0), Vector3(0.14, 0.64, 0.14)],
+                [Vector3(0.0, 0.24, 0.0), Vector3(0.76, 0.14, 0.20)],
+            ]
+        BlockType.STONE_AXE:
+            # 도끼. 자루 옆에 날이 치우쳐 붙었다.
+            return [
+                [Vector3(0.0, -0.18, 0.0), Vector3(0.14, 0.64, 0.14)],
+                [Vector3(0.20, 0.20, 0.0), Vector3(0.36, 0.34, 0.18)],
+            ]
+        BlockType.STONE_SHOVEL:
+            # 삽. 자루 끝에 넓은 날이 아래로 붙었다. 곡괭이와 위아래가 반대다.
+            return [
+                [Vector3(0.0, 0.10, 0.0), Vector3(0.14, 0.64, 0.14)],
+                [Vector3(0.0, -0.28, 0.0), Vector3(0.34, 0.28, 0.20)],
+            ]
         BlockType.CROP:
             # 작물 포기. 밑동에서 이삭이 두 갈래로 솟는다.
             # 땅에 난 것은 부숴서 먹고, 이것이 첫날을 넘기는 유일한 길이다.

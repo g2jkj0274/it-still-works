@@ -93,6 +93,9 @@ func sync() -> void:
 ##
 ## 변경 기록은 오래된 것을 버리므로([constant VoxelGrid.CHANGE_MEMORY]),
 ## 그보다 많이 밀렸으면 놓친 것이 있을 수 있다. 그때만 통째로 훑는다.
+##
+## 켜진 등과 관솔불을 함께 본다. 둘 다 스스로 빛나는 것이고, 다른 점은
+## 작동기가 여닫을 수 있는가뿐이다 — 그것은 시뮬레이션의 물음이지 빛의 물음이 아니다.
 func _follow(version: int) -> void:
     if _last_version < 0 or version - _last_version > VoxelGrid.CHANGE_MEMORY:
         _find_lamps()
@@ -102,10 +105,10 @@ func _follow(version: int) -> void:
         var cell: Vector3i = change[0]
         var was := int(change[1])
         var now := int(change[2])
-        if now == BlockType.LAMP_LIT:
+        if BlockType.is_light(now):
             if not _lit.has(cell):
                 _lit.append(cell)
-        elif was == BlockType.LAMP_LIT:
+        elif BlockType.is_light(was):
             _lit.erase(cell)
 
 
@@ -128,7 +131,7 @@ func _find_lamps() -> void:
         for y in VoxelGrid.SIZE_Y:
             for x in VoxelGrid.SIZE_X:
                 var cell := Vector3i(x, y, z)
-                if _grid.get_block(cell) == BlockType.LAMP_LIT:
+                if BlockType.is_light(_grid.get_block(cell)):
                     _lit.append(cell)
 
 
