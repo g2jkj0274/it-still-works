@@ -162,6 +162,8 @@ func sync_views() -> void:
     _canopy_view.cut_above(eye.z, _world_view.is_cutting())
     _canopy_view.sync()
     _lamp_lights.look_at_point(_character_view.target_position())
+    # 한낮에는 등이 거의 힘을 쓰지 않는다. 밤과 땅속에서만 값을 한다.
+    _lamp_lights.set_darkness(_sky_view.darkness())
     _lamp_lights.sync()
     _character_view.sync(CHARACTER_FOLLOW)
     _wire_view.sync()
@@ -319,6 +321,7 @@ func _build_input() -> void:
     _bundle_marks.bind(_input)
     _input.help_toggled.connect(_on_help_toggled)
     _input.crafted.connect(_sound_board.note_crafted)
+    _input.balked.connect(_on_balked)
     _input.save_requested.connect(save_game)
     _input.load_requested.connect(load_game)
     _input.bag_toggled.connect(toggle_bag)
@@ -396,6 +399,12 @@ func open_chest(cell: Vector3i) -> void:
     if inside == null:
         return
     _bag.open_chest(cell, inside)
+
+
+## 하려던 것이 일어나지 않았다. 소리 하나와 흔들림 하나로만 알린다.
+func _on_balked() -> void:
+    _sound_board.note_balked()
+    _hotbar.shake()
 
 
 func _on_move_requested(from_where: int, from_slot: int, to_where: int, to_slot: int) -> void:

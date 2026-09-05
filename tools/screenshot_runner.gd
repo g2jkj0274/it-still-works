@@ -30,6 +30,9 @@ var _steps: Array = []
 var _index := 0
 var _phase := 0
 var _wait := 0
+
+## 상점 그림에서 회로가 문을 실제로 열었는가.
+var _store_door_open := false
 var _with_subject: Image
 var _report: Array[String] = []
 
@@ -293,8 +296,10 @@ func _pose_for_the_store() -> void:
     var state: Object = _main.simulation.state
     var controller := _main.input_controller()
 
-    # 해 질 녘으로 맞춘다. 낮도 밤도 아닌 참이 가장 보기 좋다.
-    state.tick = DayCycle.DAY_TICKS - 8 * Simulation.TICK_RATE
+    # **한낮으로 맞춘다.** 해 질 녘은 색이 곱지만 무엇을 하는 게임인지가
+    # 어둠에 묻힌다. 상점 첫 그림은 분위기가 아니라 **장치가 도는 것**을
+    # 보여야 한다. 밤 그림은 따로 있다(11_night).
+    state.tick = DayCycle.DAY_TICKS / 4
 
     # 요 45도에서 화면 오른쪽은 격자 (1,-1), 화면 아래는 격자 (1,1) 이다.
     # 카메라가 사람을 따라가므로 사람을 가운데 두고 그 둘레에 세운다.
@@ -318,9 +323,16 @@ func _pose_for_the_store() -> void:
     var repeater := row + right
     var box := row + right * 2
     var hand := row + right * 3
-    var door := row + right * 4
+    # **문은 작동기와 격자에서 맞닿아야 한다.** 화면의 오른쪽은 격자로 (1,-1)
+    # 이라 대각선이고, 작동기는 맞닿은 여섯 쪽만 건드린다. 화면에서 나란히
+    # 보이던 문이 실은 손이 닿지 않는 자리에 있어서 열리지 않았다.
+    var door := hand + Vector3i(1, 0, 0)
+    # 켜진 등 하나를 더 붙인다. 열린 문은 얇은 판이라 한 장의 그림에서
+    # 놓치기 쉽다. **회로가 한 일이 한눈에 보여야 한다.**
+    var lamp := hand + Vector3i(0, 1, 0)
 
     state.grid.set_block(door, BlockType.DOOR_CLOSED)
+    state.grid.set_block(lamp, BlockType.LAMP_DARK)
     for i in 3:
         state.grid.set_block(here - down + right * i, BlockType.FIELD)
 
@@ -347,14 +359,22 @@ func _pose_for_the_store() -> void:
     state.inventory.add_bundle(bundle_id, 2)
     controller.cycle_held_bundle()
 
-    # 신호가 흐르는 순간을 잡는다.
-    for i in 6:
+    # 신호가 끝까지 닿아 문이 열릴 때까지 돌린다. **닫힌 문 앞에 선 그림은
+    # 아무것도 증명하지 못한다.** 회로가 한 일이 화면에 남아야 한다.
+    for i in 24:
         _main.simulation.step()
+        if state.grid.get_block(door) == BlockType.DOOR_OPEN:
+            break
+    _store_door_open = (state.grid.get_block(door) == BlockType.DOOR_OPEN
+        and state.grid.get_block(lamp) == BlockType.LAMP_LIT)
+    _main.lamp_lights().look_at_point(_main.character_view().target_position())
 
     _main.camera().zoom_by(-8)
     _main.world_view().rebuild()
     _main.canopy_view().rebuild()
     _main.ground_cover().rebuild()
+    # 배선을 다시 세워 신호 점이 출발점에서 새로 달리게 한다.
+    _main.wire_view().rebuild()
 
 
 ## 무대에 부품 하나를 세운다. 재료를 세지 않는다. 그림을 위한 자리다.
@@ -480,6 +500,11 @@ func _evaluate(without_subject: Image) -> void:
         _fail(name, "부품 설명이 화면 밖으로 밀려났다")
     if not _main.part_hint().is_single_line():
         _fail(name, "부품 설명이 가로 한 줄이 아니다")
+
+    # 상점 첫 그림은 분위기가 아니라 장치가 도는 것을 보여야 한다.
+    # 닫힌 문 앞에 선 그림은 아무것도 증명하지 못한다.
+    if name == "17_store" and not _store_door_open:
+        _fail(name, "회로가 문을 열고 등을 켜지 못했다. 상점 그림에 장치가 한 일이 없다")
 
     if problems.is_empty():
         _report.append("  OK   %s  (색 %d종, 밝기 %.2f, 어둠 %.2f)" % [

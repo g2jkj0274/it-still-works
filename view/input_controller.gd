@@ -137,6 +137,14 @@ signal load_requested
 signal crafted
 
 ## 인벤토리 화면을 열고 닫는다. 화면을 여는 것은 명령이 아니다.
+## 하려던 것이 일어나지 않았다.
+##
+## **아무 일도 안 일어나는 것이 가장 나쁜 답이다.** 손이 차 있으면 부수기가
+## 통째로 막히는데, 화면에서는 누르는 것이 먹히지 않는 것과 구별되지 않았다.
+## 무엇이 잘못됐는지는 말하지 않는다(스펙 §1). 다만 **눌린 것은 닿았고, 세상은
+## 그대로다**를 알린다.
+signal balked
+
 signal bag_toggled
 
 ## 겨냥한 궤짝을 열어 달라. 놓기(E)가 궤짝을 만나면 이쪽으로 간다.
@@ -146,6 +154,11 @@ var _simulation: Simulation
 var _camera: Camera3D
 var _selected_slot: int = 0
 var _recipe: int = 0
+
+## 방금 낸 명령을 지켜보는 자리. 지켜보지 않으면 -1.
+var _watch_tick: int = -1
+var _watch_version: int = 0
+var _watch_stock: int = 0
 var _next_move_tick: int = 0
 var _next_dig_tick: int = 0
 var _target: BlockTarget = null
@@ -405,14 +418,39 @@ func submit_place() -> void:
         return
     if BlockType.is_part(chosen):
         _simulation.submit(PlacePartCommand.create(cell, chosen, part_settings()))
-        return
-    _simulation.submit(PlaceBlockCommand.create(cell, chosen))
+    else:
+        _simulation.submit(PlaceBlockCommand.create(cell, chosen))
+    _watch_this_attempt()
 
 
 func submit_break() -> void:
     if _simulation == null:
         return
     _simulation.submit(BreakBlockCommand.create(break_cell()))
+    _watch_this_attempt()
+
+
+## 방금 낸 명령이 세상을 바꾸는지 지켜본다.
+##
+## 규칙을 여기에 옮겨 적지 않는다. 손이 찼는지, 궤짝이 비었는지, 바위인지를
+## 표현 레이어가 다시 판단하면 언젠가 시뮬레이션과 어긋나고, 어긋난 신호는
+## 없느니만 못하다. **낸 다음에 세상이 그대로인지만 본다.**
+func _watch_this_attempt() -> void:
+    _watch_tick = _simulation.state.tick
+    _watch_version = _simulation.state.grid.version()
+    _watch_stock = _simulation.state.inventory.total()
+
+
+## 지켜보던 틱이 지났는데 아무것도 안 바뀌었으면 알린다.
+func _watch_for_balk() -> void:
+    if _watch_tick < 0 or _simulation.state.tick <= _watch_tick:
+        return
+
+    var still := (_simulation.state.grid.version() == _watch_version
+        and _simulation.state.inventory.total() == _watch_stock)
+    _watch_tick = -1
+    if still:
+        balked.emit()
 
 
 ## 지금 만들려는 것.
@@ -436,6 +474,7 @@ func submit_craft() -> void:
     if _simulation == null:
         return
     if not RecipeBook.has_materials(_simulation.state.inventory, _recipe):
+        balked.emit()
         return
     _simulation.submit(CraftCommand.create(recipe_output()))
     crafted.emit()
@@ -584,6 +623,7 @@ func _cells_with_role(role: int) -> Array[Vector3i]:
 func poll(current_tick: int) -> void:
     if _simulation == null:
         return
+    _watch_for_balk()
     _poll_selection()
     _poll_movement(current_tick)
     _poll_actions(current_tick)

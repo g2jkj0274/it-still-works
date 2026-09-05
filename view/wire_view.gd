@@ -21,7 +21,14 @@ extends Node3D
 ##
 ## **신호가 지나가는 것이 보여야 한다.** 1틱에 한 부품씩 나아가는 것이 이 게임의
 ## 코어인데, 화면에서는 "회색이던 막대가 노래졌다"로만 나타났다. 흐르는 배선
-## 위로 밝은 점 하나가 출발에서 도착으로 달린다. 표현일 뿐이라 결정론과 무관하다.
+## 위로 밝은 점 하나가 출발에서 도착으로 달린다.
+##
+## 점은 흐르는 동안 **되풀이해서** 달린다. 켜지는 순간에 한 번만 태워 보내면,
+## 이미 돌고 있는 회로를 나중에 와서 본 사람에게는 아무 일도 일어나지 않는
+## 화면이 된다. 점 하나가 곧 신호 하나라는 뜻이 아니라 **이 줄이 이쪽으로
+## 흐르고 있다**는 뜻이다. 첫 바퀴는 켜진 순간에 출발점에서 시작한다.
+##
+## 표현일 뿐이라 결정론과 무관하다.
 
 ## 한 칸이 화면에서 사십 픽셀 남짓이다. 0.08 은 세 픽셀이라 보이지 않았다.
 const THICKNESS := 0.15
@@ -111,10 +118,7 @@ func _run_sparks() -> void:
         if not live:
             continue
 
-        var along := (now - _since[i]) / SPARK_SECONDS
-        if along > 1.0:
-            continue
-
+        var along := fmod((now - _since[i]) / SPARK_SECONDS, 1.0)
         _reserve_sparks(shown + 1)
         multimesh.set_instance_transform(
             shown, Transform3D(Basis(), _point_along(links[i], along)))

@@ -193,6 +193,21 @@ func test_the_signal_walks_the_whole_wire() -> void:
         SimViewCoords.cell_to_world(B)))
 
 
+func test_a_flowing_wire_always_shows_its_signal() -> void:
+    # 이미 돌고 있는 회로를 나중에 와서 본 사람에게도 흐름이 보여야 한다.
+    # 켜지는 순간에 한 번만 태워 보내면 그 사람 화면에서는 아무 일도 없다.
+    var circuit := _branch_circuit()
+    var view := _view(circuit)
+    var branch := circuit.part_at(A) as BranchPart
+    branch.compute(WorldState.new(SimRng.new(1)), [SignalValue.of_bool(true)])
+    branch.commit()
+
+    view.sync()
+    assert_int(view.spark_count()).is_equal(1)
+    view.sync()
+    assert_int(view.spark_count()).is_equal(1)
+
+
 func test_a_still_wire_shows_no_signal() -> void:
     var circuit := _circuit()
     circuit.link(A, B)

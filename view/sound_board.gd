@@ -42,6 +42,9 @@ const SOUNDS: Dictionary[StringName, Array] = {
     &"burn": ["impactMetal_heavy_000.ogg", -3.0],
     &"hurt": ["impactPunch_medium_000.ogg", -3.0],
     &"eat": ["handleSmallLeather.ogg", -8.0],
+    # 막힘. 맞은 소리를 아주 작게 쓴다 — 둔한 "툭" 하나면 족하고, 무엇이
+    # 막았는지는 말하지 않는다.
+    &"balk": ["impactPunch_medium_000.ogg", -18.0],
     &"chime": ["bong_001.ogg", -10.0],
 }
 
@@ -201,6 +204,11 @@ func _sound_for_signals(state: WorldState) -> void:
 ## 만들었다는 것을 따로 알린다. 세상이 아니라 손이 바뀌는 일이다.
 func note_crafted() -> void:
     play(&"craft")
+
+
+## 하려던 것이 일어나지 않았다. 세상이 안 바뀌었으니 여기서 따로 알린다.
+func note_balked() -> void:
+    play(&"balk")
 
 
 func _stream_of(kind: StringName) -> AudioStream:

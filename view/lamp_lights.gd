@@ -16,8 +16,18 @@ extends Node3D
 ## 빛이 닿는 거리(칸).
 const REACH := 7.0
 
-## 빛의 세기.
+## 빛의 세기. 캄캄한 곳에서의 값이다.
 const STRENGTH := 2.4
+
+## 대낮 한복판에서 남는 세기의 몫.
+##
+## **한낮에도 같은 세기로 때리면 바닥이 하얗게 날아간다.** 그림에서는 켜진
+## 등이 아니라 잘못 그려진 흰 상자로 보였다. 등이 값을 하는 곳은 밤과
+## 땅속이고, 해가 떠 있을 때는 있는 듯 마는 듯해야 옳다.
+const DAY_SHARE := 0.18
+
+## 이만큼 묻히면 한밤중만큼 어둡다고 본다. [WorldView] 와 같은 값이다.
+const DARK_DEPTH := 5.0
 
 ## 한 번에 켜 둘 수 있는 빛의 수.
 ##
@@ -30,6 +40,8 @@ var _lights: Array[OmniLight3D] = []
 var _lit: Array[Vector3i] = []
 var _last_version: int = -1
 var _focus: Vector3 = Vector3.ZERO
+var _darkness: float = 1.0
+var _last_darkness: float = -1.0
 
 
 func _ready() -> void:
@@ -56,6 +68,11 @@ func look_at_point(where: Vector3) -> void:
     _focus = where
 
 
+## 하늘이 얼마나 어두운가(0 한낮, 1 한밤). 등의 세기가 여기 딸린다.
+func set_darkness(darkness: float) -> void:
+    _darkness = clampf(darkness, 0.0, 1.0)
+
+
 func sync() -> void:
     if _grid == null:
         return
@@ -63,6 +80,7 @@ func sync() -> void:
         _find_lamps()
         _last_version = _grid.version()
     _light_the_nearest()
+    _last_darkness = _darkness
 
 
 func lit_count() -> int:
@@ -101,7 +119,21 @@ func _light_the_nearest() -> void:
             light.visible = false
             continue
         light.position = SimViewCoords.cell_to_world(ordered[i])
+        light.light_energy = strength_at(ordered[i])
         light.visible = true
+
+
+## 그 자리에 놓인 등이 낼 세기.
+##
+## 밤이거나 깊이 묻혔으면 온 힘을 낸다. 한낮 지표에서는 거의 내지 않는다.
+## 땅속은 하늘이 밝아도 캄캄하므로 둘 가운데 어두운 쪽을 따른다.
+func strength_at(cell: Vector3i) -> float:
+    var buried := 0.0
+    if _grid != null:
+        var top := _grid.height_at(cell.x, cell.y)
+        buried = clampf(float(top - cell.z) / DARK_DEPTH, 0.0, 1.0)
+    var dark := maxf(_darkness, buried)
+    return STRENGTH * lerpf(DAY_SHARE, 1.0, dark)
 
 
 func _nearer(left: Vector3i, right: Vector3i) -> bool:

@@ -29,6 +29,14 @@ const SIDE_MARGIN := 12.0
 ## 고른 칸이 위로 솟는 높이.
 const CHOSEN_LIFT := 6.0
 
+## 막혔을 때 줄이 흔들리는 시간(초)과 폭(픽셀).
+##
+## **아무 일도 안 일어나는 것이 가장 나쁜 답이다.** 손이 차서 부수기가 막히면
+## 화면에서는 키가 안 먹는 것과 구별되지 않았다. 무엇이 막았는지는 말하지
+## 않는다 — 눌린 것이 닿았다는 것만 알린다.
+const SHAKE_SECONDS := 0.22
+const SHAKE_WIDTH := 6.0
+
 const CHOSEN_TINT := Color(1.0, 1.0, 1.0, 1.0)
 ## 고르지 않은 칸도 그림은 읽혀야 한다. 이름이 없어진 뒤로 그림이 유일한
 ## 단서라 너무 흐리면 줄 전체가 빈 회색 상자로 보인다.
@@ -54,6 +62,7 @@ var _icons: Array[BlockIcon] = []
 var _keys: Array[Label] = []
 var _selected_slot: int = 0
 var _slot_width: float = SLOT_WIDTH
+var _shake_until: float = 0.0
 
 
 ## 화면에 보일 이름.
@@ -104,6 +113,28 @@ func sync() -> void:
         _style_of(slot).border_width_bottom = 4 if is_chosen else 0
         _style_of(slot).border_width_top = 4 if is_chosen else 0
         _panels[slot].position.y = _row_top() - (CHOSEN_LIFT if is_chosen else 0.0)
+
+
+## 막혔다. 줄이 잠깐 흔들린다.
+func shake() -> void:
+    _shake_until = _now() + SHAKE_SECONDS
+
+
+func is_shaking() -> bool:
+    return _shake_until > _now()
+
+
+## 지금 줄이 옆으로 얼마나 밀려 있는가. 잦아들며 멎는다.
+func shake_offset() -> float:
+    var left := _shake_until - _now()
+    if left <= 0.0:
+        return 0.0
+    var fading := left / SHAKE_SECONDS
+    return sin(left * 60.0) * SHAKE_WIDTH * fading
+
+
+func _now() -> float:
+    return Time.get_ticks_msec() / 1000.0
 
 
 func slot_count() -> int:
@@ -191,7 +222,7 @@ func _lay_out() -> void:
     var available := _screen_size().x - SIDE_MARGIN * 2.0 - (count - 1) * SLOT_GAP
     _slot_width = minf(SLOT_WIDTH, maxf(available / count, 1.0))
 
-    var left := (_screen_size().x - row_width()) * 0.5
+    var left := (_screen_size().x - row_width()) * 0.5 + shake_offset()
     for slot in count:
         _panels[slot].custom_minimum_size = Vector2(_slot_width, SLOT_HEIGHT)
         _panels[slot].size = Vector2(_slot_width, SLOT_HEIGHT)
