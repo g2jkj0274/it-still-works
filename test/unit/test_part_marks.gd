@@ -193,3 +193,50 @@ func test_bundles_of_a_like_size_look_alike() -> void:
 
 func test_an_empty_bundle_still_gets_a_mark() -> void:
     assert_int(PartMarks.bundle_mark_for(0)).is_greater_equal(0)
+
+
+## --- 색으로 갈래를 가른다 ---
+##
+## 한 색으로 통일했더니 열두 픽셀짜리 알갱이 열여덟 종이 되었다. 형태만으로
+## 갈리기에는 화면에서 너무 작다. 금지된 것은 글자와 기호이지 색이 아니다.
+
+func test_the_families_have_their_own_colours() -> void:
+    var eye := PartMarks.colour_for(PartMarks.MARK_EYE_PLAYER)
+    var judge := PartMarks.colour_for(PartMarks.MARK_TRUTH)
+    var turn := PartMarks.colour_for(PartMarks.MARK_ENDLESS)
+    var bundle := PartMarks.colour_for(PartMarks.MARK_BUNDLE)
+    var shape := PartMarks.colour_for(PartMarks.MARK_SQUARE)
+
+    var seen: Array[Color] = []
+    for colour in [eye, judge, turn, bundle, shape]:
+        for other: Color in seen:
+            assert_bool(colour.is_equal_approx(other)).is_false()
+        seen.append(colour)
+
+
+func test_one_family_keeps_one_colour() -> void:
+    # 갈래 안에서는 형태가 가른다. 색까지 흩으면 무엇이 무엇인지 알 수 없다.
+    var first := PartMarks.colour_for(PartMarks.MARK_EYE_PLAYER)
+    for kind in [PartMarks.MARK_EYE_THREAT, PartMarks.MARK_EYE_TIME,
+            PartMarks.MARK_EYE_CROP, PartMarks.MARK_EYE_ITEM]:
+        assert_bool(PartMarks.colour_for(kind).is_equal_approx(first)).is_true()
+
+
+func test_every_mark_is_dark_enough_to_read_on_a_pastel_part() -> void:
+    # 표시는 파스텔 몸통 위에 얹힌다. 밝으면 몸통에 녹는다.
+    for kind in PartMarks.MARK_COUNT:
+        var colour := PartMarks.colour_for(kind)
+        assert_float(colour.get_luminance()).is_less(0.5)
+
+
+func test_marks_within_a_family_are_told_apart_by_shape() -> void:
+    var view: PartMarks = auto_free(PartMarks.new())
+    add_child(view)
+    var seen: Array[String] = []
+    for kind in [PartMarks.MARK_EYE_PLAYER, PartMarks.MARK_EYE_THREAT,
+            PartMarks.MARK_EYE_TIME, PartMarks.MARK_EYE_CROP,
+            PartMarks.MARK_EYE_ITEM]:
+        var mesh := view.mesh_for(kind)
+        var shape := "%s|%s" % [mesh.get_class(), mesh.get_aabb().size]
+        assert_bool(seen.has(shape)).is_false()
+        seen.append(shape)

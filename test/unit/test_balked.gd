@@ -29,26 +29,6 @@ func _counter(controller: InputController) -> Array[int]:
     return count
 
 
-func test_making_without_the_materials_says_so() -> void:
-    var sim := _sim()
-    var controller := _controller(sim)
-    var count := _counter(controller)
-
-    assert_bool(RecipeBook.has_materials(sim.state.inventory, 0)).is_false()
-    controller.submit_craft()
-    assert_int(count[0]).is_equal(1)
-
-
-func test_making_with_the_materials_says_nothing() -> void:
-    var sim := _sim()
-    var controller := _controller(sim)
-    var count := _counter(controller)
-
-    sim.state.inventory.add(BlockType.WOOD, 64)
-    controller.submit_craft()
-    assert_int(count[0]).is_equal(0)
-
-
 func test_breaking_what_cannot_be_broken_says_so() -> void:
     # 겨냥한 자리가 비어 있다. 눌러도 세상이 그대로다.
     var sim := _sim()
@@ -130,3 +110,54 @@ func test_the_shaken_row_still_fits_on_the_screen() -> void:
     hotbar.shake()
     hotbar.sync()
     assert_bool(hotbar.all_slots_visible()).is_true()
+
+
+## --- 만들기 ---
+##
+## 부수기·놓기와 달리 만들기만 규칙을 표현 레이어에 옮겨 적고 있었다.
+## 시뮬레이션이 다른 까닭으로 거절하면 소리는 "만들었다"고 말했다.
+
+func _made(controller: InputController) -> Array[int]:
+    var count: Array[int] = [0]
+    controller.crafted.connect(func() -> void: count[0] += 1)
+    return count
+
+
+func test_making_with_the_materials_says_it_was_made() -> void:
+    var sim := _sim()
+    var controller := _controller(sim)
+    var made := _made(controller)
+    var balks := _counter(controller)
+
+    sim.state.inventory.add(BlockType.WOOD, 64)
+    controller.submit_craft()
+    sim.advance(2)
+    controller.poll(sim.current_tick())
+
+    assert_int(made[0]).is_equal(1)
+    assert_int(balks[0]).is_equal(0)
+
+
+func test_nothing_is_said_to_be_made_before_it_is() -> void:
+    # 명령을 넣자마자 "만들었다"고 울면 시뮬레이션이 거절해도 소리가 난다.
+    var sim := _sim()
+    var controller := _controller(sim)
+    var made := _made(controller)
+
+    sim.state.inventory.add(BlockType.WOOD, 64)
+    controller.submit_craft()
+    assert_int(made[0]).is_equal(0)
+
+
+func test_making_without_the_materials_is_not_called_making() -> void:
+    var sim := _sim()
+    var controller := _controller(sim)
+    var made := _made(controller)
+    var balks := _counter(controller)
+
+    controller.submit_craft()
+    sim.advance(2)
+    controller.poll(sim.current_tick())
+
+    assert_int(made[0]).is_equal(0)
+    assert_int(balks[0]).is_equal(1)

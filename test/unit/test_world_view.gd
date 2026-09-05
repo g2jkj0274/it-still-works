@@ -264,3 +264,17 @@ func test_standing_still_does_not_redraw() -> void:
     for i in 5:
         view.look_from(Vector3i(15, 15, 2))
     assert_int(view.build_count()).is_equal(builds)
+
+
+## --- 땅속에서 광석이 보이는가 ---
+##
+## **광맥이 벽에 박혀 있어도 어둠에 먹혀 검은 벽과 구별되지 않았다.** 목적지가
+## 안 보이면 굴을 파도 어디로 갈지 모른 채 아무 데나 파게 된다.
+
+func test_ore_keeps_its_shape_in_the_dark() -> void:
+    assert_float(WorldView.ORE_FLOOR_SHADE).is_greater(WorldView.DEEPEST_SHADE)
+
+
+func test_ore_is_not_lit_up_like_daylight() -> void:
+    # 대낮처럼 밝히면 파고 내려간 느낌이 사라진다.
+    assert_float(WorldView.ORE_FLOOR_SHADE).is_less(1.0)

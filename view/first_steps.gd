@@ -49,7 +49,9 @@ static func line_count() -> int:
 static func line_at(index: int) -> String:
     match index:
         0:
-            return "부수기 Q · 놓기 E · 조작 안내 H"
+            # **마우스를 살려 놓고 게임은 키를 가리키고 있었다.** 안 알려준
+            # 기능은 없는 기능이다. 걷는 법이 부수는 법보다 먼저 나온다.
+            return "WASD 로 걷기 · 좌클릭 부수기 · 우클릭 놓기 · 안내 H"
         1:
             return "만들 것은 X 로 고르고 C 로 만든다"
         2:
