@@ -96,6 +96,21 @@ const TORCH := Color(1.0, 0.98, 0.60)
 ## 몸통 색과 갈라 두는 까닭은 **비추는 빛과 비치는 몸이 다른 것**이기 때문이다.
 const LIGHT_GLOW := Color(1.0, 0.76, 0.46)
 
+## 화로와 그 위의 것들. 앞의 넷과 같은 방법으로 골랐다 — 이미 있는 색에서
+## 모두 0.128 넘게 떨어진 자리를 찾았고, 새로 겹치는 짝이 하나도 없다.
+const FURNACE := Color(0.60, 0.66, 0.64)
+const FURNACE_LIT := Color(0.98, 0.84, 0.60)
+const BENCH := Color(0.86, 0.66, 0.66)
+const INGOT := Color(0.78, 0.82, 0.88)
+const BRICK := Color(0.80, 0.52, 0.58)
+const GLASS := Color(0.76, 0.94, 0.94)
+const COOKED_CROP := Color(0.72, 0.74, 0.50)
+const IRON_DOOR := Color(0.84, 0.84, 1.0)
+
+## 쇠 도구. 돌보다 푸르고 밝다.
+const TOOL_IRON := Color(0.80, 0.84, 0.90)
+
+
 ## 도구. **손에만 들리므로 세상에 놓이지 않는다.**
 ##
 ## 그래서 블록끼리의 색 규칙에서 뺀다. 굴 벽에 나란히 박히는 일이 없고,
@@ -221,6 +236,17 @@ const _BLOCKS: Dictionary[int, Color] = {
     BlockType.STONE_PICK: TOOL_STONE,
     BlockType.STONE_AXE: TOOL_STONE,
     BlockType.STONE_SHOVEL: TOOL_STONE,
+    BlockType.FURNACE: FURNACE,
+    BlockType.FURNACE_LIT: FURNACE_LIT,
+    BlockType.BENCH: BENCH,
+    BlockType.INGOT: INGOT,
+    BlockType.BRICK: BRICK,
+    BlockType.GLASS: GLASS,
+    BlockType.COOKED_CROP: COOKED_CROP,
+    BlockType.IRON_DOOR_CLOSED: IRON_DOOR,
+    BlockType.IRON_DOOR_OPEN: IRON_DOOR,
+    BlockType.IRON_PICK: TOOL_IRON,
+    BlockType.IRON_AXE: TOOL_IRON,
 }
 
 

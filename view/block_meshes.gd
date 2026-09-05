@@ -87,6 +87,43 @@ static func boxes_of(block_type: int) -> Array[Array]:
                 [Vector3(0.0, 0.02, 0.0), Vector3(0.62, 0.40, 0.62)],
                 [Vector3(0.0, 0.28, 0.0), Vector3(0.78, 0.12, 0.78)],
             ]
+        BlockType.FURNACE, BlockType.FURNACE_LIT:
+            # 화로. 아가리가 뚫린 두툼한 통이다. 위가 좁아 굴뚝처럼 보인다.
+            return [
+                [Vector3(0.0, -0.18, 0.0), Vector3(_CELL, 0.64, _CELL)],
+                [Vector3(0.0, 0.28, 0.0), Vector3(0.56, 0.28, 0.56)],
+            ]
+        BlockType.BENCH:
+            # 작업대. 다리 위에 넓은 상판이 얹혔다. 작동기와 달리 낮고 넓다.
+            return [
+                [Vector3(0.0, -0.28, 0.0), Vector3(0.70, 0.44, 0.70)],
+                [Vector3(0.0, 0.06, 0.0), Vector3(_CELL, 0.24, _CELL)],
+            ]
+        BlockType.IRON_DOOR_CLOSED:
+            return [[Vector3.ZERO, Vector3(_CELL, _CELL, CLOSED_DOOR_THICKNESS)]]
+        BlockType.IRON_DOOR_OPEN:
+            var iron_shift := (_CELL - OPEN_DOOR_THICKNESS) * 0.5
+            return [[Vector3(0.0, 0.0, -iron_shift),
+                Vector3(_CELL, _CELL, OPEN_DOOR_THICKNESS)]]
+        BlockType.INGOT:
+            # 쇳덩이. 낮고 넓적한 덩어리.
+            return [[Vector3(0.0, -0.30, 0.0), Vector3(0.72, 0.30, 0.48)]]
+        BlockType.COOKED_CROP:
+            # 구운 작물. 날것보다 뭉툭하다.
+            return [
+                [Vector3(0.0, -0.30, 0.0), Vector3(0.52, 0.28, 0.52)],
+                [Vector3(0.0, -0.02, 0.0), Vector3(0.36, 0.30, 0.36)],
+            ]
+        BlockType.IRON_PICK:
+            return [
+                [Vector3(0.0, -0.18, 0.0), Vector3(0.14, 0.64, 0.14)],
+                [Vector3(0.0, 0.24, 0.0), Vector3(0.84, 0.16, 0.22)],
+            ]
+        BlockType.IRON_AXE:
+            return [
+                [Vector3(0.0, -0.18, 0.0), Vector3(0.14, 0.64, 0.14)],
+                [Vector3(0.22, 0.20, 0.0), Vector3(0.40, 0.38, 0.20)],
+            ]
         BlockType.TORCH:
             # 관솔불. 가는 자루 끝에 불씨가 얹혔다. 지나갈 수 있으므로
             # 바닥 넓이를 작게 잡아 길을 막는 것처럼 보이지 않게 한다.

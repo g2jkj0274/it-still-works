@@ -128,6 +128,9 @@ func _gnaw(state: WorldState, directions: Array[Vector3i]) -> void:
         var blocking := position + direction
         if VoxelGrid.is_bedrock(blocking):
             continue
+        # 튼튼한 문은 갉지 못한다. 밤에 회로를 지키는 값이 여기서 생긴다(§3.8).
+        if BlockType.is_strong_door(state.grid.get_block(blocking)):
+            continue
         if not state.grid.is_solid(blocking):
             continue
         state.grid.set_block(blocking, BlockType.EMPTY)

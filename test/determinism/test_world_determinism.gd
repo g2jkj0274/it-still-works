@@ -45,7 +45,7 @@ const NORTH_EAST := Vector3i(1, -1, 0)
 ##
 ## 이 값이 깨졌다면 시뮬레이션 동작이 바뀐 것이다. 값을 고쳐 통과시키지 말고
 ## 무엇이 바뀌었는지 먼저 밝힌다.
-const GOLDEN_HASH := "f61789d3c5ff2b4bcd99fe5a7ebf75017d64e7b13aef689e895c7172385d04dd"
+const GOLDEN_HASH := "7ba924ebd3f5759f3355b4585b545609a333857340abac896ed52fd752e3d97b"
 
 ## 같은 실행이 끝났을 때 캐릭터가 서 있는 칸.
 ## 해시보다 읽기 쉬워서 이동 규칙이 어긋났을 때 원인을 빨리 좁혀준다.
@@ -96,7 +96,7 @@ func _scenario() -> Array:
 ## 어느 속도로도 제때 도착하기 때문이다. 걸음 도중을 함께 못박아야 타이밍이
 ## 지켜진다.
 const MID_TICK := 104 + 2
-const GOLDEN_MID_HASH := "009f1d153cb1d9f4932c9dfd904b29eec3987065946076e5b5cc01f801406f8d"
+const GOLDEN_MID_HASH := "d56a96a7a4841fb199bbdf2a8b4d41f3fb9ea062bdaf47fb4bcf12f52c834e0b"
 
 
 func _run(seed_value: int = SEED, scenario: Array = []) -> Simulation:

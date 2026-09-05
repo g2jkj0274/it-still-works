@@ -25,6 +25,10 @@ func test_all_types_are_distinct_and_contiguous() -> void:
         BlockType.LAMP_DARK, BlockType.LAMP_LIT, BlockType.CHEST,
         BlockType.SAND, BlockType.EMBER, BlockType.PLANK, BlockType.TORCH,
         BlockType.WOOD_PICK, BlockType.STONE_PICK, BlockType.STONE_AXE, BlockType.STONE_SHOVEL,
+        BlockType.FURNACE, BlockType.FURNACE_LIT, BlockType.BENCH,
+        BlockType.INGOT, BlockType.BRICK, BlockType.GLASS, BlockType.COOKED_CROP,
+        BlockType.IRON_DOOR_CLOSED, BlockType.IRON_DOOR_OPEN,
+        BlockType.IRON_PICK, BlockType.IRON_AXE,
     ]
     assert_int(types.size()).is_equal(BlockType.COUNT)
     types.sort()

@@ -12,6 +12,7 @@ extends RefCounted
 const HAND := 0
 const WOOD := 1
 const STONE := 2
+const IRON := 3
 
 ## 도구가 없어도 캘 수 있는 것.
 const SOFT := HAND
@@ -26,6 +27,8 @@ static func tier_of(tool: int) -> int:
             return WOOD
         BlockType.STONE_PICK:
             return STONE
+        BlockType.IRON_PICK:
+            return IRON
     return HAND
 
 
@@ -63,10 +66,10 @@ static func dig_ticks(tool: int, block_type: int) -> int:
 static func _suits(tool: int, block_type: int) -> bool:
     var material := BlockType.material_of(block_type)
     match tool:
-        BlockType.STONE_AXE:
+        BlockType.STONE_AXE, BlockType.IRON_AXE:
             return material == BlockType.WOOD or material == BlockType.PLANK
         BlockType.STONE_SHOVEL:
             return material == BlockType.GROUND or material == BlockType.SAND
-        BlockType.WOOD_PICK, BlockType.STONE_PICK:
+        BlockType.WOOD_PICK, BlockType.STONE_PICK, BlockType.IRON_PICK:
             return needed_for(material) > SOFT
     return false

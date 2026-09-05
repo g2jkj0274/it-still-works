@@ -74,14 +74,39 @@ const PLANK := 19
 ## 나무 곡괭이일 때다.
 const TORCH := 20
 
+## 화로. **작동기가 때려야 한 번 돈다.** 손으로는 돌아가지 않는다.
+##
+## 이것이 이 게임이 마인크래프트와 갈리는 자리다. 저쪽 화로는 연료만 있으면
+## 혼자 돌지만 여기서는 회로가 필요하다. 그래서 트리를 올라가려면 회로를
+## 지어야 하고, 회로를 지으려면 트리를 올라가야 한다(스펙 §3.6).
+const FURNACE := 21
+
+## 불이 붙은 화로. 신호가 닿는 동안이다. 등과 같은 짝이다.
+const FURNACE_LIT := 22
+
+## 작업대. 세 칸 안에 서면 쇳덩이가 드는 것을 만들 수 있다.
+const BENCH := 23
+
+## 구운 것들.
+const INGOT := 24
+const BRICK := 25
+const GLASS := 26
+const COOKED_CROP := 27
+
+## 튼튼한 문. 위협이 부수지 못한다.
+const IRON_DOOR_CLOSED := 28
+const IRON_DOOR_OPEN := 29
+
 ## 도구. 손에 들면 무엇을 캘 수 있는지가 달라진다.
 ## 격자에 놓이지 않는다 — 물건이지 블록이 아니다.
-const WOOD_PICK := 21
-const STONE_PICK := 22
-const STONE_AXE := 23
-const STONE_SHOVEL := 24
+const WOOD_PICK := 30
+const STONE_PICK := 31
+const STONE_AXE := 32
+const STONE_SHOVEL := 33
+const IRON_PICK := 34
+const IRON_AXE := 35
 
-const COUNT := 25
+const COUNT := 36
 
 ## 도구는 여기부터다. 이 아래는 전부 격자에 놓이는 블록이다.
 const FIRST_TOOL := WOOD_PICK
@@ -91,7 +116,10 @@ const _NAMES: PackedStringArray = [
     "door_closed", "door_open", "detector", "actuator", "repeater", "box", "branch", "field", "crop",
     "rock", "lamp_dark", "lamp_lit", "chest",
     "sand", "ember", "plank", "torch",
-    "wood_pick", "stone_pick", "stone_axe", "stone_shovel",
+    "furnace", "furnace_lit", "bench",
+    "ingot", "brick", "glass", "cooked_crop",
+    "iron_door_closed", "iron_door_open",
+    "wood_pick", "stone_pick", "stone_axe", "stone_shovel", "iron_pick", "iron_axe",
 ]
 
 
@@ -146,7 +174,19 @@ static func is_breakable(type: int) -> bool:
 
 
 static func is_door(type: int) -> bool:
+    if type == IRON_DOOR_CLOSED or type == IRON_DOOR_OPEN:
+        return true
     return type == DOOR_CLOSED or type == DOOR_OPEN
+
+
+## 위협이 부수지 못하는 문인가. 밤에 회로를 지키는 값이 여기서 생긴다.
+static func is_strong_door(type: int) -> bool:
+    return type == IRON_DOOR_CLOSED or type == IRON_DOOR_OPEN
+
+
+## 화로인가. 불이 붙었든 꺼졌든.
+static func is_furnace(type: int) -> bool:
+    return type == FURNACE or type == FURNACE_LIT
 
 
 ## 등인가. 작동기가 켜고 끈다.
@@ -156,6 +196,8 @@ static func is_lamp(type: int) -> bool:
 
 ## 스스로 빛나는가. 관솔불은 회로 없이 늘 켜져 있다.
 static func is_light(type: int) -> bool:
+    if type == FURNACE_LIT:
+        return true
     return type == LAMP_LIT or type == TORCH
 
 
@@ -174,20 +216,24 @@ static func is_part(type: int) -> bool:
     return type == BOX or type == BRANCH
 
 
-static func opened_door() -> int:
-    return DOOR_OPEN
+static func opened_door(type: int = DOOR_CLOSED) -> int:
+    return IRON_DOOR_OPEN if is_strong_door(type) else DOOR_OPEN
 
 
-static func closed_door() -> int:
-    return DOOR_CLOSED
+static func closed_door(type: int = DOOR_CLOSED) -> int:
+    return IRON_DOOR_CLOSED if is_strong_door(type) else DOOR_CLOSED
 
 
 ## 부쉈을 때 손에 들어오는 재료. 열린 문을 부수면 문이 들어온다.
 static func material_of(type: int) -> int:
     if type == DOOR_OPEN:
         return DOOR_CLOSED
+    if type == IRON_DOOR_OPEN:
+        return IRON_DOOR_CLOSED
     if type == LAMP_LIT:
         return LAMP_DARK
+    if type == FURNACE_LIT:
+        return FURNACE
     return type
 
 

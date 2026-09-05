@@ -111,7 +111,10 @@ func test_the_variation_stays_subtle() -> void:
 
 
 ## 같은 물건의 두 상태. 서로만 갈리면 되고 다른 블록과 멀 필요는 없다.
-const PAIRED_STATES: Array[int] = [BlockType.DOOR_OPEN, BlockType.LAMP_LIT]
+const PAIRED_STATES: Array[int] = [
+    BlockType.DOOR_OPEN, BlockType.LAMP_LIT,
+    BlockType.IRON_DOOR_OPEN, BlockType.FURNACE_LIT,
+]
 
 
 ## 이 물음에서 뺄 것.

@@ -78,6 +78,11 @@ const PLACEABLE: Array[int] = [
     BlockType.FIELD,
     BlockType.LAMP_DARK,
     BlockType.CHEST,
+    BlockType.FURNACE,
+    BlockType.BENCH,
+    BlockType.BRICK,
+    BlockType.GLASS,
+    BlockType.IRON_DOOR_CLOSED,
 ]
 
 ## 설정을 고를 수 있는 부품들.
