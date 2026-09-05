@@ -42,11 +42,6 @@ func test_gathered_materials_are_not_made() -> void:
         assert_bool(RecipeBook.can_be_made(block_type)).is_false()
 
 
-func test_a_bundle_is_never_made_from_materials() -> void:
-    # 묶음은 재료가 아니라 이미 지어 놓은 회로를 압축해 얻는다. 스펙 §4.3.
-    assert_bool(RecipeBook.can_be_made(BlockType.BUNDLE)).is_false()
-
-
 func test_every_circuit_part_costs_ore() -> void:
     # 스펙 §3.6: 광석의 용도는 부품 제작이다. 자원지가 멀리 있는 이유가 여기 있다.
     for index in RecipeBook.count():
@@ -128,7 +123,6 @@ func test_crafting_what_cannot_be_made_does_nothing() -> void:
     var before := sim.state.inventory.total()
 
     sim.submit(CraftCommand.create(BlockType.ORE))
-    sim.submit(CraftCommand.create(BlockType.BUNDLE))
     sim.step()
     assert_int(sim.state.inventory.total()).is_equal(before)
 

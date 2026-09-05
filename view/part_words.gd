@@ -24,7 +24,6 @@ const _NAMES: Dictionary[int, String] = {
     BlockType.REPEATER: "되풀이",
     BlockType.BOX: "상자",
     BlockType.BRANCH: "갈림길",
-    BlockType.BUNDLE: "묶음",
     BlockType.SAND: "모래",
     BlockType.EMBER: "불씨돌",
     BlockType.PLANK: "판자",
@@ -59,7 +58,6 @@ const _DESCRIPTIONS: Dictionary[int, String] = {
     BlockType.REPEATER: "받은 것을 정한 간격으로 되풀이해 보낸다",
     BlockType.BOX: "값 하나를 담아 둔다. 새로 넣으면 이전 것은 사라진다",
     BlockType.BRANCH: "조건에 맞으면 한쪽, 아니면 다른 쪽으로 보낸다",
-    BlockType.BUNDLE: "만들어 둔 장치가 통째로 들어 있다. 한 칸에 놓인다",
 }
 
 ## 그것을 캐는 데 무엇이 드는가.
@@ -91,9 +89,6 @@ const _SHAPES: Dictionary[int, String] = {
     BoxPart.SHAPE_ROUND: "둥근",
     BoxPart.SHAPE_SMALL: "작은",
 }
-
-## 고른 칸이 묶음에서 맡는 몫.
-const _ROLES: PackedStringArray = ["보통", "들어오는 자리", "나가는 자리"]
 
 const _REPEATER_SETTINGS: PackedStringArray = ["세 번", "열 번", "조건이 맞는 동안", "끝없이"]
 
@@ -135,19 +130,6 @@ static func repeater_setting_name(preset: int) -> String:
     if preset < 0 or preset >= _REPEATER_SETTINGS.size():
         return "?"
     return _REPEATER_SETTINGS[preset]
-
-
-## 손에 쥔 묶음을 부르는 말. 번호는 사람이 세는 대로 1 부터다.
-static func bundle_name(bundle_id: int) -> String:
-    if bundle_id < 0:
-        return "없음"
-    return "%d번" % (bundle_id + 1)
-
-
-static func role_name(role: int) -> String:
-    if role < 0 or role >= _ROLES.size():
-        return "?"
-    return _ROLES[role]
 
 
 ## 그것을 만드는 데 드는 재료. 만들 수 없는 것이면 빈 글.
@@ -197,7 +179,5 @@ static func setting_of(part: CircuitPart) -> String:
             if branch.mode == BranchPart.MODE_EQUAL:
                 return "%d 일 때" % branch.threshold
             return "%d 이상" % branch.threshold
-        BlockType.BUNDLE:
-            return bundle_name((part as BundlePart).bundle_id)
         _:
             return ""

@@ -198,16 +198,6 @@ func test_an_empty_slot_under_the_mouse_is_not_named() -> void:
     assert_str(screen.hovered_name()).is_empty()
 
 
-func test_a_bundle_is_named_by_which_bundle_it_is() -> void:
-    var hand := Inventory.new()
-    hand.add_bundle(2, 1)
-    var screen := _screen(hand)
-    screen.open()
-    screen.sync()
-    screen.hover_at(_centre_of(screen, InventoryScreen.WHERE_HAND, 0))
-    assert_str(screen.hovered_name()).contains(PartWords.bundle_name(2))
-
-
 func test_moving_off_a_slot_clears_the_name() -> void:
     var hand := Inventory.new()
     hand.put_slot(0, BlockType.WOOD, 2)

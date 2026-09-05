@@ -115,14 +115,6 @@ func test_the_chosen_slot_is_marked() -> void:
     assert_bool(hotbar.slot_is_marked(0)).is_false()
 
 
-func test_a_bundle_slot_says_which_bundle() -> void:
-    var sim := _sim()
-    sim.state.inventory.add_bundle(2, 1)
-    var hotbar := _hotbar(sim)
-
-    assert_int(hotbar.slot_icon(0)).is_equal(BlockType.BUNDLE)
-
-
 func test_every_thing_that_can_be_held_has_a_plain_name() -> void:
     for type in InputController.PLACEABLE:
         var label := Hotbar.name_of(type)

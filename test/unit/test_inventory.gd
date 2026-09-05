@@ -94,37 +94,6 @@ func test_nothing_that_is_not_a_thing_goes_in() -> void:
     assert_int(inventory.total()).is_equal(0)
 
 
-## --- 묶음 ---
-
-func test_two_bundles_of_different_makes_do_not_stack() -> void:
-    # 종류만으로는 가려지지 않는다. 안에 든 것이 저마다 다르다.
-    var inventory := Inventory.new()
-    inventory.add_bundle(0, 1)
-    inventory.add_bundle(3, 1)
-
-    assert_int(inventory.count_of_bundle(0)).is_equal(1)
-    assert_int(inventory.count_of_bundle(3)).is_equal(1)
-    assert_bool(inventory.is_empty_slot(1)).is_false()
-
-
-func test_two_bundles_of_the_same_make_stack() -> void:
-    var inventory := Inventory.new()
-    inventory.add_bundle(2, 1)
-    inventory.add_bundle(2, 1)
-    assert_int(inventory.amount_at(0)).is_equal(2)
-    assert_bool(inventory.is_empty_slot(1)).is_true()
-
-
-func test_taking_one_bundle_leaves_the_other() -> void:
-    var inventory := Inventory.new()
-    inventory.add_bundle(0, 1)
-    inventory.add_bundle(1, 1)
-
-    assert_bool(inventory.take_bundle(0, 1)).is_true()
-    assert_int(inventory.count_of_bundle(0)).is_equal(0)
-    assert_int(inventory.count_of_bundle(1)).is_equal(1)
-
-
 ## --- 옮기기 ---
 
 func test_moving_into_an_empty_slot_swaps() -> void:

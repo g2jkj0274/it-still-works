@@ -103,7 +103,6 @@ const LIGHT_GLOW := Color(1.0, 0.76, 0.46)
 ## (곡괭이는 가로날, 도끼는 치우친 날, 삽은 아래로 넓은 날).
 const TOOL_WOOD := Color(0.80, 0.68, 0.52)
 const TOOL_STONE := Color(0.74, 0.74, 0.78)
-const BUNDLE := Color(0.56, 0.93, 0.78)
 
 const CHARACTER_SKIN := Color(0.98, 0.86, 0.74)
 const CHARACTER_BODY := Color(0.72, 0.86, 0.94)
@@ -135,8 +134,6 @@ const PART_MARK_JUDGE := Color(0.44, 0.26, 0.44)
 ## 되풀이가 어떻게 도는가.
 const PART_MARK_TURN := Color(0.50, 0.34, 0.18)
 
-## 묶음이 얼마나 삼켰는가.
-const PART_MARK_BUNDLE := Color(0.22, 0.40, 0.26)
 
 const HIGHLIGHT := Color(1.0, 1.0, 1.0, 0.32)
 
@@ -216,7 +213,6 @@ const _BLOCKS: Dictionary[int, Color] = {
     BlockType.LAMP_DARK: LAMP_DARK,
     BlockType.LAMP_LIT: LAMP_LIT,
     BlockType.CHEST: CHEST,
-    BlockType.BUNDLE: BUNDLE,
     BlockType.SAND: SAND,
     BlockType.EMBER: EMBER,
     BlockType.PLANK: PLANK,

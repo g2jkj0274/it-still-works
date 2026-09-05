@@ -321,8 +321,6 @@ func hovered_name() -> String:
 func _name_in(inventory: Inventory, slot: int) -> String:
     var kind := inventory.kind_at(slot)
     var name := PartWords.name_of(kind)
-    if kind == BlockType.BUNDLE:
-        name = "%s %s" % [name, PartWords.bundle_name(inventory.variant_at(slot))]
     return name
 
 

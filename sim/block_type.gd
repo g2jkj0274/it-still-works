@@ -45,46 +45,43 @@ const FIELD := 11
 ## 거둔 작물. 먹을 거리다.
 const CROP := 12
 
-## 묶음. 회로 하나를 통째로 압축해 담은 부품. 안은 밖에서 보이지 않는다.
-const BUNDLE := 13
-
 ## 돌. 지하를 이루는 흔한 암반. 흙보다 단단해 보이고 광석과는 다르다.
-const ROCK := 14
+const ROCK := 13
 
 ## 꺼진 등.
-const LAMP_DARK := 15
+const LAMP_DARK := 14
 
 ## 켜진 등. 둘레를 밝힌다. 문과 마찬가지로 작동기가 여닫는다.
-const LAMP_LIT := 16
+const LAMP_LIT := 15
 
 ## 궤짝. 물건을 넣어 둔다. 손이 모자라야 왕복에 값이 붙고, 넣어 둘 곳이
 ## 있어야 손이 모자란 것이 짜증이 아니라 살림이 된다.
-const CHEST := 17
+const CHEST := 16
 
 ## 모래. 물가에 깔린다. 유리의 재료다.
-const SAND := 18
+const SAND := 17
 
 ## 불씨돌. 굽는 데 드는 것이자 관솔불의 재료다. 흙 아래 얕은 곳에 든다.
-const EMBER := 19
+const EMBER := 18
 
 ## 판자. 나무를 켠 것. **제작법 대부분이 이것을 거친다.**
-const PLANK := 20
+const PLANK := 19
 
 ## 관솔불. 놓으면 작게 밝힌다. 작동기가 여닫지 못해 늘 켜져 있다.
 ##
 ## 등과 갈라 둔 까닭은 **첫 굴에 빛이 있어야 하기 때문**이다. 등은 광석이
 ## 들고 광석은 돌 곡괭이가 있어야 캐는데, 파고 내려가기 시작하는 것은
 ## 나무 곡괭이일 때다.
-const TORCH := 21
+const TORCH := 20
 
 ## 도구. 손에 들면 무엇을 캘 수 있는지가 달라진다.
 ## 격자에 놓이지 않는다 — 물건이지 블록이 아니다.
-const WOOD_PICK := 22
-const STONE_PICK := 23
-const STONE_AXE := 24
-const STONE_SHOVEL := 25
+const WOOD_PICK := 21
+const STONE_PICK := 22
+const STONE_AXE := 23
+const STONE_SHOVEL := 24
 
-const COUNT := 26
+const COUNT := 25
 
 ## 도구는 여기부터다. 이 아래는 전부 격자에 놓이는 블록이다.
 const FIRST_TOOL := WOOD_PICK
@@ -92,7 +89,7 @@ const FIRST_TOOL := WOOD_PICK
 const _NAMES: PackedStringArray = [
     "empty", "ground", "ore", "wood",
     "door_closed", "door_open", "detector", "actuator", "repeater", "box", "branch", "field", "crop",
-    "bundle", "rock", "lamp_dark", "lamp_lit", "chest",
+    "rock", "lamp_dark", "lamp_lit", "chest",
     "sand", "ember", "plank", "torch",
     "wood_pick", "stone_pick", "stone_axe", "stone_shovel",
 ]
@@ -174,15 +171,7 @@ static func dark_lamp() -> int:
 static func is_part(type: int) -> bool:
     if type == DETECTOR or type == ACTUATOR or type == REPEATER:
         return true
-    return type == BOX or type == BRANCH or type == BUNDLE
-
-
-## 종류 번호만으로는 어느 것인지 가려지지 않는 부품인가.
-##
-## 묶음은 안에 무엇이 들었는지가 저마다 다르다. 인벤토리에서 종류와 함께
-## **어느 것인지**를 들고 다녀야 하고, 같은 번호끼리만 한 칸에 쌓인다.
-static func is_uniquely_made(type: int) -> bool:
-    return type == BUNDLE
+    return type == BOX or type == BRANCH
 
 
 static func opened_door() -> int:

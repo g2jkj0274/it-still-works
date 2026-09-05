@@ -28,7 +28,6 @@ var _lamp_lights: LampLights
 var _character_view: CharacterView
 var _camera: IsometricCamera
 var _highlight: BlockHighlight
-var _bundle_marks: BundleMarks
 var _input: InputController
 var _wire_view: WireView
 var _part_marks: PartMarks
@@ -108,10 +107,6 @@ func block_highlight() -> BlockHighlight:
     return _highlight
 
 
-func bundle_marks() -> BundleMarks:
-    return _bundle_marks
-
-
 func hotbar() -> Hotbar:
     return _hotbar
 
@@ -168,7 +163,6 @@ func sync_views() -> void:
     _character_view.sync(CHARACTER_FOLLOW)
     _wire_view.sync()
     _part_marks.sync()
-    _bundle_marks.sync()
     _threat_view.sync()
     _sky_view.apply(simulation.current_tick())
     _day_clock.apply(simulation.current_tick())
@@ -300,9 +294,6 @@ func _build_views() -> void:
     _highlight.name = "Highlight"
     add_child(_highlight)
 
-    _bundle_marks = BundleMarks.new()
-    _bundle_marks.name = "BundleMarks"
-    add_child(_bundle_marks)
 
 
 func _build_input() -> void:
@@ -318,7 +309,6 @@ func _build_input() -> void:
     add_child(_input)
     _input.bind(simulation)
     _input.bind_camera(_camera)
-    _bundle_marks.bind(_input)
     _input.help_toggled.connect(_on_help_toggled)
     _input.crafted.connect(_sound_board.note_crafted)
     _input.balked.connect(_on_balked)
@@ -485,7 +475,6 @@ func adopt_simulation() -> void:
     _first_steps.bind(simulation, _notice)
     _sound_board.bind(simulation)
     _input.bind(simulation)
-    _input.clear_chosen()
     _input.clear_link_source()
     _hotbar.bind(state.inventory, _input)
     _bag.bind(state.inventory)

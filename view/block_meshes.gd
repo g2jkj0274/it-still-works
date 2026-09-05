@@ -156,14 +156,6 @@ static func boxes_of(block_type: int) -> Array[Array]:
                 [Vector3(-0.26, 0.06, 0.0), Vector3(0.36, 0.64, 0.56)],
                 [Vector3(0.26, 0.06, 0.0), Vector3(0.36, 0.64, 0.56)],
             ]
-        BlockType.BUNDLE:
-            # 묶음. 끈으로 열십자로 동여맨 꾸러미.
-            return [
-                [Vector3(0.0, -0.14, 0.0), Vector3(0.84, 0.72, 0.84)],
-                [Vector3(0.0, -0.10, 0.0), Vector3(0.96, 0.22, 0.26)],
-                [Vector3(0.0, -0.10, 0.0), Vector3(0.26, 0.22, 0.96)],
-                [Vector3(0.0, 0.30, 0.0), Vector3(0.30, 0.20, 0.30)],
-            ]
         _:
             # 지형은 칸을 꽉 채운다. 이어 붙였을 때 틈이 보이면 안 된다.
             return [[Vector3.ZERO, Vector3.ONE * _CELL]]

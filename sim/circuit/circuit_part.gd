@@ -17,8 +17,7 @@ var position: Vector3i = Vector3i.ZERO:
 
 ## 세상과 닿는 자리.
 ##
-## 보통은 놓인 칸 그대로다. 묶음 안에 든 부품만 다르다. 묶음은 한 칸을 차지하는
-## 부품이므로 그 안의 감지기와 작동기는 묶음이 놓인 칸에서 세상을 만난다.
+## 놓인 칸 그대로다.
 var anchor: Vector3i = Vector3i.ZERO
 
 ## 지금 내보내고 있는 신호. 출구가 하나뿐인 부품은 이것만 쓴다.
@@ -29,7 +28,7 @@ var _next_output: SignalValue = SignalValue.none()
 var _anchor_pinned: bool = false
 
 
-## 세상과 닿을 자리를 못박는다. 묶음이 자기 안의 부품에게 부른다.
+## 세상과 닿을 자리를 못박는다.
 func pin_anchor(cell: Vector3i) -> void:
     anchor = cell
     _anchor_pinned = true

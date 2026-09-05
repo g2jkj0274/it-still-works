@@ -172,29 +172,6 @@ func test_the_line_never_says_why_something_failed() -> void:
     assert_str(line).contains(PartWords.name_of(BlockType.BOX))
 
 
-## --- 묶음 ---
-##
-## 묶음은 밖에서 보면 전부 같은 상자다. 부품 셋을 접은 것과 열둘을 접은 것이
-## 같아 보이면 어느 것이 큰 장치인지 알 수 없다. 숫자가 아니라 높이로 보인다.
-
-func test_a_bigger_bundle_is_marked_differently() -> void:
-    var small := PartMarks.bundle_mark_for(1)
-    var big := PartMarks.bundle_mark_for(PartMarks.BUNDLE_STEP)
-    var huge := PartMarks.bundle_mark_for(PartMarks.BUNDLE_STEP * 2)
-
-    assert_int(small).is_not_equal(big)
-    assert_int(big).is_not_equal(huge)
-    assert_int(small).is_not_equal(huge)
-
-
-func test_bundles_of_a_like_size_look_alike() -> void:
-    assert_int(PartMarks.bundle_mark_for(1)).is_equal(PartMarks.bundle_mark_for(2))
-
-
-func test_an_empty_bundle_still_gets_a_mark() -> void:
-    assert_int(PartMarks.bundle_mark_for(0)).is_greater_equal(0)
-
-
 ## --- 색으로 갈래를 가른다 ---
 ##
 ## 한 색으로 통일했더니 열두 픽셀짜리 알갱이 열여덟 종이 되었다. 형태만으로
@@ -204,11 +181,10 @@ func test_the_families_have_their_own_colours() -> void:
     var eye := PartMarks.colour_for(PartMarks.MARK_EYE_PLAYER)
     var judge := PartMarks.colour_for(PartMarks.MARK_TRUTH)
     var turn := PartMarks.colour_for(PartMarks.MARK_ENDLESS)
-    var bundle := PartMarks.colour_for(PartMarks.MARK_BUNDLE)
     var shape := PartMarks.colour_for(PartMarks.MARK_SQUARE)
 
     var seen: Array[Color] = []
-    for colour in [eye, judge, turn, bundle, shape]:
+    for colour in [eye, judge, turn, shape]:
         for other: Color in seen:
             assert_bool(colour.is_equal_approx(other)).is_false()
         seen.append(colour)

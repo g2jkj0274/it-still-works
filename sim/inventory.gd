@@ -7,7 +7,7 @@ extends RefCounted
 ## 무엇을 가져갈지 고르는 일이 없고, 자원지를 오가는 일에 값이 붙지 않는다.
 ## 왕복이 자동 운반 장치의 동기가 되려면(스펙 §3.6) 손이 먼저 모자라야 한다.
 ##
-## 칸 하나는 [무엇, 몇 개, 어느 것] 이다. **어느 것**은 묶음처럼 종류만으로는
+## 칸 하나는 [무엇, 몇 개, 어느 것] 이다. **어느 것**은 종류만으로는
 ## 가려지지 않는 물건을 위한 자리다. 종류와 그것이 둘 다 같아야 한 칸에 쌓인다.
 ##
 ## 딕셔너리를 쓰지 않는다. 칸 번호로 색인하는 평평한 배열이라 순회 순서가
@@ -54,7 +54,9 @@ func amount_at(slot: int) -> int:
     return _amounts[slot]
 
 
-## 그 칸에 든 것이 어느 것인지. 묶음이면 묶음 번호, 나머지는 0.
+## 그 칸에 든 것이 어느 것인지. 지금은 늘 0 이다.
+##
+## 종류만으로 가려지지 않는 물건이 생기면 여기가 그 자리다.
 func variant_at(slot: int) -> int:
     if not _is_slot(slot):
         return 0
@@ -73,16 +75,6 @@ func count_of(block_type: int) -> int:
             total += _amounts[slot]
     return total
 
-
-## 그 묶음을 몇 개 들고 있는가.
-func count_of_bundle(bundle_id: int) -> int:
-    if bundle_id < 0:
-        return 0
-    var total := 0
-    for slot in _kinds.size():
-        if _kinds[slot] == BlockType.BUNDLE and _variants[slot] == bundle_id:
-            total += _amounts[slot]
-    return total
 
 
 func total() -> int:
@@ -129,12 +121,6 @@ func add(block_type: int, amount: int, variant: int = 0) -> int:
     return left
 
 
-## 묶음을 넣는다. 넣지 못한 수를 돌려준다.
-func add_bundle(bundle_id: int, amount: int) -> int:
-    if bundle_id < 0:
-        return maxi(amount, 0)
-    return add(BlockType.BUNDLE, amount, bundle_id)
-
 
 ## 뺀다. 모자라면 **아무것도 빼지 않고** false 를 돌려준다.
 func take(block_type: int, amount: int, variant: int = 0) -> bool:
@@ -158,11 +144,6 @@ func take(block_type: int, amount: int, variant: int = 0) -> bool:
             _clear(slot)
     return true
 
-
-func take_bundle(bundle_id: int, amount: int) -> bool:
-    if bundle_id < 0:
-        return false
-    return take(BlockType.BUNDLE, amount, bundle_id)
 
 
 ## 두 칸을 맞바꾼다. 같은 것이면 한쪽으로 모은다.
