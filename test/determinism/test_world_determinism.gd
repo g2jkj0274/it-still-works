@@ -45,7 +45,7 @@ const NORTH_EAST := Vector3i(1, -1, 0)
 ##
 ## 이 값이 깨졌다면 시뮬레이션 동작이 바뀐 것이다. 값을 고쳐 통과시키지 말고
 ## 무엇이 바뀌었는지 먼저 밝힌다.
-const GOLDEN_HASH := "22efcb0137800523ed4eb73a5f5439bb4460e7f053271426786b64f5023bb0c5"
+const GOLDEN_HASH := "2d4b48bf3f5a1f8c906e7038d6e9dd4c610e0a652bcafe217dd085d76abc7d54"
 
 ## 같은 실행이 끝났을 때 캐릭터가 서 있는 칸.
 ## 해시보다 읽기 쉬워서 이동 규칙이 어긋났을 때 원인을 빨리 좁혀준다.
@@ -96,7 +96,7 @@ func _scenario() -> Array:
 ## 어느 속도로도 제때 도착하기 때문이다. 걸음 도중을 함께 못박아야 타이밍이
 ## 지켜진다.
 const MID_TICK := 104 + 2
-const GOLDEN_MID_HASH := "7e94d0b7a80cdab15ede8667bff3d152d1c3502c64bf27a5bcc95ac0f6d9f604"
+const GOLDEN_MID_HASH := "34e902f62a48baafe85d4347306dc616ea34daee3b25ce8eed8d1375a2322d29"
 
 
 func _run(seed_value: int = SEED, scenario: Array = []) -> Simulation:
@@ -106,6 +106,10 @@ func _run(seed_value: int = SEED, scenario: Array = []) -> Simulation:
 func _run_until(ticks: int, seed_value: int = SEED, scenario: Array = []) -> Simulation:
     var sim := Simulation.new(seed_value)
     IslandBuilder.populate(sim.state)
+    # 시나리오가 돌을 캐므로 곡괭이를 쥐여 준다. **판을 세우는 일이지 명령이
+    # 아니다** — IslandBuilder.populate 와 같은 자리다. 명령은 손에 있는
+    # 도구만 쓸 수 있으므로 이것이 없으면 시나리오가 아무 데도 가지 않는다.
+    sim.state.inventory.add(BlockType.STONE_PICK, 1)
     for entry: Array in (scenario if not scenario.is_empty() else _scenario()):
         sim.submit_at(entry[1] as SimCommand, int(entry[0]))
     sim.advance(ticks)
@@ -160,6 +164,7 @@ func test_hash_is_independent_of_step_granularity() -> void:
 
     var fine := Simulation.new(SEED)
     IslandBuilder.populate(fine.state)
+    fine.state.inventory.add(BlockType.STONE_PICK, 1)
     for entry: Array in _scenario():
         fine.submit_at(entry[1] as SimCommand, int(entry[0]))
     for i in TOTAL_TICKS:

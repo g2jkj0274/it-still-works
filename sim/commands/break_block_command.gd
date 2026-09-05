@@ -41,6 +41,12 @@ func apply(state: WorldState) -> void:
         return
 
     # 맞는 도구가 없으면 부숴지지도 않는다(스펙 §3.6).
+    #
+    # **손에 있는지도 여기서 본다.** 실려 온 것은 "무엇을 들었다고 하는가"일
+    # 뿐이다. 놓기가 재료를 인벤토리에서 빼는 것과 같은 자리다 — 그쪽이
+    # 화면의 말을 믿지 않는데 이쪽만 믿으면 규칙이 반쪽이 된다.
+    if tool != BlockType.EMPTY and state.inventory.count_of(tool) <= 0:
+        return
     if not ToolRules.can_break(tool, broken):
         return
 

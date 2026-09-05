@@ -61,6 +61,27 @@ func test_a_break_that_changes_the_world_says_nothing() -> void:
     assert_int(count[0]).is_equal(0)
 
 
+func test_the_wrong_tool_says_something() -> void:
+    # **아무 일도 안 일어나는 것이 가장 나쁜 답이다**(스펙 §1).
+    # 맞는 곡괭이가 없어 부숴지지 않는 것은 키가 안 먹는 것과 구별되지 않는다.
+    #
+    # 규칙을 여기에 옮겨 적지는 않는다. 낸 다음에 세상이 그대로인지만 본다 —
+    # 그래서 도구 관문이 생겨도 알림 쪽은 손댈 것이 없었다.
+    var sim := _sim()
+    var controller := _controller(sim)
+    var aimed := controller.break_cell()
+    aimed.z = maxi(aimed.z, 1)
+    sim.state.grid.set_block(aimed, BlockType.ORE)
+
+    var count := _counter(controller)
+    controller.submit_break()
+    sim.advance(2)
+    controller.poll(sim.current_tick())
+
+    assert_int(sim.state.grid.get_block(aimed)).is_equal(BlockType.ORE)
+    assert_int(count[0]).is_equal(1)
+
+
 func test_nothing_is_said_before_the_tick_has_passed() -> void:
     # 낸 명령이 아직 돌지 않았다. 성급하게 울면 늘 우는 것과 같다.
     var sim := _sim()
