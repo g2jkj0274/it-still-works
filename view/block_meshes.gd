@@ -54,70 +54,99 @@ static var _side: Color = Color.WHITE
 ## 한 칸이 화면에서 사십 픽셀 남짓이다. 잔 무늬는 그 크기에서 사라지므로
 ## **키와 바닥 넓이로** 가른다. 낮게 깔린 것, 층층이 쌓인 것, 둘로 갈린 것,
 ## 뚜껑이 넓은 것 — 실루엣만으로 알아볼 수 있어야 한다.
-static func _shape_of(tool: SurfaceTool, block_type: int) -> void:
+##
+## 상자 목록으로 내어 준다. 세상에 세우는 메시와 손에 든 것을 그리는 그림
+## ([BlockIcon]) 이 같은 표를 읽어야 둘이 어긋나지 않는다. 인벤토리에서 본
+## 실루엣과 땅에 놓은 실루엣이 다르면 그림이 아니라 수수께끼가 된다.
+##
+## 상자 하나는 [중심, 크기] 다. 칸 한가운데가 원점이고 Y 가 위다.
+static func boxes_of(block_type: int) -> Array[Array]:
     match block_type:
         BlockType.DOOR_CLOSED:
             # 칸을 가로막은 두꺼운 판. 키가 칸을 꽉 채운다.
-            _box(tool, Vector3.ZERO, Vector3(_CELL, _CELL, CLOSED_DOOR_THICKNESS))
+            return [[Vector3.ZERO, Vector3(_CELL, _CELL, CLOSED_DOOR_THICKNESS)]]
         BlockType.DOOR_OPEN:
             # 한쪽으로 물러난 얇은 판. 남은 자리가 지나갈 자리다.
             var shift := (_CELL - OPEN_DOOR_THICKNESS) * 0.5
-            _box(tool, Vector3(0.0, 0.0, -shift),
-                Vector3(_CELL, _CELL, OPEN_DOOR_THICKNESS))
+            return [[Vector3(0.0, 0.0, -shift),
+                Vector3(_CELL, _CELL, OPEN_DOOR_THICKNESS)]]
         BlockType.FIELD:
             # 갈아 놓은 두둑. 밟고 다니는 곳이라 가장 낮다.
-            _box(tool, Vector3(0.0, -0.32, 0.0), Vector3(_CELL, 0.36, _CELL))
+            return [[Vector3(0.0, -0.32, 0.0), Vector3(_CELL, 0.36, _CELL)]]
         BlockType.CHEST:
             # 궤짝. 몸통 위에 뚜껑이 얹히고 앞에 걸쇠가 붙었다.
-            _box(tool, Vector3(0.0, -0.22, 0.0), Vector3(0.92, 0.56, 0.78))
-            _box(tool, Vector3(0.0, 0.16, 0.0), Vector3(0.96, 0.24, 0.82))
-            _box(tool, Vector3(0.0, -0.02, -0.42), Vector3(0.22, 0.24, 0.10))
+            return [
+                [Vector3(0.0, -0.22, 0.0), Vector3(0.92, 0.56, 0.78)],
+                [Vector3(0.0, 0.16, 0.0), Vector3(0.96, 0.24, 0.82)],
+                [Vector3(0.0, -0.02, -0.42), Vector3(0.22, 0.24, 0.10)],
+            ]
         BlockType.LAMP_DARK, BlockType.LAMP_LIT:
             # 등. 기둥 위에 갓이 얹혔다. 켜고 꺼짐은 색이 말한다.
-            _box(tool, Vector3(0.0, -0.34, 0.0), Vector3(0.30, 0.32, 0.30))
-            _box(tool, Vector3(0.0, 0.02, 0.0), Vector3(0.62, 0.40, 0.62))
-            _box(tool, Vector3(0.0, 0.28, 0.0), Vector3(0.78, 0.12, 0.78))
+            return [
+                [Vector3(0.0, -0.34, 0.0), Vector3(0.30, 0.32, 0.30)],
+                [Vector3(0.0, 0.02, 0.0), Vector3(0.62, 0.40, 0.62)],
+                [Vector3(0.0, 0.28, 0.0), Vector3(0.78, 0.12, 0.78)],
+            ]
         BlockType.CROP:
             # 작물 포기. 밑동에서 이삭이 두 갈래로 솟는다.
             # 땅에 난 것은 부숴서 먹고, 이것이 첫날을 넘기는 유일한 길이다.
-            _box(tool, Vector3(0.0, -0.40, 0.0), Vector3(0.44, 0.20, 0.44))
-            _box(tool, Vector3(-0.10, -0.12, 0.0), Vector3(0.16, 0.44, 0.16))
-            _box(tool, Vector3(0.12, -0.04, 0.06), Vector3(0.16, 0.56, 0.16))
-            _box(tool, Vector3(0.0, 0.18, 0.0), Vector3(0.30, 0.18, 0.30))
+            return [
+                [Vector3(0.0, -0.40, 0.0), Vector3(0.44, 0.20, 0.44)],
+                [Vector3(-0.10, -0.12, 0.0), Vector3(0.16, 0.44, 0.16)],
+                [Vector3(0.12, -0.04, 0.06), Vector3(0.16, 0.56, 0.16)],
+                [Vector3(0.0, 0.18, 0.0), Vector3(0.30, 0.18, 0.30)],
+            ]
         BlockType.DETECTOR:
             # 눈. 몸통 위로 렌즈가 곧게 솟았다. 부품 가운데 가장 키가 크다.
-            _box(tool, Vector3(0.0, -0.22, 0.0), Vector3(0.80, 0.56, 0.80))
-            _box(tool, Vector3(0.0, 0.16, 0.0), Vector3(0.44, 0.40, 0.44))
-            _box(tool, Vector3(0.0, 0.38, 0.0), Vector3(0.24, 0.10, 0.24))
+            return [
+                [Vector3(0.0, -0.22, 0.0), Vector3(0.80, 0.56, 0.80)],
+                [Vector3(0.0, 0.16, 0.0), Vector3(0.44, 0.40, 0.44)],
+                [Vector3(0.0, 0.38, 0.0), Vector3(0.24, 0.10, 0.24)],
+            ]
         BlockType.ACTUATOR:
             # 손. 좁은 몸통 위에 넓은 판이 얹혔다. 버섯처럼 위가 넓다.
-            _box(tool, Vector3(0.0, -0.26, 0.0), Vector3(0.62, 0.48, 0.62))
-            _box(tool, Vector3(0.0, 0.06, 0.0), Vector3(0.94, 0.20, 0.94))
-            _box(tool, Vector3(0.0, 0.26, 0.0), Vector3(0.34, 0.20, 0.34))
+            return [
+                [Vector3(0.0, -0.26, 0.0), Vector3(0.62, 0.48, 0.62)],
+                [Vector3(0.0, 0.06, 0.0), Vector3(0.94, 0.20, 0.94)],
+                [Vector3(0.0, 0.26, 0.0), Vector3(0.34, 0.20, 0.34)],
+            ]
         BlockType.REPEATER:
             # 되풀이. 같은 것이 층층이 좁아지며 올라간다.
-            _box(tool, Vector3(0.0, -0.36, 0.0), Vector3(0.98, 0.28, 0.98))
-            _box(tool, Vector3(0.0, -0.06, 0.0), Vector3(0.72, 0.32, 0.72))
-            _box(tool, Vector3(0.0, 0.24, 0.0), Vector3(0.44, 0.28, 0.44))
+            return [
+                [Vector3(0.0, -0.36, 0.0), Vector3(0.98, 0.28, 0.98)],
+                [Vector3(0.0, -0.06, 0.0), Vector3(0.72, 0.32, 0.72)],
+                [Vector3(0.0, 0.24, 0.0), Vector3(0.44, 0.28, 0.44)],
+            ]
         BlockType.BOX:
             # 상자. 몸통보다 뚜껑이 넓게 나와 턱을 만든다.
-            _box(tool, Vector3(0.0, -0.20, 0.0), Vector3(0.82, 0.60, 0.82))
-            _box(tool, Vector3(0.0, 0.18, 0.0), Vector3(0.98, 0.16, 0.98))
-            _box(tool, Vector3(0.0, 0.32, 0.0), Vector3(0.26, 0.12, 0.26))
+            return [
+                [Vector3(0.0, -0.20, 0.0), Vector3(0.82, 0.60, 0.82)],
+                [Vector3(0.0, 0.18, 0.0), Vector3(0.98, 0.16, 0.98)],
+                [Vector3(0.0, 0.32, 0.0), Vector3(0.26, 0.12, 0.26)],
+            ]
         BlockType.BRANCH:
             # 갈림길. 낮은 바닥에서 길이 둘로 갈려 올라간다. 사이가 비어 있다.
-            _box(tool, Vector3(0.0, -0.38, 0.0), Vector3(0.94, 0.24, 0.94))
-            _box(tool, Vector3(-0.26, 0.06, 0.0), Vector3(0.36, 0.64, 0.56))
-            _box(tool, Vector3(0.26, 0.06, 0.0), Vector3(0.36, 0.64, 0.56))
+            return [
+                [Vector3(0.0, -0.38, 0.0), Vector3(0.94, 0.24, 0.94)],
+                [Vector3(-0.26, 0.06, 0.0), Vector3(0.36, 0.64, 0.56)],
+                [Vector3(0.26, 0.06, 0.0), Vector3(0.36, 0.64, 0.56)],
+            ]
         BlockType.BUNDLE:
             # 묶음. 끈으로 열십자로 동여맨 꾸러미.
-            _box(tool, Vector3(0.0, -0.14, 0.0), Vector3(0.84, 0.72, 0.84))
-            _box(tool, Vector3(0.0, -0.10, 0.0), Vector3(0.96, 0.22, 0.26))
-            _box(tool, Vector3(0.0, -0.10, 0.0), Vector3(0.26, 0.22, 0.96))
-            _box(tool, Vector3(0.0, 0.30, 0.0), Vector3(0.30, 0.20, 0.30))
+            return [
+                [Vector3(0.0, -0.14, 0.0), Vector3(0.84, 0.72, 0.84)],
+                [Vector3(0.0, -0.10, 0.0), Vector3(0.96, 0.22, 0.26)],
+                [Vector3(0.0, -0.10, 0.0), Vector3(0.26, 0.22, 0.96)],
+                [Vector3(0.0, 0.30, 0.0), Vector3(0.30, 0.20, 0.30)],
+            ]
         _:
             # 지형은 칸을 꽉 채운다. 이어 붙였을 때 틈이 보이면 안 된다.
-            _box(tool, Vector3.ZERO, Vector3.ONE * _CELL)
+            return [[Vector3.ZERO, Vector3.ONE * _CELL]]
+
+
+static func _shape_of(tool: SurfaceTool, block_type: int) -> void:
+    for shape: Array in boxes_of(block_type):
+        _box(tool, shape[0], shape[1])
 
 
 ## 면마다 밝기를 구운 상자 하나를 보탠다.

@@ -138,3 +138,92 @@ func test_every_recipe_has_a_row() -> void:
     screen.open()
     for i in RecipeBook.count():
         assert_object(screen.get_node_or_null("Anchor/Recipe_%d" % i)).is_not_null()
+
+
+## --- 그림과 이름 ---
+##
+## 열한 픽셀 글자로 "되풀이 12" 라고 적힌 칸 서른여섯 개는 읽어야만 알 수
+## 있는 표였다. 그림과 개수만 두고, 이름은 마우스를 얹은 칸 하나만 뜬다.
+
+func test_a_slot_draws_what_is_in_it() -> void:
+    var hand := Inventory.new()
+    hand.put_slot(4, BlockType.ORE, 3)
+    var screen := _screen(hand)
+    screen.open()
+    screen.sync()
+    assert_int(screen.slot_icon(InventoryScreen.WHERE_HAND, 4)).is_equal(BlockType.ORE)
+
+
+func test_an_empty_slot_draws_nothing() -> void:
+    var screen := _screen(Inventory.new())
+    screen.open()
+    screen.sync()
+    assert_int(screen.slot_icon(InventoryScreen.WHERE_HAND, 4)).is_equal(
+        BlockType.EMPTY)
+
+
+func test_every_recipe_row_draws_what_it_makes() -> void:
+    var screen := _screen(Inventory.new())
+    screen.open()
+    screen.sync()
+    for i in RecipeBook.count():
+        assert_int(screen.recipe_icon(i)).is_equal(RecipeBook.output_of(i))
+
+
+func test_nothing_is_named_until_the_mouse_is_on_it() -> void:
+    var hand := Inventory.new()
+    hand.put_slot(0, BlockType.WOOD, 2)
+    var screen := _screen(hand)
+    screen.open()
+    screen.sync()
+    assert_str(screen.hovered_name()).is_empty()
+
+
+func test_the_slot_under_the_mouse_is_named() -> void:
+    var hand := Inventory.new()
+    hand.put_slot(0, BlockType.WOOD, 2)
+    var screen := _screen(hand)
+    screen.open()
+    screen.sync()
+
+    screen.hover_at(_centre_of(screen, InventoryScreen.WHERE_HAND, 0))
+    assert_str(screen.hovered_name()).is_equal(PartWords.name_of(BlockType.WOOD))
+
+
+func test_an_empty_slot_under_the_mouse_is_not_named() -> void:
+    var screen := _screen(Inventory.new())
+    screen.open()
+    screen.sync()
+    screen.hover_at(_centre_of(screen, InventoryScreen.WHERE_HAND, 0))
+    assert_str(screen.hovered_name()).is_empty()
+
+
+func test_a_bundle_is_named_by_which_bundle_it_is() -> void:
+    var hand := Inventory.new()
+    hand.add_bundle(2, 1)
+    var screen := _screen(hand)
+    screen.open()
+    screen.sync()
+    screen.hover_at(_centre_of(screen, InventoryScreen.WHERE_HAND, 0))
+    assert_str(screen.hovered_name()).contains(PartWords.bundle_name(2))
+
+
+func test_moving_off_a_slot_clears_the_name() -> void:
+    var hand := Inventory.new()
+    hand.put_slot(0, BlockType.WOOD, 2)
+    var screen := _screen(hand)
+    screen.open()
+    screen.sync()
+
+    screen.hover_at(_centre_of(screen, InventoryScreen.WHERE_HAND, 0))
+    screen.hover_at(Vector2(-50.0, -50.0))
+    assert_str(screen.hovered_name()).is_empty()
+
+
+func test_a_closed_screen_names_nothing() -> void:
+    var hand := Inventory.new()
+    hand.put_slot(0, BlockType.WOOD, 2)
+    var screen := _screen(hand)
+    screen.sync()
+    screen.hover_at(Vector2(10.0, 10.0))
+    assert_str(screen.hovered_name()).is_empty()

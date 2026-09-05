@@ -15,7 +15,12 @@ const OUT_DIR := "res://reports/screenshots"
 const SETTLE_FRAMES := 24
 
 ## 캐릭터를 감췄다 켤 때 한 프레임만으로는 갱신이 안 될 수 있다.
-const TOGGLE_FRAMES := 3
+## 캐릭터를 감춘 뒤 몇 프레임을 기다렸다 다시 찍는가.
+##
+## 세 프레임으로는 처음 도는 판에서 셰이더를 굽고 자원을 읽느라 프레임이
+## 통째로 밀릴 때 감추기 전 화면이 잡혔다. 그러면 두 장이 같아서 "캐릭터가
+## 없다"고 잘못 일렀다. 검사 도구가 가끔 거짓으로 우는 것이 가장 나쁘다.
+const TOGGLE_FRAMES := 10
 
 ## 캐릭터가 있어야 할 화면 영역의 크기(픽셀).
 const SUBJECT_BOX := Vector2i(120, 160)

@@ -190,6 +190,31 @@ func move(from: int, to: int) -> void:
     _variants[to] = variant
 
 
+## 그 칸의 절반을 [param to] 로 옮긴다. 홀수는 집은 쪽이 많이 갖는다.
+##
+## 광석 마흔여덟 개를 한 칸씩 나누는 것이 아니라 절반씩 가르는 것이
+## 마인크래프트의 손놀림이다.
+func split(from: int, to: int) -> void:
+    if not _is_slot(from) or not _is_slot(to) or from == to:
+        return
+    var amount := _amounts[from]
+    if amount <= 1:
+        move(from, to)
+        return
+
+    var half := amount / 2
+    var kind := _kinds[from]
+    var variant := _variants[from]
+    var left := put_slot(to, kind, half, variant)
+    var moved := half - int(left[1])
+    if moved <= 0:
+        return
+
+    _amounts[from] -= moved
+    if _amounts[from] <= 0:
+        _clear(from)
+
+
 ## 그 칸의 것을 통째로 꺼낸다. [무엇, 몇 개, 어느 것].
 func take_slot(slot: int) -> Array:
     if not _is_slot(slot) or _amounts[slot] <= 0:

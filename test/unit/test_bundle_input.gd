@@ -284,5 +284,7 @@ func test_the_hotbar_shows_which_bundle_is_in_hand() -> void:
 
     var slot := controller.selected_slot()
     assert_int(controller.held_bundle()).is_equal(1)
-    assert_str(hotbar.slot_text(slot)).contains(PartWords.name_of(BlockType.BUNDLE))
+    assert_int(hotbar.slot_icon(slot)).is_equal(BlockType.BUNDLE)
+    assert_str(PartHint.line_for(controller)).contains(
+        PartWords.name_of(BlockType.BUNDLE))
     assert_str(hotbar.slot_text(slot)).contains("2")
