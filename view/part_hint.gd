@@ -167,6 +167,20 @@ static func line_for(controller: InputController) -> String:
 
     var block_type := controller.selected_block()
     if block_type == BlockType.EMPTY:
+        # **손이 비었으면 겨냥한 것을 읽어 준다.**
+        #
+        # "빈 손 — 손에 잡힐 칸을 1~9 로 고른다" 는 아무것도 말해 주지 않는데,
+        # 하필 그 줄이 뜨는 때가 처음 켠 순간이다. 처음 켠 사람은 돌을 쳐 보고
+        # 안 캐지는 것을 고장으로 읽었다 — **"곡괭이"라는 말을 화면 어디서도
+        # 본 적이 없기 때문이다.**
+        #
+        # 왜 안 되는지를 말하는 것이 아니다. 겨냥한 것이 무엇이고 무엇으로
+        # 캐는 것인지를 읽어 줄 뿐이다. 캘 수 있든 없든 같은 줄이 뜬다(§4.2 라벨).
+        var under_hand := aimed_block(controller)
+        if under_hand != BlockType.EMPTY:
+            return "%s — %s   [만들기 X/C: %s]" % [
+                PartWords.name_of(under_hand), PartWords.gathering_of(under_hand),
+                _craft_note(controller)]
         return "빈 손 — 손에 잡힐 칸을 1~9 로 고른다   [만들기 X/C: %s]" % _craft_note(controller)
 
     var line := "%s — %s" % [PartWords.name_of(block_type), PartWords.description_of(block_type)]
@@ -174,6 +188,13 @@ static func line_for(controller: InputController) -> String:
         line += "   [지금: %s]" % controller.part_setting_name()
     line += "   [만들기 X/C: %s]" % _craft_note(controller)
     return line
+
+
+## 겨냥한 칸에 무엇이 있는가. 비어 있거나 겨냥한 곳이 없으면 빈 칸.
+static func aimed_block(controller: InputController) -> int:
+    if controller.simulation() == null:
+        return BlockType.EMPTY
+    return controller.simulation().state.grid.get_block(controller.break_cell())
 
 
 ## 지금 뭐를 만들려는지와 드는 재료.

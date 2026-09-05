@@ -62,6 +62,22 @@ const _DESCRIPTIONS: Dictionary[int, String] = {
     BlockType.BUNDLE: "만들어 둔 장치가 통째로 들어 있다. 한 칸에 놓인다",
 }
 
+## 그것을 캐는 데 무엇이 드는가.
+##
+## **규칙을 여기에 옮겨 적지 않는다.** [ToolRules] 에 물어서 이름만 붙인다.
+## 옮겨 적으면 도구 등급이 늘 때마다 두 곳을 고쳐야 하고, 언젠가 어긋난다.
+##
+## 이것은 오류 메시지가 아니라 **라벨**이다(§4.2). 왜 안 되는지가 아니라
+## 무엇으로 하는지를 말한다. 처음 켠 사람은 "곡괭이"라는 말을 화면 어디서도
+## 본 적이 없어서, 돌이 안 캐지는 것을 고장으로 읽었다.
+static func gathering_of(block_type: int) -> String:
+    match ToolRules.needed_for(block_type):
+        ToolRules.WOOD:
+            return "나무 곡괭이로 캔다"
+        ToolRules.STONE:
+            return "돌 곡괭이로 캔다"
+    return "맨손으로 캔다"
+
 const _TARGETS: Dictionary[int, String] = {
     DetectorPart.TARGET_PLAYER: "사람",
     DetectorPart.TARGET_THREAT: "밤에 오는 것",

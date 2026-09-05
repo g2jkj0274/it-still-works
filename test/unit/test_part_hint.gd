@@ -93,3 +93,45 @@ func test_a_long_line_is_still_one_line() -> void:
     hint.sync()
     assert_bool(hint.is_single_line()).is_true()
     assert_bool(hint.fully_visible()).is_true()
+
+
+func test_an_empty_hand_reads_what_is_aimed_at() -> void:
+    # **처음 켠 사람은 손이 비어 있다.** 그때 뜨던 "빈 손 — 손에 잡힐 칸을
+    # 1~9 로 고른다"는 아무것도 말해 주지 않았다. 돌을 쳐 보고 안 캐지면
+    # 고장으로 읽는다 — "곡괭이"라는 말을 화면 어디서도 본 적이 없기 때문이다.
+    var controller := _controller()
+    var here := controller.simulation().state.character.cell()
+    var stone := Vector3i(here.x, here.y, VoxelGrid.BEDROCK_Z + 2)
+    controller.simulation().state.grid.set_block(stone, BlockType.ROCK)
+    controller.set_target(_aim_at(stone))
+
+    var line := PartHint.line_for(controller)
+    assert_str(line).contains(PartWords.name_of(BlockType.ROCK))
+    assert_str(line).contains("곡괭이")
+
+
+func test_what_the_hand_holds_still_wins() -> void:
+    # 손에 든 것이 있으면 그쪽을 읽는다. 놓기 전에 무엇을 놓는지 알아야 한다.
+    var controller := _controller()
+    var here := controller.simulation().state.character.cell()
+    controller.simulation().state.inventory.add(BlockType.WOOD, 1)
+    controller.select_block(BlockType.WOOD)
+    controller.set_target(_aim_at(Vector3i(here.x, here.y, VoxelGrid.BEDROCK_Z + 2)))
+
+    assert_str(PartHint.line_for(controller)).contains(PartWords.name_of(BlockType.WOOD))
+
+
+func test_the_gathering_line_asks_the_rules() -> void:
+    # 규칙을 옮겨 적지 않는다. 도구 등급이 늘면 이 글도 저절로 따라와야 한다.
+    assert_str(PartWords.gathering_of(BlockType.WOOD)).contains("맨손")
+    assert_str(PartWords.gathering_of(BlockType.ROCK)).contains("나무 곡괭이")
+    assert_str(PartWords.gathering_of(BlockType.EMBER)).contains("나무 곡괭이")
+    assert_str(PartWords.gathering_of(BlockType.ORE)).contains("돌 곡괭이")
+
+
+func _aim_at(cell: Vector3i) -> BlockTarget:
+    var target := BlockTarget.new()
+    target.hit = true
+    target.cell = cell
+    target.normal = Vector3i(0, 0, 1)
+    return target

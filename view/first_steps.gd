@@ -69,7 +69,17 @@ func is_ready(index: int) -> bool:
         0:
             return true
         1:
-            return inventory.total() > 0
+            # **손에 무엇이든 들면 뜨고 있었다.** 그래서 흙 하나를 들고
+            # 처음 켠 사람이 "만들 것은 X 로 고르고 C 로 만든다"를 읽었는데,
+            # 그 순간 만들 수 있는 것은 하나도 없었다. 시킨 것을 했더니
+            # 둔한 소리만 났고, 첫 이 분에 그런 일이 두 번 생겼다.
+            #
+            # **실제로 만들 수 있게 되었을 때만 뜬다.** 규칙을 여기에 옮겨
+            # 적지 않고 제작법에 물어본다.
+            for recipe in RecipeBook.count():
+                if RecipeBook.has_materials(inventory, recipe):
+                    return true
+            return false
         2:
             for part_type in PARTS:
                 if inventory.count_of(part_type) > 0:

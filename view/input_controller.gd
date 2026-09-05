@@ -187,8 +187,8 @@ var _roles: PackedInt32Array = PackedInt32Array()
 ## 지금 손에 쥔 묶음 번호. 아무것도 안 쥐었으면 -1.
 
 
-func bind(simulation: Simulation) -> void:
-    _simulation = simulation
+func bind(p_simulation: Simulation) -> void:
+    _simulation = p_simulation
 
 
 ## 이동 방향을 뽑을 카메라. 없으면 고정 배치로 물러난다.
@@ -380,6 +380,11 @@ func place_cell() -> Vector3i:
 
 
 ## 지금 겨냥하고 있는 부품. 없으면 null.
+## 지금 붙어 있는 시뮬레이션. 화면 쪽이 읽기만 한다.
+func simulation() -> Simulation:
+    return _simulation
+
+
 func aimed_part() -> CircuitPart:
     if _simulation == null:
         return null
