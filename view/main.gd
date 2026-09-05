@@ -66,6 +66,9 @@ func _physics_process(_delta: float) -> void:
     # 화면이 열려 있는 동안에는 겨냥도 조작도 하지 않는다. 마우스가 화면에
     # 매여 있는데 그대로 겨냥이 되면 엉뚱한 곳을 부순다.
     if _bag.is_open():
+        # 가방이 화면을 덮는 동안 하단 한 줄은 숨긴다. 가방은 그 자리에
+        # 손에 잡히는 줄을 그리므로 둘이 겹쳐 글자가 칸을 가렸다.
+        _part_hint.visible = false
         _poll_bag()
         simulation.advance(driver.pump(elapsed))
         sync_views()
@@ -170,6 +173,7 @@ func sync_views() -> void:
     _hotbar.visible = not _bag.is_open()
     _hotbar.sync()
     _bag.sync()
+    _part_hint.visible = not _bag.is_open()
     _part_hint.sync()
     _vitals_bar.sync()
     _camera.follow(_character_view.target_position(), CAMERA_FOLLOW)

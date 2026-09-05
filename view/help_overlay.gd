@@ -5,9 +5,7 @@ extends CanvasLayer
 ##
 ## 늘 떠 있으면 화면을 가린다. 필요할 때만 부른다.
 
-const MARGIN := Vector2(16, 16)
-const TEXT_COLOUR := Color(0.14, 0.16, 0.20)
-const BACKDROP := Color(1.0, 1.0, 1.0, 0.82)
+const MARGIN := Vector2(UiTheme.GAP_EDGE, UiTheme.GAP_EDGE)
 
 ## 세 덩이로 나눠 띄운다. 열일곱 줄을 한 덩어리로 놓으면 훑는 데 오래 걸린다.
 const LINES: PackedStringArray = [
@@ -42,8 +40,7 @@ func _ready() -> void:
     anchor.mouse_filter = Control.MOUSE_FILTER_IGNORE
     add_child(anchor)
 
-    var style := StyleBoxFlat.new()
-    style.bg_color = BACKDROP
+    var style := UiTheme.panel_style()
     style.set_corner_radius_all(6)
     style.set_content_margin_all(12)
 
@@ -56,7 +53,7 @@ func _ready() -> void:
 
     var label := Label.new()
     label.text = "\n".join(LINES)
-    label.add_theme_color_override("font_color", TEXT_COLOUR)
+    UiTheme.apply(label, UiTheme.TEXT, UiTheme.INK)
     label.mouse_filter = Control.MOUSE_FILTER_IGNORE
     _panel.add_child(label)
 

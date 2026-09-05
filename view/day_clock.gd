@@ -9,26 +9,22 @@ extends CanvasLayer
 ##
 ## 낮밤은 틱만으로 정해지므로(따로 든 상태가 없다) 여기서도 틱만 읽는다.
 ## 숫자 시계는 두지 않는다. 띠 위를 해가 지나가는 것으로 보인다.
+##
+## 빛깔과 치수는 [UiTheme] 에서 가져온다. 여기서 색을 정하지 않는다.
 
-const BAR_SIZE := Vector2(180, 10)
-const MARGIN := Vector2(16, 16)
+## 오른쪽 위에 놓이는 판의 너비. [VitalsBar] 와 같아야 둘이 한 덩어리로 읽힌다.
+const PANEL_WIDTH := 208.0
+
+const BAR_HEIGHT := 8.0
 
 ## 지금 자리를 가리키는 표시.
-const MARKER_SIZE := Vector2(4, 16)
+const MARKER_SIZE := Vector2(3, 14)
 
 ## 밤이 오기 이만큼 남으면 띠가 물든다. 예고가 없으면 긴장도 없다.
 const WARNING_TICKS := 30 * Simulation.TICK_RATE
 
-const DAY_COLOUR := Color(0.98, 0.88, 0.52)
-const NIGHT_COLOUR := Color(0.42, 0.46, 0.66)
-const DUSK_COLOUR := Color(0.96, 0.66, 0.44)
-const MARKER_COLOUR := Color(0.16, 0.18, 0.24)
-const TEXT_COLOUR := Color(0.16, 0.18, 0.22)
-
-## 글자 테두리. 낮에는 밝은 지면, 밤에는 어두운 지면 위에 얹히므로 어느
-## 쪽에서도 읽히려면 글자 자체가 배경을 들고 다녀야 한다.
-const OUTLINE_COLOUR := Color(0.98, 0.98, 0.96, 0.92)
-const OUTLINE_SIZE := 4
+## 해가 기울 때. 낮의 노랑에서 이쪽으로 물든다.
+const DUSK := Color(0.96, 0.62, 0.40)
 
 var _label: Label
 var _day_part: ColorRect
@@ -44,27 +40,33 @@ func _ready() -> void:
     anchor.mouse_filter = Control.MOUSE_FILTER_IGNORE
     add_child(anchor)
 
-    var origin := Vector2(-BAR_SIZE.x - MARGIN.x, MARGIN.y)
-    var day_width := BAR_SIZE.x * float(DayCycle.DAY_TICKS) / DayCycle.CYCLE_TICKS
-
-    _day_part = _add_block(anchor, origin, Vector2(day_width, BAR_SIZE.y), DAY_COLOUR)
-    _night_part = _add_block(
-        anchor,
-        origin + Vector2(day_width, 0.0),
-        Vector2(BAR_SIZE.x - day_width, BAR_SIZE.y),
-        NIGHT_COLOUR)
-    _marker = _add_block(
-        anchor, origin, MARKER_SIZE, MARKER_COLOUR)
-    _marker.position.y = origin.y - (MARKER_SIZE.y - BAR_SIZE.y) * 0.5
+    var panel := Panel.new()
+    panel.name = "Panel"
+    panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    panel.add_theme_stylebox_override("panel", UiTheme.panel_style())
+    panel.position = Vector2(-PANEL_WIDTH - UiTheme.GAP_EDGE, UiTheme.GAP_EDGE)
+    panel.size = Vector2(PANEL_WIDTH, 58.0)
+    anchor.add_child(panel)
 
     _label = Label.new()
     _label.name = "Day"
-    _label.add_theme_color_override("font_color", TEXT_COLOUR)
-    _label.add_theme_color_override("font_outline_color", OUTLINE_COLOUR)
-    _label.add_theme_constant_override("outline_size", OUTLINE_SIZE)
     _label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    _label.position = origin + Vector2(0.0, BAR_SIZE.y + 4.0)
-    anchor.add_child(_label)
+    _label.position = Vector2(UiTheme.GAP_WIDE, UiTheme.GAP)
+    UiTheme.apply(_label, UiTheme.TEXT_TITLE, UiTheme.INK)
+    panel.add_child(_label)
+
+    # 띠는 글자 아래에 눕는다. 하루가 왼쪽에서 오른쪽으로 흐른다.
+    var track_x := UiTheme.GAP_WIDE
+    var track_y := 36.0
+    var track_width := PANEL_WIDTH - UiTheme.GAP_WIDE * 2.0
+    var day_width := track_width * float(DayCycle.DAY_TICKS) / DayCycle.CYCLE_TICKS
+
+    _day_part = _add_block(panel, Vector2(track_x, track_y),
+        Vector2(day_width, BAR_HEIGHT), UiTheme.DAY)
+    _night_part = _add_block(panel, Vector2(track_x + day_width, track_y),
+        Vector2(track_width - day_width, BAR_HEIGHT), UiTheme.NIGHT)
+    _marker = _add_block(panel, Vector2(track_x, track_y - (MARKER_SIZE.y - BAR_HEIGHT) * 0.5),
+        MARKER_SIZE, UiTheme.INK)
 
     apply(0)
 
@@ -73,12 +75,11 @@ func _ready() -> void:
 func apply(tick: int) -> void:
     _tick = tick
 
-    var phase := DayCycle.phase_tick(tick)
-    var origin_x := -BAR_SIZE.x - MARGIN.x
-    _marker.position.x = origin_x + BAR_SIZE.x * float(phase) / DayCycle.CYCLE_TICKS
+    var track_width := PANEL_WIDTH - UiTheme.GAP_WIDE * 2.0
+    _marker.position.x = UiTheme.GAP_WIDE + track_width * marker_ratio()
 
     # 해가 기울면 낮 쪽 띠가 물든다. 밤이 온다는 예고다.
-    _day_part.color = DUSK_COLOUR if is_dusk(tick) else DAY_COLOUR
+    _day_part.color = DUSK if is_dusk(tick) else UiTheme.DAY
     _label.text = text_for(tick)
 
 
@@ -86,8 +87,11 @@ func text() -> String:
     return _label.text
 
 
+## 하루의 어디쯤인가. 0 이 새벽, 1 이 하루 끝이다.
+##
+## 자리에서 되짚지 않고 틱에서 바로 낸다. 판을 다시 짜도 이 값은 흔들리지 않는다.
 func marker_ratio() -> float:
-    return (_marker.position.x + BAR_SIZE.x + MARGIN.x) / BAR_SIZE.x
+    return float(DayCycle.phase_tick(_tick)) / DayCycle.CYCLE_TICKS
 
 
 ## 밤이 곧 오는가. 해가 기우는 동안이다.
@@ -106,11 +110,11 @@ static func text_for(tick: int) -> String:
     return "%d일째 · 낮" % day
 
 
-func _add_block(anchor: Control, where: Vector2, size: Vector2, colour: Color) -> ColorRect:
+func _add_block(parent: Control, where: Vector2, size: Vector2, colour: Color) -> ColorRect:
     var block := ColorRect.new()
     block.color = colour
     block.position = where
     block.size = size
     block.mouse_filter = Control.MOUSE_FILTER_IGNORE
-    anchor.add_child(block)
+    parent.add_child(block)
     return block
