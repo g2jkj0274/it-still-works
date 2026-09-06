@@ -5,9 +5,6 @@ extends RefCounted
 ##
 ## 종류 이름으로 구현체를 고른다. 알 수 없는 종류면 null 을 돌려주며,
 ## 그 처리는 호출자가 정한다. 시뮬레이션은 null 명령을 큐에 넣지 않는다.
-##
-## 새 명령을 추가하면 [method create_by_type] 에 한 줄 등록한다.
-## 등록되지 않은 명령은 저장·전송을 거쳐 되살아나지 못한다.
 
 
 static func to_dict(command: SimCommand) -> Dictionary:
@@ -31,4 +28,26 @@ static func create_by_type(type: StringName) -> SimCommand:
         return AddValueCommand.new()
     if type == RollValueCommand.TYPE:
         return RollValueCommand.new()
+    if type == MoveCharacterCommand.TYPE:
+        return MoveCharacterCommand.new()
+    if type == PlaceBlockCommand.TYPE:
+        return PlaceBlockCommand.new()
+    if type == BreakBlockCommand.TYPE:
+        return BreakBlockCommand.new()
+    if type == PlacePartCommand.TYPE:
+        return PlacePartCommand.new()
+    if type == ConnectPartsCommand.TYPE:
+        return ConnectPartsCommand.new()
+    if type == DisconnectPartsCommand.TYPE:
+        return DisconnectPartsCommand.new()
+    if type == MoveItemCommand.TYPE:
+        return MoveItemCommand.new()
+    if type == CraftCommand.TYPE:
+        return CraftCommand.new()
+    if type == ClearCraftCommand.TYPE:
+        return ClearCraftCommand.new()
+    if type == FillCraftCommand.TYPE:
+        return FillCraftCommand.new()
+    if type == EatCommand.TYPE:
+        return EatCommand.new()
     return null

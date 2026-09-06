@@ -72,6 +72,61 @@ func test_state_hash_changes_as_ticks_pass() -> void:
     assert_str(sim.state_hash()).is_not_equal(before)
 
 
+func test_empty_world_step_touches_only_the_tick() -> void:
+    # M0 빈 세계: 명령이 없으면 틱 말고는 아무것도 바뀌지 않는다.
+    # 난수원도 돌지 않고 값도 생기지 않는다.
+    var sim := Simulation.new(1)
+    var rng_before := sim.state.rng.get_state()
+    sim.advance(50)
+    assert_int(sim.state.rng.get_state()).is_equal(rng_before)
+    assert_int(sim.state.value_count()).is_equal(0)
+    assert_int(sim.current_tick()).is_equal(50)
+
+
+func test_command_log_records_submissions_in_order() -> void:
+    # 저장 형식의 뿌리. 접수한 차례 그대로, 큐가 새긴 틱까지 적혀야 한다.
+    var sim := Simulation.new(1)
+    sim.advance(2)
+    sim.submit(SetValueCommand.create(&"wood", 1))
+    sim.submit_at(AddValueCommand.create(&"ore", 2), 9)
+    assert_int(sim.command_count()).is_equal(2)
+
+    var log := sim.command_log()
+    assert_str(str(log[0]["type"])).is_equal("set_value")
+    assert_int(int(log[0]["tick"])).is_equal(2)
+    assert_str(str(log[1]["type"])).is_equal("add_value")
+    assert_int(int(log[1]["tick"])).is_equal(9)
+
+
+func test_command_log_ignores_null_submission() -> void:
+    var sim := Simulation.new(1)
+    assert_object(sim.submit(null)).is_null()
+    assert_int(sim.command_count()).is_equal(0)
+
+
+func test_command_log_is_a_copy() -> void:
+    var sim := Simulation.new(1)
+    sim.submit(SetValueCommand.create(&"wood", 1))
+    var log := sim.command_log()
+    log.clear()
+    assert_int(sim.command_count()).is_equal(1)
+
+
+func test_replaying_the_command_log_reproduces_the_hash() -> void:
+    var original := Simulation.new(7)
+    original.submit_at(SetValueCommand.create(&"wood", 3), 1)
+    original.submit_at(RollValueCommand.create(&"die", 1, 6), 4)
+    original.advance(10)
+
+    var replay := Simulation.new(7)
+    for data: Dictionary in original.command_log():
+        var command := SimCommandCodec.from_dict(data)
+        replay.submit_at(command, int(data["tick"]))
+    replay.advance(10)
+
+    assert_str(replay.state_hash()).is_equal(original.state_hash())
+
+
 func test_simulation_runs_without_scene_tree() -> void:
     # 시뮬레이션은 노드 트리를 모른다. 헤드리스로 단독 생성·실행된다.
     var sim := Simulation.new(1)
@@ -81,31 +136,8 @@ func test_simulation_runs_without_scene_tree() -> void:
     assert_int(sim.current_tick()).is_equal(5)
 
 
-func _standing_sim() -> Simulation:
-    var sim := Simulation.new(1)
-    for y in 8:
-        for x in 8:
-            sim.state.grid.set_block(Vector3i(x, y, 0), BlockType.GROUND)
-    sim.state.character.place_at(Vector3i(4, 4, 1))
-    return sim
-
-
-func test_move_command_moves_the_character_on_step() -> void:
-    var sim := _standing_sim()
-    sim.submit(MoveCharacterCommand.create(Vector3i(1, 0, 0)))
-    sim.advance(10)
-    assert_bool(sim.state.character.cell() == Vector3i(5, 4, 1)).is_true()
-
-
-func test_character_settles_when_the_ground_is_removed() -> void:
-    # 발밑이 사라지면 다음 틱에 내려앉는다. 공중에 남지 않는다.
-    var sim := _standing_sim()
-    sim.state.character.place_at(Vector3i(4, 4, 4))
-    sim.advance(30)
-    assert_bool(sim.state.character.cell() == Vector3i(4, 4, 1)).is_true()
-
-
-func test_settled_character_stays_put() -> void:
-    var sim := _standing_sim()
-    sim.advance(5)
-    assert_bool(sim.state.character.cell() == Vector3i(4, 4, 1)).is_true()
+func test_tick_interval_matches_tick_rate() -> void:
+    # TickDriver 의 기본 간격이 이 상수를 본다. 20tps = 50,000µs.
+    assert_int(Simulation.TICK_RATE).is_equal(20)
+    assert_int(Simulation.TICK_INTERVAL_USEC).is_equal(50_000)
+    assert_int(TickDriver.new().interval_usec()).is_equal(Simulation.TICK_INTERVAL_USEC)

@@ -11,12 +11,6 @@ func test_new_state_starts_at_tick_zero() -> void:
     assert_int(_make().tick).is_equal(0)
 
 
-func test_default_rng_is_seeded_zero() -> void:
-    var state := WorldState.new()
-    assert_object(state.rng).is_not_null()
-    assert_int(state.rng.get_seed()).is_equal(0)
-
-
 func test_missing_value_returns_fallback() -> void:
     var state := _make()
     assert_int(state.get_value(&"nope")).is_equal(0)
@@ -127,25 +121,38 @@ func test_sorted_keys_are_lexicographic_not_intern_order() -> void:
     assert_array(actual).contains_exactly(expected)
 
 
-func test_hash_fields_are_ordered_and_named() -> void:
-    # 해시 입력은 순서 있는 [이름, 값] 목록이다. 고정 필드가 앞에, 값이 사전순으로 뒤에 온다.
-    var state := _make(42)
-    state.set_value(&"wood", 3)
-    state.set_value(&"ore", 5)
-    var fields := state.to_hash_fields()
-
-    var names: Array = []
-    for field: Array in fields:
-        names.append(str(field[0]))
-    assert_array(names).contains_exactly([
-        "tick", "rng.seed", "rng.state", "values.count", "value.ore", "value.wood",
-    ])
-    assert_int(int(fields[3][1])).is_equal(2)
-    assert_int(int(fields[4][1])).is_equal(5)
-    assert_int(int(fields[5][1])).is_equal(3)
-
-
-func test_state_is_not_a_node() -> void:
+func test_state_owns_a_grid_and_a_character() -> void:
     var state := _make()
-    assert_str(state.get_class()).is_equal("RefCounted")
-    assert_bool(ClassDB.is_parent_class(state.get_class(), "Node")).is_false()
+    assert_object(state.grid).is_not_null()
+    assert_object(state.character).is_not_null()
+    assert_int(state.grid.get_block(Vector3i(0, 0, 0))).is_equal(BlockType.EMPTY)
+
+
+func test_block_change_changes_hash() -> void:
+    var state := _make(42)
+    var before := state.compute_hash()
+    state.grid.set_block(Vector3i(3, 4, 5), BlockType.ORE)
+    assert_str(state.compute_hash()).is_not_equal(before)
+
+
+func test_character_move_changes_hash() -> void:
+    var state := _make(42)
+    var before := state.compute_hash()
+    state.character.place_at(Vector3i(1, 0, 0))
+    assert_str(state.compute_hash()).is_not_equal(before)
+
+
+func test_character_facing_changes_hash() -> void:
+    var state := _make(42)
+    var before := state.compute_hash()
+    state.character.facing = Vector3i(1, 0, 0)
+    assert_str(state.compute_hash()).is_not_equal(before)
+
+
+func test_states_with_same_world_hash_equal() -> void:
+    var a := _make(42)
+    var b := _make(42)
+    for state: WorldState in [a, b]:
+        state.grid.set_block(Vector3i(3, 4, 5), BlockType.ORE)
+        state.character.place_at(Vector3i(9, 9, 1))
+    assert_str(a.compute_hash()).is_equal(b.compute_hash())

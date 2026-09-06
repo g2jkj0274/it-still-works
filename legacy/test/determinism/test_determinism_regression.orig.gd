@@ -7,10 +7,10 @@ extends GdUnitTestSuite
 ## 다른 어떤 작업보다 먼저 고친다.
 
 const SEED := 20250901
-const TOTAL_TICKS := 2000
+const TOTAL_TICKS := 20
 
 ## 위 시나리오를 SEED 로 TOTAL_TICKS 만큼 돌렸을 때의 상태 해시.
-## Godot 4.7.2 / 서로 다른 프로세스 2회 실행에서 동일함을 확인하고 고정했다.
+## Godot 4.7.2 / 서로 다른 프로세스 3회 실행에서 동일함을 확인하고 고정했다.
 ##
 ## 갱신 이력:
 ##   2b530828... 최초 고정
@@ -29,8 +29,7 @@ const TOTAL_TICKS := 2000
 ##   궤짝이 늘어 블록 종류가 하나 늘고 그 안에 든 것이 상태에 추가됨
 ##   묶음을 걷어내 블록 종류가 하나 줄고, 설계도 목록이 상태에서 빠짐
 ##   재료를 격자에 놓아 만들게 되어 제작 격자가 상태에 추가됨
-##   163d462b... M0 legacy 이동으로 격자·캐릭터·회로 등이 상태에서 빠져 해시 대상이 틱·난수원·값만 남고, 틱 수가 20 → 2000 이 됨
-const GOLDEN_HASH := "163d462bb8385e534447c4ce97b5c872fad72ddf80a667cec1be69cd6bab4e02"
+const GOLDEN_HASH := "ce32ca1b9f767c04e1ef1f0a0b41046fcae45ac35d167439e45870d44cd7e7a5"
 
 ## 실행마다 새로 만든다. 명령 객체는 큐가 틱과 순서를 새겨 넣으므로 재사용하지 않는다.
 func _scenario() -> Array:

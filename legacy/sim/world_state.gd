@@ -7,10 +7,6 @@ extends RefCounted
 ## 표현 레이어는 이 객체를 읽기만 한다.
 ##
 ## 값은 정수만 담는다. 시뮬레이션 로직에 부동소수점을 들이지 않기 위한 제약이다.
-##
-## M0 빈 세계: 틱, 난수원, 이름 붙은 정수 값만 가진다. 청크·생존·회로 등
-## 서브시스템 상태는 M1~M6 에서 붙는다. 붙일 때는 [method to_hash_fields] 에
-## 순서 있는 필드로 함께 넣어야 결정론 회귀 테스트가 그것을 지킨다.
 
 ## 지금까지 처리를 마친 틱 수. 다음에 실행할 틱 번호이기도 하다.
 var tick: int = 0
@@ -18,11 +14,54 @@ var tick: int = 0
 ## 이 월드의 유일한 난수원.
 var rng: SimRng
 
+## 섬의 복셀 격자.
+var grid: VoxelGrid
+
+## 플레이어 캐릭터.
+var character: CharacterState
+
+## 손에 든 재료.
+var inventory: Inventory
+
+## 쓰러졌을 때 다시 일어나는 자리.
+var spawn: Vector3i = Vector3i.ZERO
+
+## 월드에 놓인 회로.
+var circuit: Circuit
+
+## 생존 지표.
+var vitals: Vitals
+
+## 지금 나와 있는 위협들.
+var threats: ThreatField
+
+## 밭에 심긴 작물들.
+var crops: CropField
+
+## 월드에 놓인 궤짝들과 그 안에 든 것.
+var chests: ChestField
+
+## 제작 격자. 재료를 놓아 만드는 자리다(스펙 §3.6).
+##
+## **손에 든 것과 따로 둔다.** 놓아 둔 것이 상태이므로 저장한 판을 되살리면
+## 놓아 두었던 그대로 다시 놓여 있어야 한다. 손이든 작업대든 같은 그릇을
+## 쓰고, 손은 왼쪽 위 네 칸만 쓴다.
+var craft: Inventory
+
 var _values: Dictionary[StringName, int] = {}
 
 
 func _init(p_rng: SimRng = null) -> void:
     rng = p_rng if p_rng != null else SimRng.new(0)
+    grid = VoxelGrid.new()
+    character = CharacterState.new()
+    inventory = Inventory.new()
+    circuit = Circuit.new()
+    vitals = Vitals.new()
+    threats = ThreatField.new()
+    crops = CropField.new()
+    chests = ChestField.new()
+    craft = Inventory.new(RecipeBook.GRID_SLOTS)
 
 
 func set_value(key: StringName, value: int) -> void:
@@ -78,8 +117,26 @@ func to_hash_fields() -> Array:
         ["tick", tick],
         ["rng.seed", rng.get_seed()],
         ["rng.state", rng.get_state()],
+        ["grid.digest", grid.digest()],
+        ["character.x", character.sub_position.x],
+        ["character.y", character.sub_position.y],
+        ["character.z", character.sub_position.z],
+        ["character.target.x", character.move_target.x],
+        ["character.target.y", character.move_target.y],
+        ["character.target.z", character.move_target.z],
+        ["character.facing.x", character.facing.x],
+        ["character.facing.y", character.facing.y],
         ["values.count", _values.size()],
     ]
+    fields.append_array(inventory.to_hash_fields())
+    fields.append_array(circuit.to_hash_fields())
+    fields.append_array(vitals.to_hash_fields())
+    fields.append_array(threats.to_hash_fields())
+    fields.append_array(crops.to_hash_fields())
+    fields.append_array(chests.to_hash_fields())
+    # 격자에 놓아 둔 것도 상태다. 저장한 판을 되살리면 그대로 놓여 있어야 한다.
+    for field: Array in craft.to_hash_fields():
+        fields.append(["craft." + str(field[0]), field[1]])
     for key in sorted_keys():
         fields.append(["value." + String(key), _values[key]])
     return fields
