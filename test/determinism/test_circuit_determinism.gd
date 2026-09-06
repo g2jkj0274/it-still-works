@@ -32,7 +32,8 @@ const BRANCH := Vector3i(33, 31, FLOOR_Z + 1)
 ##   인벤토리가 칸으로 나뉘고 칸마다 쌓이는 한계가 생겨 상태의 짜임이 바뀜
 ##   궤짝이 늘어 블록 종류가 하나 늘고 그 안에 든 것이 상태에 추가됨
 ##   광맥이 드러난 동굴 벽에 더 잘 들어 격자가 바뀜 (땅속에 들어갈 까닭)
-const GOLDEN_HASH := "825b67c724b02285053323837cf709de5fcaea0427322ea03be7c580a9512caa"
+##   재료를 격자에 놓아 만들게 되어 제작 격자가 상태에 추가됨
+const GOLDEN_HASH := "45e3cf31dc3345966b1650d8713a8fc96a80ccdc00f2fb2011a0159d0769a6d5"
 
 ## 같은 실행이 끝났을 때 문이 어떤 상태인지. 해시보다 읽기 쉽다.
 const GOLDEN_DOOR := BlockType.DOOR_CLOSED

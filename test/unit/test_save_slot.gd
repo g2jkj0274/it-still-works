@@ -46,11 +46,13 @@ func _played() -> Simulation:
 
     # 나무를 판자로 켜고, 그 판자로 첫 곡괭이와 문을 만든다.
     # 만들기가 한 단 깊어졌으므로 저장에 남는 명령도 그만큼 길어진다.
-    sim.submit(CraftCommand.create(BlockType.PLANK))
-    sim.submit(CraftCommand.create(BlockType.PLANK))
+    sim.submit(FillCraftCommand.create(RecipeBook.index_for(BlockType.PLANK)))
+    sim.submit(CraftCommand.create())
+    sim.submit(FillCraftCommand.create(RecipeBook.index_for(BlockType.PLANK)))
+    sim.submit(CraftCommand.create())
     sim.advance(6)
-    sim.submit(CraftCommand.create(BlockType.WOOD_PICK))
-    sim.submit(CraftCommand.create(BlockType.DOOR_CLOSED))
+    sim.submit(FillCraftCommand.create(RecipeBook.index_for(BlockType.BENCH)))
+    sim.submit(CraftCommand.create())
     sim.advance(6)
     return sim
 
@@ -139,11 +141,9 @@ func test_the_scenario_actually_did_something() -> void:
     # 아무 일도 없는 판을 저장했다 불러오면 무엇이든 맞는다.
     var played := _played()
     var bag := played.state.inventory
-    assert_int(bag.count_of(BlockType.DOOR_CLOSED)).is_equal(1)
-    assert_int(bag.count_of(BlockType.WOOD_PICK)).is_equal(1)
-    # 나무 여섯 가운데 둘을 켜서 판자 여덟을 얻고, 곡괭이 3 · 문 4 를 썼다.
-    assert_int(bag.count_of(BlockType.WOOD)).is_equal(4)
-    assert_int(bag.count_of(BlockType.PLANK)).is_equal(1)
+    # 나무 둘을 켜서 판자 여덟을 얻고, 그 가운데 넷으로 작업대를 세웠다.
+    assert_int(bag.count_of(BlockType.BENCH)).is_equal(1)
+    assert_int(bag.count_of(BlockType.PLANK)).is_equal(4)
     assert_int(played.command_count()).is_greater(5)
 
 

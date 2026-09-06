@@ -226,6 +226,21 @@ func put_slot(slot: int, kind: int, amount: int, variant: int = 0) -> Array:
 
 
 ## 절반을 떨어뜨린다. 홀수는 남는 쪽이 손해가 되도록 버림한다.
+## 그 칸에서 [param amount] 개만 덜어낸다. 없으면 있는 만큼만.
+##
+## 제작 격자가 한 번 만들 때마다 칸마다 하나씩 덜어내는 데 쓴다.
+func take_from_slot(slot: int, amount: int) -> int:
+    if not _is_slot(slot) or amount <= 0:
+        return 0
+    var taken := mini(amount, _amounts[slot])
+    if taken <= 0:
+        return 0
+    _amounts[slot] -= taken
+    if _amounts[slot] <= 0:
+        _clear(slot)
+    return taken
+
+
 func drop_half() -> void:
     for slot in _kinds.size():
         _amounts[slot] = _amounts[slot] / 2

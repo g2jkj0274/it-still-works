@@ -169,15 +169,15 @@ static func line_for(controller: InputController) -> String:
         # 캐는 것인지를 읽어 줄 뿐이다. 캘 수 있든 없든 같은 줄이 뜬다(§4.2 라벨).
         var under_hand := aimed_block(controller)
         if under_hand != BlockType.EMPTY:
-            return "%s — %s   [만들기 X/C: %s]" % [
+            return "%s — %s   [%s]" % [
                 PartWords.name_of(under_hand), PartWords.gathering_of(under_hand),
-                _craft_note(controller)]
-        return "빈 손 — 손에 잡힐 칸을 1~9 로 고른다   [만들기 X/C: %s]" % _craft_note(controller)
+                MAKING]
+        return "빈 손 — 손에 잡힐 칸을 1~9 로 고른다   [%s]" % MAKING
 
     var line := "%s — %s" % [PartWords.name_of(block_type), PartWords.description_of(block_type)]
     if controller.has_part_setting():
         line += "   [지금: %s]" % controller.part_setting_name()
-    line += "   [만들기 X/C: %s]" % _craft_note(controller)
+    line += "   [%s]" % MAKING
     return line
 
 
@@ -188,7 +188,8 @@ static func aimed_block(controller: InputController) -> int:
     return controller.simulation().state.grid.get_block(controller.break_cell())
 
 
-## 지금 뭐를 만들려는지와 드는 재료.
-static func _craft_note(controller: InputController) -> String:
-    var output := controller.recipe_output()
-    return "%s = %s" % [PartWords.name_of(output), PartWords.recipe_line(output)]
+## 어디서 만드는지. **재료를 격자에 놓아 만든다**(스펙 §3.6).
+##
+## 예전에는 여기에 "지금 고른 제작법"을 적었다. 목록을 X 로 돌려 고르던
+## 때의 잔재인데, 격자가 그 자리를 대신하면서 고를 것이 없어졌다.
+const MAKING := "만들기 E"

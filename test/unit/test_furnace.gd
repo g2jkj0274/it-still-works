@@ -103,22 +103,20 @@ func test_what_it_smelts_follows_the_order_in_the_book() -> void:
     bag.add(BlockType.ORE, 1)
     bag.add(BlockType.ROCK, 1)
     bag.add(BlockType.EMBER, 4)
-    var first := RecipeBook.first_makeable(bag, RecipeBook.FURNACE)
-    assert_int(RecipeBook.output_of(first)).is_equal(BlockType.INGOT)
+    var first := RecipeBook.first_smeltable(bag)
+    assert_int(RecipeBook.smelt_output_of(first)).is_equal(BlockType.INGOT)
 
 
 func test_every_furnace_recipe_needs_the_ember() -> void:
     # 불씨돌이 없으면 굽지 못한다. 그것이 땅속에 내려갈 까닭이다.
-    for index in RecipeBook.count():
-        if RecipeBook.station_of(index) != RecipeBook.FURNACE:
-            continue
+    for index in RecipeBook.smelt_count():
         var needs_ember := false
-        for entry: Array in RecipeBook.inputs_of(index):
+        for entry: Array in RecipeBook.smelt_inputs_of(index):
             if int(entry[0]) == BlockType.EMBER:
                 needs_ember = true
         assert_bool(needs_ember).override_failure_message(
-            "%s 를 불씨돌 없이 굽는다" % BlockType.name_of(RecipeBook.output_of(index))
-            ).is_true()
+            "%s 를 불씨돌 없이 굽는다" % BlockType.name_of(
+                RecipeBook.smelt_output_of(index))).is_true()
 
 
 func test_the_bench_must_be_within_reach() -> void:
@@ -126,13 +124,16 @@ func test_the_bench_must_be_within_reach() -> void:
     sim.state.inventory.add(BlockType.PLANK, 8)
     sim.state.inventory.add(BlockType.INGOT, 8)
 
-    sim.submit(CraftCommand.create(BlockType.IRON_PICK))
+    var index := RecipeBook.index_for(BlockType.IRON_PICK)
+    sim.submit(FillCraftCommand.create(index))
+    sim.submit(CraftCommand.create())
     sim.advance(4)
     assert_int(sim.state.inventory.count_of(BlockType.IRON_PICK)).override_failure_message(
         "작업대 없이 쇠 곡괭이가 만들어졌다").is_equal(0)
 
     sim.state.grid.set_block(HERE + Vector3i(2, 0, 0), BlockType.BENCH)
-    sim.submit(CraftCommand.create(BlockType.IRON_PICK))
+    sim.submit(FillCraftCommand.create(index))
+    sim.submit(CraftCommand.create())
     sim.advance(4)
     assert_int(sim.state.inventory.count_of(BlockType.IRON_PICK)).is_equal(1)
 

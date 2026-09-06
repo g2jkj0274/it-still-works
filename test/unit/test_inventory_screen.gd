@@ -112,12 +112,14 @@ func test_things_can_be_moved_between_the_hand_and_the_chest() -> void:
         InventoryScreen.WHERE_HAND, 0, InventoryScreen.WHERE_CHEST, 2])
 
 
-func test_clicking_a_recipe_asks_to_make_it() -> void:
+func test_clicking_a_recipe_asks_to_lay_it_out() -> void:
+    # 만들기 책은 만들어 주지 않는다. **무늬대로 격자에 놓아 준다.**
+    # 한 번 놓아 보면 모양이 눈에 남는다.
     var screen := _screen(Inventory.new())
     screen.open()
 
     var asked: Array = []
-    screen.craft_requested.connect(func(index: int) -> void: asked.append(index))
+    screen.fill_requested.connect(func(index: int) -> void: asked.append(index))
 
     var row: Panel = screen.get_node("Anchor/Recipe_2")
     screen.click_at(row.position + row.size * 0.5)
@@ -217,3 +219,176 @@ func test_a_closed_screen_names_nothing() -> void:
     screen.sync()
     screen.hover_at(Vector2(10.0, 10.0))
     assert_str(screen.hovered_name()).is_empty()
+
+
+## --- 제작 격자 ---
+##
+## **재료를 격자에 놓아 만든다.** 스물넉 줄에서 하나 찾던 것을 마인크래프트와
+## 같은 짜임으로 바꿨다.
+
+func _with_craft(hand: Inventory, craft: Inventory) -> InventoryScreen:
+    var screen: InventoryScreen = auto_free(InventoryScreen.new())
+    add_child(screen)
+    screen.bind(hand, craft)
+    return screen
+
+
+func test_the_hand_opens_a_two_by_two_grid() -> void:
+    var screen := _with_craft(Inventory.new(), Inventory.new(RecipeBook.GRID_SLOTS))
+    screen.open()
+    assert_int(screen.craft_reach()).is_equal(RecipeBook.HAND_SIZE)
+    # 왼쪽 위 네 칸만 쓴다.
+    for slot in [0, 1, 3, 4]:
+        assert_bool(screen.craft_slot_in_use(slot)).is_true()
+    for slot in [2, 5, 6, 7, 8]:
+        assert_bool(screen.craft_slot_in_use(slot)).is_false()
+
+
+func test_the_bench_opens_a_three_by_three_grid() -> void:
+    var screen := _with_craft(Inventory.new(), Inventory.new(RecipeBook.GRID_SLOTS))
+    screen.open(true)
+    assert_int(screen.craft_reach()).is_equal(RecipeBook.GRID_SIZE)
+    for slot in RecipeBook.GRID_SLOTS:
+        assert_bool(screen.craft_slot_in_use(slot)).is_true()
+
+
+func test_the_result_slot_shows_what_the_grid_makes() -> void:
+    var craft := Inventory.new(RecipeBook.GRID_SLOTS)
+    var screen := _with_craft(Inventory.new(), craft)
+    screen.open()
+    assert_int(screen.result_block()).is_equal(BlockType.EMPTY)
+
+    for slot in [0, 1, 3, 4]:
+        craft.put_slot(slot, BlockType.PLANK, 1)
+    screen.sync()
+    assert_int(screen.result_block()).is_equal(BlockType.BENCH)
+
+
+func test_a_big_shape_shows_nothing_without_the_bench() -> void:
+    # 작업대가 하는 일이 이것뿐이다. 손에서는 세 칸이 읽히지 않는다.
+    var craft := Inventory.new(RecipeBook.GRID_SLOTS)
+    for slot in [0, 1, 2]:
+        craft.put_slot(slot, BlockType.PLANK, 1)
+
+    var screen := _with_craft(Inventory.new(), craft)
+    screen.open()
+    assert_int(screen.result_block()).is_equal(BlockType.EMPTY)
+
+    screen.open(true)
+    assert_int(screen.result_block()).is_equal(BlockType.WOOD_PICK)
+
+
+func test_clicking_the_result_asks_to_take_it() -> void:
+    var craft := Inventory.new(RecipeBook.GRID_SLOTS)
+    for slot in [0, 1, 3, 4]:
+        craft.put_slot(slot, BlockType.PLANK, 1)
+    var screen := _with_craft(Inventory.new(), craft)
+    screen.open()
+
+    var asked: Array = []
+    screen.craft_requested.connect(func(all: bool) -> void: asked.append(all))
+
+    var result: Panel = screen.get_node("Anchor/Result")
+    screen.click_at(result.position + result.size * 0.5)
+    assert_array(asked).is_equal([false])
+
+    # 우클릭(시프트 자리)이면 만들 수 있는 만큼 다.
+    screen.click_at(result.position + result.size * 0.5, true)
+    assert_array(asked).is_equal([false, true])
+
+
+func test_clicking_an_empty_result_asks_nothing() -> void:
+    var screen := _with_craft(Inventory.new(), Inventory.new(RecipeBook.GRID_SLOTS))
+    screen.open()
+
+    var asked: Array = []
+    screen.craft_requested.connect(func(all: bool) -> void: asked.append(all))
+
+    var result: Panel = screen.get_node("Anchor/Result")
+    screen.click_at(result.position + result.size * 0.5)
+    assert_array(asked).is_empty()
+
+
+func test_the_chest_screen_has_no_crafting_grid() -> void:
+    # 궤짝이 위를 차지하면 격자를 둘 자리가 없다. 마인크래프트도 그렇다.
+    var craft := Inventory.new(RecipeBook.GRID_SLOTS)
+    var screen := _with_craft(Inventory.new(), craft)
+    screen.open_chest(Vector3i.ZERO, Inventory.new(ChestField.CHEST_SLOTS))
+    screen.sync()
+
+    var result: Panel = screen.get_node("Anchor/Result")
+    assert_bool(result.visible).is_false()
+    for slot in RecipeBook.GRID_SLOTS:
+        assert_bool((screen.get_node("Anchor/Craft_%d" % slot) as Panel).visible).is_false()
+
+
+func test_the_grid_and_the_hand_do_not_overlap() -> void:
+    var screen := _with_craft(Inventory.new(), Inventory.new(RecipeBook.GRID_SLOTS))
+    screen.open()
+    screen.sync()
+
+    var result: Panel = screen.get_node("Anchor/Result")
+    for slot in Inventory.SLOT_COUNT:
+        var hand: Panel = screen.get_node("Anchor/Hand_%d" % slot)
+        var hand_box := Rect2(hand.position, hand.size)
+        assert_bool(hand_box.intersects(Rect2(result.position, result.size))
+            ).override_failure_message("결과 칸이 가진 것 %d 번 칸을 덮는다" % slot).is_false()
+        for i in [0, 1, 3, 4]:
+            var cell: Panel = screen.get_node("Anchor/Craft_%d" % i)
+            assert_bool(hand_box.intersects(Rect2(cell.position, cell.size))
+                ).override_failure_message(
+                    "제작 격자 %d 번이 가진 것 %d 번 칸을 덮는다" % [i, slot]).is_false()
+
+
+func test_the_whole_grid_stays_on_the_screen() -> void:
+    var screen := _with_craft(Inventory.new(), Inventory.new(RecipeBook.GRID_SLOTS))
+    screen.open(true)
+    screen.sync()
+
+    var room := Rect2(Vector2.ZERO, Vector2(screen.get_viewport().get_visible_rect().size))
+    for i in RecipeBook.GRID_SLOTS:
+        var cell: Panel = screen.get_node("Anchor/Craft_%d" % i)
+        assert_bool(room.encloses(Rect2(cell.position, cell.size))
+            ).override_failure_message("제작 격자 %d 번이 화면 밖으로 나갔다" % i).is_true()
+    var result: Panel = screen.get_node("Anchor/Result")
+    assert_bool(room.encloses(Rect2(result.position, result.size))).is_true()
+
+
+func test_what_can_be_made_is_told_from_what_cannot() -> void:
+    # **지금 만들 수 있는 것과 없는 것이 똑같이 생겼었다.** 스물넉 줄을 훑어도
+    # "뭘 만들 수 있지"를 알 수 없었다.
+    var hand := Inventory.new()
+    var screen := _with_craft(hand, Inventory.new(RecipeBook.GRID_SLOTS))
+    screen.open()
+
+    var planks := RecipeBook.index_for(BlockType.PLANK)
+    assert_bool(screen.can_make(planks)).is_false()
+
+    hand.add(BlockType.WOOD, 1)
+    assert_bool(screen.can_make(planks)).is_true()
+
+
+func test_a_bench_recipe_is_out_of_reach_in_the_hand() -> void:
+    var hand := Inventory.new()
+    hand.add(BlockType.PLANK, 64)
+    var screen := _with_craft(hand, Inventory.new(RecipeBook.GRID_SLOTS))
+
+    var pick := RecipeBook.index_for(BlockType.WOOD_PICK)
+    screen.open()
+    assert_bool(screen.can_make(pick)).is_false()
+    screen.open(true)
+    assert_bool(screen.can_make(pick)).is_true()
+
+
+func test_the_rows_that_cannot_be_made_are_dimmed() -> void:
+    var hand := Inventory.new()
+    hand.add(BlockType.WOOD, 1)
+    var screen := _with_craft(hand, Inventory.new(RecipeBook.GRID_SLOTS))
+    screen.open()
+    screen.sync()
+
+    var planks := RecipeBook.index_for(BlockType.PLANK)
+    var chest := RecipeBook.index_for(BlockType.CHEST)
+    var ready: Panel = screen.get_node("Anchor/Recipe_%d" % planks)
+    var far: Panel = screen.get_node("Anchor/Recipe_%d" % chest)
+    assert_float(ready.modulate.a).is_greater(far.modulate.a)

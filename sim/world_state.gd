@@ -41,6 +41,13 @@ var crops: CropField
 ## 월드에 놓인 궤짝들과 그 안에 든 것.
 var chests: ChestField
 
+## 제작 격자. 재료를 놓아 만드는 자리다(스펙 §3.6).
+##
+## **손에 든 것과 따로 둔다.** 놓아 둔 것이 상태이므로 저장한 판을 되살리면
+## 놓아 두었던 그대로 다시 놓여 있어야 한다. 손이든 작업대든 같은 그릇을
+## 쓰고, 손은 왼쪽 위 네 칸만 쓴다.
+var craft: Inventory
+
 var _values: Dictionary[StringName, int] = {}
 
 
@@ -54,6 +61,7 @@ func _init(p_rng: SimRng = null) -> void:
     threats = ThreatField.new()
     crops = CropField.new()
     chests = ChestField.new()
+    craft = Inventory.new(RecipeBook.GRID_SLOTS)
 
 
 func set_value(key: StringName, value: int) -> void:
@@ -126,6 +134,9 @@ func to_hash_fields() -> Array:
     fields.append_array(threats.to_hash_fields())
     fields.append_array(crops.to_hash_fields())
     fields.append_array(chests.to_hash_fields())
+    # 격자에 놓아 둔 것도 상태다. 저장한 판을 되살리면 그대로 놓여 있어야 한다.
+    for field: Array in craft.to_hash_fields():
+        fields.append(["craft." + str(field[0]), field[1]])
     for key in sorted_keys():
         fields.append(["value." + String(key), _values[key]])
     return fields

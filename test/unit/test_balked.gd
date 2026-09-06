@@ -150,7 +150,7 @@ func test_making_with_the_materials_says_it_was_made() -> void:
     var made := _made(controller)
     var balks := _counter(controller)
 
-    sim.state.inventory.add(BlockType.WOOD, 64)
+    sim.state.craft.put_slot(0, BlockType.WOOD, 1)
     controller.submit_craft()
     sim.advance(2)
     controller.poll(sim.current_tick())
@@ -165,7 +165,7 @@ func test_nothing_is_said_to_be_made_before_it_is() -> void:
     var controller := _controller(sim)
     var made := _made(controller)
 
-    sim.state.inventory.add(BlockType.WOOD, 64)
+    sim.state.craft.put_slot(0, BlockType.WOOD, 1)
     controller.submit_craft()
     assert_int(made[0]).is_equal(0)
 
