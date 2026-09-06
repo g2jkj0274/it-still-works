@@ -83,3 +83,15 @@
 - 결정: `set_center` 는 반경 안 청크를 그 자리에서 전부 생성한다. 대기열·틱당 상한 없음. `set_center` 는 명령으로만 `step()` 안에서 호출된다(M1-4b).
 - 근거: 경계 넘기 최대 약 17ms 는 50ms 틱 안이고, 5ms/1000부품 예산은 부품 순회 기준이라 별개. 대기열은 "안 로드된 칸 set = false" 가 몇 틱 동안 명령 실패로 바뀌어 입력의 의미가 시간에 묶이는 새 결정론 위험을 들인다.
 - 재검토 문턱: 한 번의 경계 넘기 > 25ms, 또는 생성기 규칙 추가로 청크당 > 4ms. 재검토 시 조건: 대기열 진행은 반드시 `step()` 안에서 틱당 고정 개수. `_process`·`delta` 금지.
+
+## 2026-09-07 — 데이터 표를 못 읽으면 Simulation 은 만들어지지 않는다. 빈 세계 fallback 없음
+- 결정: `WorldState.chunks` 는 필수(null 불허). `Simulation.create(seed, registry, terrain)` 은 표가 하나라도 null 이면 null 을 돌려주고, `create_default(seed)` 는 `load_default` 둘을 얻어 `create` 에 넘긴다. `Simulation.new(` 는 `create` 안 1회만(grep 테스트로 지킨다). view 는 null 을 `push_error` 로 드러낸다.
+- 근거: P3 — 같은 시드 + 같은 명령 로그가 데이터 파일 유무에 따라 다른 해시를 내면 안 된다. 실패는 null 로 드러나야 하고 다른 유효 상태로 흡수되면 안 된다. P7 — "청크 없는 세계" 모드를 남기면 이후 모든 블록 명령에 `if chunks != null` 분기가 붙는다. 빈 세계는 M0 골격이었다.
+- 버린 대안: chunks null 허용 + `chunks.present` 해시 필드 + 빈 세계 fallback(1차 제안, architect 거절).
+
+## 2026-09-07 — `set_center` 호출 지점은 `step()` 하나. 명령은 `state.load_center` 만 놓는다
+- 결정: `SetLoadCenterCommand.apply` 는 `state.load_center`·`has_load_center` 만 바꾼다. `Simulation.step()` 이 명령 적용 뒤·tick++ 앞에 `_sync_load_center()` 로 `chunks.set_center` 를 부른다(SIM_ORDER 1-M1). 제품 코드(`sim/`·`view/`)에서 유일한 호출 지점이며, `sim/commands/*`·`view/` 에 `set_center` 가 없음을 grep 테스트로 지킨다. ChunkWorld 단위 테스트의 직접 호출은 예외. 앞 항목("청크 생성은 즉시")의 "명령으로만" 은 이 뜻으로 읽는다. M1-6 에서 출처가 플레이어 위치로 바뀌고 SetLoadCenterCommand 는 제거된다(골든 갱신).
+- 근거: P7 — 로드 중심은 입력이 아니라 상태에서 유도되는 값이다. view 가 제출하는 명령이 직접 `set_center` 를 부르면 플레이어 이동 틱과 명령 틱 사이에 플레이어가 언로드 청크에 서는 창이 생기고, 명령 시점이 프레임 타이밍에 묶여 같은 입력이 다른 로그를 낳는다.
+- 파생: 골든 해시(결정론 회귀)가 25 청크 digest 를 포함하므로 `data/blocks.json`·`data/terrain.json` 편집은 골든 갱신을 동반한다(지형 표 결정이 인정한 성질).
+- 예외 기록: M1-4b 는 한 커밋 파일 5개 제한의 예외다. WorldState 필드 추가와 골든 갱신을 나누면 중간 커밋이 결정론 테스트를 깨뜨린다. "테스트 통과 시에만 커밋"이 상위 규칙(legacy 이동 예외와 같은 근거).
+- 정정: 2026-09-07 생성기 항목 (e) "실수→정수 변환은 TerrainTable 에만" — 같은 파싱 경계 함수가 `block_registry.gd` 에도 있다. 파싱 경계는 둘(레지스트리·지형 표)이고 생성기 파일에는 없다는 뜻이다.

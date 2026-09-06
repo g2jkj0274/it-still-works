@@ -30,7 +30,8 @@ const TOTAL_TICKS := 2000
 ##   묶음을 걷어내 블록 종류가 하나 줄고, 설계도 목록이 상태에서 빠짐
 ##   재료를 격자에 놓아 만들게 되어 제작 격자가 상태에 추가됨
 ##   163d462b... M0 legacy 이동으로 격자·캐릭터·회로 등이 상태에서 빠져 해시 대상이 틱·난수원·값만 남고, 틱 수가 20 → 2000 이 됨
-const GOLDEN_HASH := "163d462bb8385e534447c4ce97b5c872fad72ddf80a667cec1be69cd6bab4e02"
+##   08c670c2... 청크 월드·로드 중심이 상태에 추가되고 로드 중심 명령이 시나리오에 들어감. 골든이 25 청크 digest 를 포함하므로 data/blocks.json·data/terrain.json 편집 시 골든 갱신. 스냅샷 해시 경로는 블록 변경 명령이 생기는 M1-7 골든이 덮는다
+const GOLDEN_HASH := "08c670c2bea379df6d7b40dff153b8b86371d733a0cbd6d24757741da5a010d1"
 
 ## 실행마다 새로 만든다. 명령 객체는 큐가 틱과 순서를 새겨 넣으므로 재사용하지 않는다.
 func _scenario() -> Array:
@@ -45,6 +46,9 @@ func _scenario() -> Array:
         [8, AddValueCommand.create(&"crop", 5)],
         [8, RollValueCommand.create(&"night_roll", 0, 99)],
         [13, AddValueCommand.create(&"wood", 21)],
+        [0, SetLoadCenterCommand.create(0, 0)],
+        [7, SetLoadCenterCommand.create(1, 0)],
+        [9, SetLoadCenterCommand.create(0, 0)],
     ]
 
 
@@ -54,7 +58,7 @@ func _submit_all(sim: Simulation, scenario: Array) -> void:
 
 
 func _replay(seed_value: int = SEED, scenario: Array = []) -> String:
-    var sim := Simulation.new(seed_value)
+    var sim := Simulation.create_default(seed_value)
     _submit_all(sim, scenario if not scenario.is_empty() else _scenario())
     sim.advance(TOTAL_TICKS)
     return sim.state_hash()
@@ -81,7 +85,7 @@ func test_dropping_one_command_produces_different_hash() -> void:
 
 
 func test_tick_count_changes_hash() -> void:
-    var sim := Simulation.new(SEED)
+    var sim := Simulation.create_default(SEED)
     _submit_all(sim, _scenario())
     sim.advance(TOTAL_TICKS - 1)
     assert_str(sim.state_hash()).is_not_equal(_replay())
@@ -102,11 +106,11 @@ func test_same_tick_command_order_changes_hash() -> void:
 
 func test_hash_is_independent_of_step_granularity() -> void:
     # 프레임률이 달라져도 같은 틱 수를 지나면 같은 상태여야 한다.
-    var coarse := Simulation.new(SEED)
+    var coarse := Simulation.create_default(SEED)
     _submit_all(coarse, _scenario())
     coarse.advance(TOTAL_TICKS)
 
-    var fine := Simulation.new(SEED)
+    var fine := Simulation.create_default(SEED)
     _submit_all(fine, _scenario())
     for i in TOTAL_TICKS:
         fine.step()

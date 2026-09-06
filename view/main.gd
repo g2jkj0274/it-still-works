@@ -17,7 +17,10 @@ var _last_usec: int = 0
 
 
 func _ready() -> void:
-    simulation = Simulation.new(SEED)
+    simulation = Simulation.create_default(SEED)
+    if simulation == null:
+        push_error("Simulation.create_default 실패: data/blocks.json 또는 data/terrain.json 을 읽을 수 없다")
+        return
     driver = TickDriver.new()
     _last_usec = Time.get_ticks_usec()
 

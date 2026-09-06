@@ -3,18 +3,29 @@ extends GdUnitTestSuite
 ## 월드 상태 저장소와 상태 해시 검증.
 
 
+func _chunks(seed_value: int) -> ChunkWorld:
+    var registry := BlockRegistry.load_default()
+    var terrain := TerrainTable.load_default(registry)
+    assert_object(registry).is_not_null()
+    assert_object(terrain).is_not_null()
+    return ChunkWorld.new(ChunkGenerator.new(seed_value, registry, terrain))
+
+
 func _make(seed_value: int = 1) -> WorldState:
-    return WorldState.new(SimRng.new(seed_value))
+    return WorldState.new(SimRng.new(seed_value), _chunks(seed_value))
 
 
 func test_new_state_starts_at_tick_zero() -> void:
     assert_int(_make().tick).is_equal(0)
 
 
-func test_default_rng_is_seeded_zero() -> void:
-    var state := WorldState.new()
-    assert_object(state.rng).is_not_null()
-    assert_int(state.rng.get_seed()).is_equal(0)
+func test_new_state_has_chunks_without_center() -> void:
+    var state := _make()
+    assert_object(state.chunks).is_not_null()
+    assert_bool(state.chunks.has_center()).is_false()
+    assert_int(state.chunks.loaded_count()).is_equal(0)
+    assert_bool(state.has_load_center).is_false()
+    assert_bool(state.load_center == Vector2i.ZERO).is_true()
 
 
 func test_missing_value_returns_fallback() -> void:
@@ -139,10 +150,50 @@ func test_hash_fields_are_ordered_and_named() -> void:
         names.append(str(field[0]))
     assert_array(names).contains_exactly([
         "tick", "rng.seed", "rng.state", "values.count", "value.ore", "value.wood",
+        "load_center.set", "load_center",
+        "chunks.has_center", "chunks.center", "chunks.loaded", "chunks.snapshots",
     ])
     assert_int(int(fields[3][1])).is_equal(2)
     assert_int(int(fields[4][1])).is_equal(5)
     assert_int(int(fields[5][1])).is_equal(3)
+    assert_int(int(fields[6][1])).is_equal(0)
+    assert_str(str(fields[7][1])).is_equal("0,0")
+    assert_int(int(fields[10][1])).is_equal(0)
+
+
+func test_load_center_change_changes_hash() -> void:
+    var state := _make(42)
+    var before := state.compute_hash()
+    state.has_load_center = true
+    var flagged := state.compute_hash()
+    assert_str(flagged).is_not_equal(before)
+    state.load_center = Vector2i(3, -1)
+    assert_str(state.compute_hash()).is_not_equal(flagged)
+
+
+func test_chunk_center_change_changes_hash() -> void:
+    # 단위 테스트에서 set_center 직접 호출은 허용된다(가드는 sim/commands·view 만 본다).
+    var state := _make(42)
+    var before := state.compute_hash()
+    state.chunks.set_center(0, 0)
+    assert_int(state.chunks.loaded_count()).is_equal(25)
+    assert_str(state.compute_hash()).is_not_equal(before)
+    var names: Array = []
+    for field: Array in state.to_hash_fields():
+        names.append(str(field[0]))
+    assert_bool(names.has("chunk.0,0")).is_true()
+    assert_bool(names.has("chunk.-2,-2")).is_true()
+
+
+func test_chunk_hash_fields_follow_load_center_fields() -> void:
+    var state := _make(42)
+    var fields := state.to_hash_fields()
+    var chunk_fields := state.chunks.to_hash_fields()
+    var offset := fields.size() - chunk_fields.size()
+    assert_str(str(fields[offset - 1][0])).is_equal("load_center")
+    for i in chunk_fields.size():
+        assert_str(str(fields[offset + i][0])).is_equal(str(chunk_fields[i][0]))
+        assert_str(str(fields[offset + i][1])).is_equal(str(chunk_fields[i][1]))
 
 
 func test_state_is_not_a_node() -> void:

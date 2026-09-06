@@ -8,8 +8,8 @@ extends RefCounted
 ##
 ## 값은 정수만 담는다. 시뮬레이션 로직에 부동소수점을 들이지 않기 위한 제약이다.
 ##
-## M0 빈 세계: 틱, 난수원, 이름 붙은 정수 값만 가진다. 청크·생존·회로 등
-## 서브시스템 상태는 M1~M6 에서 붙는다. 붙일 때는 [method to_hash_fields] 에
+## M1-4b: 틱, 난수원, 이름 붙은 정수 값, 청크 월드([member chunks]), 로드 중심 목표를 가진다.
+## 생존·회로 등 나머지 서브시스템 상태는 M2~M6 에서 붙는다. 붙일 때는 [method to_hash_fields] 에
 ## 순서 있는 필드로 함께 넣어야 결정론 회귀 테스트가 그것을 지킨다.
 
 ## 지금까지 처리를 마친 틱 수. 다음에 실행할 틱 번호이기도 하다.
@@ -18,11 +18,20 @@ var tick: int = 0
 ## 이 월드의 유일한 난수원.
 var rng: SimRng
 
+## 청크 월드(P7). 필수 — null 을 허용하지 않는다. 빈 세계 fallback 은 없다.
+var chunks: ChunkWorld
+
+## 로드 중심 목표. M1-6 에서 플레이어 위치로 대체되는 발판.
+## `chunks.set_center` 는 Simulation.step() 만 부른다 — 명령은 이 두 값만 바꾼다.
+var load_center: Vector2i = Vector2i.ZERO
+var has_load_center: bool = false
+
 var _values: Dictionary[StringName, int] = {}
 
 
-func _init(p_rng: SimRng = null) -> void:
-    rng = p_rng if p_rng != null else SimRng.new(0)
+func _init(p_rng: SimRng, p_chunks: ChunkWorld) -> void:
+    rng = p_rng
+    chunks = p_chunks
 
 
 func set_value(key: StringName, value: int) -> void:
@@ -82,4 +91,7 @@ func to_hash_fields() -> Array:
     ]
     for key in sorted_keys():
         fields.append(["value." + String(key), _values[key]])
+    fields.append(["load_center.set", 1 if has_load_center else 0])
+    fields.append(["load_center", "%d,%d" % [load_center.x, load_center.y]])
+    fields.append_array(chunks.to_hash_fields())
     return fields

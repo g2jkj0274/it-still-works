@@ -21,6 +21,12 @@ const TICK_INTERVAL_USEC := 1_000_000 / TICK_RATE
 ## 시뮬레이션이 소유한 월드 상태. 읽기 전용으로 다룬다.
 var state: WorldState
 
+## 블록 속성 표. 읽기 전용으로 다룬다 — view 가 팔레트 매핑(name_of)에 쓴다.
+var registry: BlockRegistry
+
+## 지형 생성 규칙 표. 읽기 전용으로 다룬다.
+var terrain: TerrainTable
+
 ## 아직 소비되지 않은 명령들.
 var queue: SimCommandQueue
 
@@ -33,10 +39,35 @@ var queue: SimCommandQueue
 var _log: Array = []
 
 
-## 시드 하나로 빈 세계를 만든다.
-func _init(p_seed: int = 0) -> void:
-    state = WorldState.new(SimRng.new(p_seed))
+## 시드와 규칙 표 둘로 청크 월드를 가진 세계를 만든다. 셋 다 필수.
+## 바깥에서는 [method create] 나 [method create_default] 를 쓴다 — null 검사가 거기 있다.
+func _init(p_seed: int, p_registry: BlockRegistry, p_terrain: TerrainTable) -> void:
+    registry = p_registry
+    terrain = p_terrain
+    var generator := ChunkGenerator.new(p_seed, p_registry, p_terrain)
+    var chunk_world := ChunkWorld.new(generator)
+    state = WorldState.new(SimRng.new(p_seed), chunk_world)
     queue = SimCommandQueue.new()
+
+
+## 규칙 표를 받아 시뮬레이션을 만든다. [param p_registry] 나 [param p_terrain] 이 null 이면 null.
+static func create(p_seed: int, p_registry: BlockRegistry, p_terrain: TerrainTable) -> Simulation:
+    if p_registry == null or p_terrain == null:
+        return null
+    return Simulation.new(p_seed, p_registry, p_terrain)
+
+
+## `data/blocks.json`·`data/terrain.json` 을 읽어 시뮬레이션을 만든다. 어느 하나라도 못 읽으면 null.
+## 데이터 표를 못 읽으면 시뮬레이션은 만들어지지 않는다 — 같은 명령 로그가 파일 유무로 다른
+## 해시를 내는 것을 막는다(P3). 빈 세계 fallback 은 없다.
+static func create_default(p_seed: int) -> Simulation:
+    var default_registry := BlockRegistry.load_default()
+    if default_registry == null:
+        return null
+    var default_terrain := TerrainTable.load_default(default_registry)
+    if default_terrain == null:
+        return null
+    return create(p_seed, default_registry, default_terrain)
 
 
 ## 다음에 실행할 틱 번호.
@@ -73,6 +104,7 @@ func _record(command: SimCommand) -> SimCommand:
 ## 한 틱 진행한다.
 ##
 ## 1. 이 틱까지 밀린 명령을 (실행 틱, 접수 순서) 차례로 적용한다.
+##    - 로드 중심 동기화([method _sync_load_center]).
 ## 2. 틱을 하나 올린다.
 ##
 ## 서브시스템 갱신은 1 과 2 사이에 들어간다(`docs/SIM_ORDER.md`).
@@ -80,7 +112,18 @@ func _record(command: SimCommand) -> SimCommand:
 func step() -> void:
     for command in queue.take_due(state.tick):
         command.apply(state)
+    _sync_load_center()
     state.tick += 1
+
+
+## 상태의 로드 중심 목표를 청크 월드에 반영한다.
+## 제품 코드(sim/·view/)에서 set_center 의 유일한 호출 지점. 같은 틱의 명령은 동기화 전(이전 중심)의
+## 로드 집합을 본다 — 새 중심으로 로드된 청크는 다음 틱 명령부터 접근된다.
+func _sync_load_center() -> void:
+    if not state.has_load_center:
+        return
+    if not state.chunks.has_center() or state.chunks.center() != state.load_center:
+        state.chunks.set_center(state.load_center.x, state.load_center.y)
 
 
 ## [param ticks] 만큼 진행한다. 0 이하면 아무 일도 하지 않는다.

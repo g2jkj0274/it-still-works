@@ -4,7 +4,12 @@ extends GdUnitTestSuite
 
 
 func _state(seed_value: int = 1) -> WorldState:
-    return WorldState.new(SimRng.new(seed_value))
+    var registry := BlockRegistry.load_default()
+    var terrain := TerrainTable.load_default(registry)
+    assert_object(registry).is_not_null()
+    assert_object(terrain).is_not_null()
+    var chunks := ChunkWorld.new(ChunkGenerator.new(seed_value, registry, terrain))
+    return WorldState.new(SimRng.new(seed_value), chunks)
 
 
 func test_set_value_command_applies() -> void:
@@ -47,14 +52,35 @@ func test_roll_value_command_advances_world_rng() -> void:
     assert_int(state.rng.get_state()).is_not_equal(before)
 
 
+func test_set_load_center_command_sets_target_only() -> void:
+    # 명령은 로드 중심 목표만 적는다. 청크 로드(set_center)는 Simulation.step() 의 일이다.
+    var state := _state()
+    SetLoadCenterCommand.create(3, -2).apply(state)
+    assert_bool(state.has_load_center).is_true()
+    assert_bool(state.load_center == Vector2i(3, -2)).is_true()
+    assert_bool(state.chunks.has_center()).is_false()
+    assert_int(state.chunks.loaded_count()).is_equal(0)
+
+
+func test_set_load_center_command_does_not_touch_rng_or_values() -> void:
+    var state := _state(7)
+    var before := state.rng.get_state()
+    SetLoadCenterCommand.create(1, 1).apply(state)
+    assert_int(state.rng.get_state()).is_equal(before)
+    assert_int(state.value_count()).is_equal(0)
+
+
 func test_type_names_are_distinct() -> void:
     var names := [
         String(SetValueCommand.create(&"k", 0).get_type()),
         String(AddValueCommand.create(&"k", 0).get_type()),
         String(RollValueCommand.create(&"k", 0, 1).get_type()),
+        String(SetLoadCenterCommand.create(0, 0).get_type()),
     ]
-    assert_array(names).has_size(3)
-    assert_array(names).contains_exactly_in_any_order(["set_value", "add_value", "roll_value"])
+    assert_array(names).has_size(4)
+    assert_array(names).contains_exactly_in_any_order([
+        "set_value", "add_value", "roll_value", "set_load_center",
+    ])
 
 
 func test_set_value_command_round_trip() -> void:
@@ -82,6 +108,33 @@ func test_roll_value_command_round_trip() -> void:
     assert_object(restored).is_not_null()
     assert_int(restored.min_value).is_equal(1)
     assert_int(restored.max_value).is_equal(6)
+
+
+func test_set_load_center_command_round_trip() -> void:
+    var original := SetLoadCenterCommand.create(-4, 9)
+    original.tick = 5
+    var data := original.to_dict()
+    assert_str(str(data["type"])).is_equal("set_load_center")
+    assert_int(int(data["cx"])).is_equal(-4)
+    assert_int(int(data["cy"])).is_equal(9)
+    var restored := SimCommandCodec.from_dict(data) as SetLoadCenterCommand
+    assert_object(restored).is_not_null()
+    assert_int(restored.tick).is_equal(5)
+    assert_int(restored.cx).is_equal(-4)
+    assert_int(restored.cy).is_equal(9)
+
+
+func test_set_load_center_command_survives_json() -> void:
+    var original := SetLoadCenterCommand.create(2, -7)
+    original.tick = 11
+    var parsed: Variant = JSON.parse_string(JSON.stringify(SimCommandCodec.to_dict(original)))
+    var restored := SimCommandCodec.from_dict(parsed) as SetLoadCenterCommand
+    assert_object(restored).is_not_null()
+    assert_int(restored.tick).is_equal(11)
+    assert_int(restored.cx).is_equal(2)
+    assert_int(restored.cy).is_equal(-7)
+    assert_int(typeof(restored.cx)).is_equal(TYPE_INT)
+    assert_int(typeof(restored.cy)).is_equal(TYPE_INT)
 
 
 func test_serialized_command_survives_json() -> void:
