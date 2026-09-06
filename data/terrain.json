@@ -1,0 +1,9 @@
+{
+    "under_zones": [2, 1],
+    "ground_zones": [0, 3],
+    "ground_scatter": [
+        {"id": 5, "per_256": 20},
+        {"id": 2, "per_256": 6},
+        {"id": 4, "per_256": 4}
+    ]
+}
