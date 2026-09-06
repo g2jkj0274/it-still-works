@@ -6,3 +6,4 @@
 2026-09-07 01:20 | M1 | M1-3 ChunkGenerator + TerrainTable, (seed,wx,wy) 순수 해시 | 207/207, 결정론·지형 골든 프로세스 간 일치, 경계 이음새 없음
 2026-09-07 02:10 | M1 | M1-4a ChunkWorld 로드/언로드/스냅샷/해시 | 238/238, 결정론 유지, 퍼징 200스텝 위반 0
 2026-09-07 03:00 | M1 | M1-4b 청크 월드를 WorldState/Simulation 에 연결, 로드 중심 명령 | 261/261, 골든 08c670c2 3프로세스 일치, 1차 거절 후 재작성
+2026-09-07 03:50 | M1 | M1-5a IsoProjection·Palette·WorldView.build_cells | 299/299, 결정론 유지

@@ -1,9 +1,9 @@
 # STATE
 마일스톤: M1 (M0 완료 — 빈 세계 2000틱 결정론 통과, 2026-09-06)
-진행 중: M1-5 아이소메트릭 렌더(플레이스홀더 색), 층 전환 (architect 검토 예정)
-마지막 통과 테스트: 261/261 (tools/test.sh, 약 55초)
+진행 중: M1-5b 씬 Node2D 전환·Camera2D·입력 맵·통합 테스트 (M1-5 architect 승인에 포함, builder 구현 중)
+마지막 통과 테스트: 299/299 (tools/test.sh, 약 60초)
 마지막 결정론 테스트: 통과 — 08c670c2bea379df6d7b40dff153b8b86371d733a0cbd6d24757741da5a010d1 (M1-4b 갱신, 별도 프로세스 3회 일치)
-이터레이션 수: 8 (10마다 architect 전체 감사 — 다음 감사는 10)
+이터레이션 수: 9 (10마다 architect 전체 감사 — 다음 감사는 10)
 
 ## M1 태스크 (LOOP.md M1)
 - [x] M1-1 블록 속성 시스템(P2) + `data/blocks.json` + `sim/block_registry.gd` (2026-09-07, 26 테스트. view 는 M1-5 에서 붙음)
@@ -11,7 +11,8 @@
 - [x] M1-3 시드 기반 청크 절차 생성 `sim/chunk_generator.gd` + `sim/terrain_table.gd` + `data/terrain.json` (2026-09-07, 54 테스트. 골든 지형 해시 c4ae1a1b…, 청크당 약 1.9ms)
 - [x] M1-4a 청크 월드 자료구조 `sim/chunk_world.gd`: LOAD_RADIUS=2, 로드/언로드, 스냅샷 소비+persist, 월드 좌표 조회, 해시 필드 (2026-09-07, 31 테스트. 첫 로드 45ms, 경계 넘기 9~16.5ms, 퍼징 200스텝 위반 0)
 - [x] M1-4b WorldState.chunks 필수, Simulation.create/create_default, SetLoadCenterCommand → step() 동기화, 골든 갱신, SIM_ORDER 1-M1 (2026-09-07, 23 테스트. 첫 로드 틱 45~48ms, 경계 넘기 틱 9ms, 빈 틱 2.5µs)
-- [ ] M1-5 아이소메트릭 렌더(플레이스홀더 색), 층 전환
+- [x] M1-5a 아이소 투영 + 팔레트 + WorldView.build_cells(바닥 규칙 넷) + 단위 테스트 (2026-09-07, 38 테스트)
+- [ ] M1-5b main.gd/tscn Node2D 전환, Camera2D, 입력 맵(layer_up/down, move_*), 방향키 → SetLoadCenter 명령, 통합 테스트
 - [ ] M1-6 플레이어 이동(명령 경유, 서브유닛 정수 — legacy character_state 참고)
 - [ ] M1-7 채집·배치 명령, 인벤토리
 - [ ] M1-8 기초 크래프팅(부품만 — M1 은 레시피 0개, 틀만)
