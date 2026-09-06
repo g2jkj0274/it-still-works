@@ -44,6 +44,10 @@ static func create_by_type(type: StringName) -> SimCommand:
         return MoveItemCommand.new()
     if type == CraftCommand.TYPE:
         return CraftCommand.new()
+    if type == ClearCraftCommand.TYPE:
+        return ClearCraftCommand.new()
+    if type == FillCraftCommand.TYPE:
+        return FillCraftCommand.new()
     if type == EatCommand.TYPE:
         return EatCommand.new()
     return null

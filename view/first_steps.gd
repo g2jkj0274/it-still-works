@@ -76,8 +76,11 @@ func is_ready(index: int) -> bool:
             #
             # **실제로 만들 수 있게 되었을 때만 뜬다.** 규칙을 여기에 옮겨
             # 적지 않고 제작법에 물어본다.
+            # 격자에 놓아 만들게 된 뒤로는 "재료가 있는가"를 손에 든 것으로
+            # 센다. 무늬대로 놓는 것은 사람이 할 일이고, 여기서 보는 것은
+            # 놓을 재료가 손에 있느냐뿐이다.
             for recipe in RecipeBook.count():
-                if RecipeBook.has_materials(inventory, recipe):
+                if _can_afford(inventory, recipe):
                     return true
             return false
         2:
@@ -111,3 +114,13 @@ func restart() -> void:
 ## 다 알려 준 것으로 친다. 그림을 찍을 때처럼 안내가 끼면 안 되는 자리에 쓴다.
 func silence() -> void:
     _step = line_count()
+
+
+## 그 법에 드는 재료가 손에 다 있는가.
+##
+## 규칙을 여기에 옮겨 적지 않는다. 무엇이 드는지는 제작법에 물어본다.
+static func _can_afford(inventory: Inventory, index: int) -> bool:
+    for entry: Array in RecipeBook.inputs_of(index):
+        if inventory.count_of(int(entry[0])) < int(entry[1]):
+            return false
+    return true

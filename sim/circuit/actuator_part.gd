@@ -67,9 +67,9 @@ func _work_furnace(state: WorldState, cell: Vector3i) -> void:
     # 뜻을 잃고 손에 든 것이 순식간에 사라진다.
     if not _wants_open or not was_dark:
         return
-    var index := RecipeBook.first_makeable(state.inventory, RecipeBook.FURNACE)
+    var index := RecipeBook.first_smeltable(state.inventory)
     if index >= 0:
-        RecipeBook.make(state.inventory, index)
+        RecipeBook.smelt(state.inventory, index)
 
 
 ## 문은 신호가 오면 열리고 오지 않으면 닫힌다.

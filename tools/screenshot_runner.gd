@@ -92,7 +92,7 @@ func _process(_delta: float) -> bool:
 
 
 ## 화면이 세상을 통째로 가리는 단계들. 캐릭터가 보일 리 없다.
-const COVERED_STEPS: PackedStringArray = ["17_bag"]
+const COVERED_STEPS: PackedStringArray = ["17_bag", "18_making"]
 
 ## 단계 목록. 각 항목은 [이름, 준비 동작] 이다.
 ##
@@ -119,7 +119,8 @@ func _build_steps() -> Array:
         ["15_craft", _make_something_by_hand],
         ["16_underground", _dig_down],
         ["17_bag", _open_the_bag],
-        ["18_store", _pose_for_the_store],
+        ["18_making", _lay_out_a_recipe],
+        ["19_store", _pose_for_the_store],
     ]
 
 
@@ -445,13 +446,14 @@ func _pull_back_to_the_shore() -> void:
 ##
 ## 만든 것을 실제로 세운다. 스펙 §3.6 의 "나무 넷이 문 하나가 된다"가
 ## 그림으로 읽혀야 한다.
-## 만들 것을 고른다. 만들기 고르기(C)는 제작법을 차례로 돈다.
-func _choose_recipe(wanted: int) -> void:
-    var controller := _main.input_controller()
-    for i in RecipeBook.count():
-        if controller.recipe_output() == wanted:
-            return
-        controller.cycle_recipe()
+## 그 무늬대로 격자에 놓고 결과를 가져간다.
+func _make_by_hand(wanted: int) -> void:
+    var index := RecipeBook.index_for(wanted)
+    if index < 0:
+        return
+    _main.simulation.submit(FillCraftCommand.create(index))
+    _main.simulation.submit(CraftCommand.create())
+    _main.simulation.advance(3)
 
 
 func _make_something_by_hand() -> void:
@@ -476,16 +478,13 @@ func _make_something_by_hand() -> void:
     state.inventory.add(BlockType.WOOD, 12)
     state.inventory.add(BlockType.ORE, 6)
 
-    # **나무를 판자로 켜고 그 판자로 문을 만든다.** 만들기가 한 단 깊어졌다(§3.6).
-    # 나무 12 로 판자 16 을 얻고, 그것으로 문 넷을 만든다.
-    _choose_recipe(BlockType.PLANK)
-    for i in 4:
-        controller.submit_craft()
-        _main.simulation.advance(2)
-    _choose_recipe(BlockType.DOOR_CLOSED)
-    for i in 4:
-        controller.submit_craft()
-        _main.simulation.advance(2)
+    # **나무를 판자로 켜고, 작업대를 세우고, 그 앞에서 문을 만든다.**
+    # 문은 세로가 셋이라 작업대가 있어야 한다(§3.6).
+    state.grid.set_block(here + Vector3i(1, 0, 0), BlockType.BENCH)
+    for i in 5:
+        _make_by_hand(BlockType.PLANK)
+    for i in 3:
+        _make_by_hand(BlockType.DOOR_CLOSED)
 
     # 하나는 손에 남긴다. 손이 비면 화면 밑동 한 줄이 "빈 손"이라고 적어,
     # 방금 만든 것이 무엇인지 그림이 말하지 못한다.
@@ -617,7 +616,7 @@ func _pose_for_the_store() -> void:
         _main.simulation.step()
         if state.grid.get_block(door) == BlockType.DOOR_OPEN:
             break
-    _worked["18_store"] = (state.grid.get_block(door) == BlockType.DOOR_OPEN
+    _worked["19_store"] = (state.grid.get_block(door) == BlockType.DOOR_OPEN
         and state.grid.get_block(lamp) == BlockType.LAMP_LIT)
     _main.lamp_lights().look_at_point(_main.character_view().target_position())
 
@@ -718,6 +717,34 @@ func _count_ore_on_the_walls(bottom: Vector3i) -> int:
                         found += 1
                         break
     return found
+
+
+## 만들기 격자에 무늬대로 놓고 결과 칸을 본다.
+##
+## **재료를 격자에 놓아 만든다**(스펙 §3.6). 목록에서 골라 누르던 때에는
+## 만드는 일이 "스물넉 줄에서 하나 찾기"였다. 놓은 모양이 곧 무엇을 만들지를
+## 정하는 것이 화면에 보여야 한다.
+func _lay_out_a_recipe() -> void:
+    _main.simulation = IslandBuilder.start(GameMain.SEED)
+    _main.adopt_simulation()
+    _main.first_steps().silence()
+    _main.notice().visible = false
+
+    var state: Object = _main.simulation.state
+    for pair in [
+        [BlockType.PLANK, 24], [BlockType.ROCK, 18], [BlockType.ORE, 12],
+        [BlockType.WOOD, 6], [BlockType.GROUND, 31],
+    ]:
+        state.inventory.add(int(pair[0]), int(pair[1]))
+
+    # 작업대를 곁에 세워 세 칸을 연다. 돌 곡괭이 무늬가 그 안에 든다.
+    state.grid.set_block(state.character.cell() + Vector3i(1, 0, 0), BlockType.BENCH)
+    _main.simulation.submit(
+        FillCraftCommand.create(RecipeBook.index_for(BlockType.STONE_PICK)))
+    _main.simulation.advance(2)
+
+    _main.toggle_bag()
+    _main.sync_views()
 
 
 ## 가진 것을 펼쳐 보고 궤짝을 열어 본다.

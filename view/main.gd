@@ -186,7 +186,7 @@ func sync_views() -> void:
 func _poll_bag() -> void:
     if (Input.is_action_just_pressed(InputController.ACTION_BAG)
             or Input.is_action_just_pressed(InputController.ACTION_CLOSE)):
-        _bag.close()
+        _close_bag()
         return
 
     var viewport := get_viewport()
@@ -324,10 +324,11 @@ func _build_input() -> void:
     _bag = InventoryScreen.new()
     _bag.name = "Bag"
     add_child(_bag)
-    _bag.bind(simulation.state.inventory)
+    _bag.bind(simulation.state.inventory, simulation.state.craft)
     _bag.move_requested.connect(_on_move_requested)
     _bag.split_requested.connect(_on_split_requested)
     _bag.craft_requested.connect(_on_craft_requested)
+    _bag.fill_requested.connect(_on_fill_requested)
 
     _hotbar = Hotbar.new()
     _hotbar.name = "Hotbar"
@@ -382,9 +383,20 @@ func bag() -> InventoryScreen:
 ## 인벤토리 화면을 열고 닫는다.
 func toggle_bag() -> void:
     if _bag.is_open():
-        _bag.close()
+        _close_bag()
         return
-    _bag.open()
+    # 작업대 곁에 서 있으면 격자가 세 칸으로 열린다. 세상이 정하는 것이라
+    # 화면이 정한 값을 시뮬레이션이 다시 믿지 않는다.
+    _bag.open(CraftCommand.stands_by(simulation.state, BlockType.BENCH))
+
+
+## 닫으면서 격자에 놓아 둔 것을 손으로 돌려받는다.
+##
+## **놓아 둔 채로 닫으면 물건이 사라진 것처럼 보인다.** 마인크래프트도 창을
+## 닫으면 돌려준다.
+func _close_bag() -> void:
+    _bag.close()
+    simulation.submit(ClearCraftCommand.create())
 
 
 ## 겨냥한 궤짝을 연다.
@@ -413,8 +425,19 @@ func _on_split_requested(
         _where_of(from_where), from_slot, _where_of(to_where), to_slot))
 
 
-func _on_craft_requested(index: int) -> void:
-    simulation.submit(CraftCommand.create(RecipeBook.output_of(index)))
+## 결과 칸을 눌렀다. 시프트면 재료가 다할 때까지 만든다.
+func _on_craft_requested(all: bool) -> void:
+    simulation.submit(CraftCommand.create(all))
+    _sound_board.note_crafted()
+
+
+## 만들기 책에서 하나를 눌렀다. 그 무늬대로 손에 든 것을 격자에 옮긴다.
+##
+## **무엇을 만들 수 있는지 몰라 스물넉 줄을 훑던 것**이 이것으로 끝난다.
+## 재료가 모자라면 놓이는 데까지만 놓인다 — 무엇이 모자란지는 격자의 빈
+## 자리가 말한다(§1).
+func _on_fill_requested(index: int) -> void:
+    simulation.submit(FillCraftCommand.create(index))
 
 
 func _where_of(where: int) -> Vector3i:
@@ -481,7 +504,7 @@ func adopt_simulation() -> void:
     _input.bind(simulation)
     _input.clear_link_source()
     _hotbar.bind(state.inventory, _input)
-    _bag.bind(state.inventory)
+    _bag.bind(state.inventory, state.craft)
     _bag.close()
 
     _camera.focus_on(_character_view.target_position())

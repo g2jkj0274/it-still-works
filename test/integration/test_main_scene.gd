@@ -33,18 +33,18 @@ func _main() -> GameMain:
     return main
 
 
-## 만들 것을 고른다.
+## 그 무늬대로 격자에 재료를 놓고 결과를 가져간다.
 ##
-## 만들기 고르기(C)는 제작법을 차례로 돈다. 손에 든 칸과는 상관이 없다 —
-## 빈 칸을 잡고도 만들 수 있어야 하기 때문이다(InputController.recipe_output).
-func _choose_recipe(main: GameMain, wanted: int) -> void:
-    var controller := main.input_controller()
-    for i in RecipeBook.count():
-        if controller.recipe_output() == wanted:
-            return
-        controller.cycle_recipe()
-    assert_int(controller.recipe_output()).override_failure_message(
-        "%s 를 만들 법이 없다" % BlockType.name_of(wanted)).is_equal(wanted)
+## **재료를 격자에 놓아 만든다.** 목록을 돌려 고르던 것이 사라졌으므로,
+## 만드는 일은 놓고 가져가는 두 걸음이다(스펙 §3.6).
+func _make_by_hand(main: GameMain, wanted: int) -> void:
+    var index := RecipeBook.index_for(wanted)
+    assert_int(index).override_failure_message(
+        "%s 를 만들 법이 없다" % BlockType.name_of(wanted)).is_greater_equal(0)
+
+    main.simulation.submit(FillCraftCommand.create(index))
+    main.simulation.submit(CraftCommand.create())
+    _advance(main, 3)
 
 
 func _advance(main: GameMain, ticks: int) -> void:
@@ -376,21 +376,23 @@ func test_a_player_can_gather_and_make_a_door_by_hand() -> void:
         _advance(main, 2)
     assert_int(state.inventory.count_of(BlockType.WOOD)).is_equal(4)
 
-    # 모은 나무를 판자로 켜고, 그 판자로 문을 만든다.
+    # 모은 나무를 판자로 켜고, 작업대를 세우고, 그 앞에서 문을 만든다.
     #
-    # 나무가 곧바로 문이 되지 않는다. **한 번 켜야 한다.** 나무 하나가 판자
-    # 넷이 되므로 한 그루면 문이 서고도 남는다 — 예전보다 오히려 가볍다.
-    _choose_recipe(main, BlockType.PLANK)
-    controller.submit_craft()
-    _advance(main, 2)
+    # 나무가 곧바로 문이 되지 않는다. **한 번 켜야 한다.** 그리고 문은 세로가
+    # 셋이라 작업대가 있어야 한다 — 마인크래프트와 같다(스펙 §3.6).
+    _make_by_hand(main, BlockType.PLANK)
     assert_int(state.inventory.count_of(BlockType.PLANK)).is_equal(4)
     assert_int(state.inventory.count_of(BlockType.WOOD)).is_equal(3)
 
-    _choose_recipe(main, BlockType.DOOR_CLOSED)
-    controller.submit_craft()
-    _advance(main, 2)
+    _make_by_hand(main, BlockType.BENCH)
+    assert_int(state.inventory.count_of(BlockType.BENCH)).is_equal(1)
+
+    # 작업대를 곁에 세워야 세 칸짜리 무늬가 열린다.
+    state.grid.set_block(here + Vector3i(1, 0, 0), BlockType.BENCH)
+    for i in 2:
+        _make_by_hand(main, BlockType.PLANK)
+    _make_by_hand(main, BlockType.DOOR_CLOSED)
     assert_int(state.inventory.count_of(BlockType.DOOR_CLOSED)).is_equal(1)
-    assert_int(state.inventory.count_of(BlockType.PLANK)).is_equal(0)
 
     # 만든 문을 손에 쥐고 놓는다.
     #

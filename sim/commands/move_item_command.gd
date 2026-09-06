@@ -13,6 +13,9 @@ const TYPE := &"move_item"
 ## 궤짝이 아니라 손을 가리키는 자리.
 const IN_HAND := Vector3i(-1, -1, -1)
 
+## 제작 격자를 가리키는 자리. 세상의 칸이 아니므로 있을 수 없는 값을 쓴다.
+const IN_CRAFT := Vector3i(-2, -2, -2)
+
 var from_where: Vector3i = IN_HAND
 var from_slot: int = 0
 var to_where: Vector3i = IN_HAND
@@ -100,6 +103,8 @@ func _carry_half(source: Inventory, target: Inventory) -> void:
 func _inventory(state: WorldState, where: Vector3i) -> Inventory:
     if where == IN_HAND:
         return state.inventory
+    if where == IN_CRAFT:
+        return state.craft
     return state.chests.inside(where)
 
 

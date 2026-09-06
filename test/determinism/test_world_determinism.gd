@@ -42,10 +42,11 @@ const NORTH_EAST := Vector3i(1, -1, 0)
 ##   인벤토리가 칸으로 나뉘고 칸마다 쌓이는 한계가 생겨 상태의 짜임이 바뀜
 ##   궤짝이 늘어 블록 종류가 하나 늘고 그 안에 든 것이 상태에 추가됨
 ##   광맥이 드러난 동굴 벽에 더 잘 들어 격자가 바뀜 (땅속에 들어갈 까닭)
+##   재료를 격자에 놓아 만들게 되어 제작 격자가 상태에 추가됨
 ##
 ## 이 값이 깨졌다면 시뮬레이션 동작이 바뀐 것이다. 값을 고쳐 통과시키지 말고
 ## 무엇이 바뀌었는지 먼저 밝힌다.
-const GOLDEN_HASH := "7ba924ebd3f5759f3355b4585b545609a333857340abac896ed52fd752e3d97b"
+const GOLDEN_HASH := "dec3158684b54b6597ce0f07708ef582d06fa16c75bc99961ce5dffd6420e1ac"
 
 ## 같은 실행이 끝났을 때 캐릭터가 서 있는 칸.
 ## 해시보다 읽기 쉬워서 이동 규칙이 어긋났을 때 원인을 빨리 좁혀준다.
@@ -96,7 +97,7 @@ func _scenario() -> Array:
 ## 어느 속도로도 제때 도착하기 때문이다. 걸음 도중을 함께 못박아야 타이밍이
 ## 지켜진다.
 const MID_TICK := 104 + 2
-const GOLDEN_MID_HASH := "d56a96a7a4841fb199bbdf2a8b4d41f3fb9ea062bdaf47fb4bcf12f52c834e0b"
+const GOLDEN_MID_HASH := "abe42c908c720f696e680f27fe9c729830acbc80d986aa9fd7e646092167c703"
 
 
 func _run(seed_value: int = SEED, scenario: Array = []) -> Simulation:

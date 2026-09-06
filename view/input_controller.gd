@@ -54,8 +54,8 @@ const ACTION_HALF := &"take_half"
 const ACTION_CLOSE := &"close_screen"
 const ACTION_TURN_LEFT := &"turn_left"
 const ACTION_TURN_RIGHT := &"turn_right"
-const ACTION_CRAFT := &"craft"
-const ACTION_RECIPE := &"cycle_recipe"
+## 만들기는 화면 안에서 한다. 세상에서 누르는 키가 아니다 — 재료를 격자에
+## 놓아 만들므로 고를 것도 누를 것도 없다.
 const ACTION_BAG := &"open_bag"
 const ACTION_SAVE := &"save_game"
 const ACTION_LOAD := &"load_game"
@@ -151,7 +151,6 @@ signal chest_opened(cell: Vector3i)
 var _simulation: Simulation
 var _camera: Camera3D
 var _selected_slot: int = 0
-var _recipe: int = 0
 
 ## 방금 낸 명령을 지켜보는 자리. 지켜보지 않으면 -1.
 var _watch_tick: int = -1
@@ -462,32 +461,16 @@ func _watch_for_balk() -> void:
         crafted.emit()
 
 
-## 지금 만들려는 것.
-##
-## 핫바가 칸이 되면서 "고른 것을 만든다"가 성립하지 않는다 — 빈 칸을 잡고
-## 있을 수도 있기 때문이다. 만들 것은 따로 고른다.
-func recipe_output() -> int:
-    return RecipeBook.output_of(_recipe)
-
-
-func recipe_index() -> int:
-    return _recipe
-
-
-func cycle_recipe() -> void:
-    _recipe = (_recipe + 1) % RecipeBook.count()
-
-
-## 만든다. 재료가 모자라면 아무 일도 일어나지 않는다.
+## 제작 격자에 놓인 것을 가져간다. [param all] 이면 재료가 다할 때까지.
 ##
 ## **재료를 여기서 미리 세지 않는다.** 부수기·놓기와 달리 만들기만 규칙을
 ## 옮겨 적고 있었다. 시뮬레이션이 다른 까닭으로 거절하면 소리는 "만들었다"고
 ## 말했다 — 화면과 소리가 다른 것을 말하는 자리다. 낸 다음에 손이 바뀌었는지만
 ## 본다.
-func submit_craft() -> void:
+func submit_craft(all: bool = false) -> void:
     if _simulation == null:
         return
-    _simulation.submit(CraftCommand.create(recipe_output()))
+    _simulation.submit(CraftCommand.create(all))
     _watch_this_attempt(true)
 
 
@@ -546,8 +529,6 @@ static func install_actions() -> void:
     _install(ACTION_HELP, [KEY_H, KEY_F1])
     _install(ACTION_TURN_LEFT, [KEY_BRACKETLEFT])
     _install(ACTION_TURN_RIGHT, [KEY_BRACKETRIGHT])
-    _install(ACTION_CRAFT, [KEY_C])
-    _install(ACTION_RECIPE, [KEY_X])
     _install(ACTION_BAG, [KEY_TAB, KEY_I])
     _install(ACTION_SAVE, [KEY_F5])
     _install(ACTION_LOAD, [KEY_F9])
@@ -654,10 +635,6 @@ func _poll_actions(current_tick: int) -> void:
         submit_eat()
     if Input.is_action_just_pressed(ACTION_HELP):
         toggle_help()
-    if Input.is_action_just_pressed(ACTION_CRAFT):
-        submit_craft()
-    if Input.is_action_just_pressed(ACTION_RECIPE):
-        cycle_recipe()
     if Input.is_action_just_pressed(ACTION_BAG):
         bag_toggled.emit()
     if Input.is_action_just_pressed(ACTION_SAVE):
