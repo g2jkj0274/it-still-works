@@ -1,3 +1,4 @@
 # JOURNAL
 2026-09-06 21:59 | M0 | 스킬 설치 · tools/test.sh · TESTING.md | 894/894 통과, 스크립트 확인
 2026-09-06 22:17 | M0 | legacy 이동 + 빈 세계 골격 + 결정론 2000틱 | 98/98, 해시 4회 일치, M0 완료
+2026-09-07 00:10 | M1 | M1-1 블록 속성 표 BlockRegistry + data/blocks.json | 124/124 통과

@@ -1,0 +1,80 @@
+[
+    {
+        "id": 0,
+        "name": "air",
+        "durability": 0,
+        "solid": false,
+        "pushable": false,
+        "conductive": false,
+        "container": false,
+        "emits_sound": false,
+        "gravity": false,
+        "flammable": false,
+        "liquid": false
+    },
+    {
+        "id": 1,
+        "name": "dirt",
+        "durability": 8,
+        "solid": true,
+        "pushable": false,
+        "conductive": false,
+        "container": false,
+        "emits_sound": false,
+        "gravity": false,
+        "flammable": false,
+        "liquid": false
+    },
+    {
+        "id": 2,
+        "name": "stone",
+        "durability": 20,
+        "solid": true,
+        "pushable": false,
+        "conductive": false,
+        "container": false,
+        "emits_sound": false,
+        "gravity": false,
+        "flammable": false,
+        "liquid": false
+    },
+    {
+        "id": 3,
+        "name": "sand",
+        "durability": 6,
+        "solid": true,
+        "pushable": false,
+        "conductive": false,
+        "container": false,
+        "emits_sound": false,
+        "gravity": true,
+        "flammable": false,
+        "liquid": false
+    },
+    {
+        "id": 4,
+        "name": "wood",
+        "durability": 12,
+        "solid": true,
+        "pushable": false,
+        "conductive": false,
+        "container": false,
+        "emits_sound": false,
+        "gravity": false,
+        "flammable": true,
+        "liquid": false
+    },
+    {
+        "id": 5,
+        "name": "grass",
+        "durability": 8,
+        "solid": true,
+        "pushable": false,
+        "conductive": false,
+        "container": false,
+        "emits_sound": false,
+        "gravity": false,
+        "flammable": false,
+        "liquid": false
+    }
+]

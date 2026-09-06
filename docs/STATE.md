@@ -1,12 +1,12 @@
 # STATE
 마일스톤: M1 (M0 완료 — 빈 세계 2000틱 결정론 통과, 2026-09-06)
-진행 중: M1-1 블록 속성 시스템 (architect 검토 중)
-마지막 통과 테스트: 98/98 (tools/test.sh, 약 2초)
+진행 중: M1-2 청크 자료구조 (architect 검토 예정)
+마지막 통과 테스트: 124/124 (tools/test.sh, 약 27초)
 마지막 결정론 테스트: 통과 — 163d462bb8385e534447c4ce97b5c872fad72ddf80a667cec1be69cd6bab4e02 (별도 프로세스 4회 일치)
-이터레이션 수: 3 (10마다 architect 전체 감사 — 다음 감사는 10)
+이터레이션 수: 4 (10마다 architect 전체 감사 — 다음 감사는 10)
 
 ## M1 태스크 (LOOP.md M1)
-- [ ] M1-1 블록 속성 시스템(P2) + `data/blocks.json` + `sim/block_registry.gd`
+- [x] M1-1 블록 속성 시스템(P2) + `data/blocks.json` + `sim/block_registry.gd` (2026-09-07, 26 테스트. view 는 M1-5 에서 붙음)
 - [ ] M1-2 청크 자료구조(한 청크: 크기 상수, 층 3개, PackedByteArray) + 해시
 - [ ] M1-3 시드 기반 청크 절차 생성
 - [ ] M1-4 청크 월드: 로드 반경 상수, 로드/언로드, 청크 간 조회
