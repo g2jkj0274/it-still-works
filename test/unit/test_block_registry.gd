@@ -144,6 +144,25 @@ func test_rejects_negative_durability() -> void:
     assert_object(BlockRegistry.from_text(_text(rows))).is_null()
 
 
+func test_rejects_durability_above_255() -> void:
+    # Chunk 는 현재 내구도를 한 바이트에 담는다. 초기값이 그 폭을 넘으면 표 자체를 거부한다.
+    var rows := _rows()
+    rows[1]["durability"] = 255
+    assert_object(BlockRegistry.from_text(_text(rows))).is_not_null()
+    rows[1]["durability"] = 256
+    assert_object(BlockRegistry.from_text(_text(rows))).is_null()
+
+
+func test_rejects_more_than_256_rows() -> void:
+    # Chunk 의 셀 id 는 한 바이트다. 256 행은 받고 257 행은 거부한다.
+    var rows: Array = []
+    for id in 256:
+        rows.append(_row(id, "b%d" % id, 1))
+    assert_object(BlockRegistry.from_text(_text(rows))).is_not_null()
+    rows.append(_row(256, "b256", 1))
+    assert_object(BlockRegistry.from_text(_text(rows))).is_null()
+
+
 func test_rejects_number_in_boolean_slot() -> void:
     var rows := _rows()
     rows[1]["solid"] = 0

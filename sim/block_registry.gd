@@ -35,6 +35,12 @@ const ATTR_LIQUID := 7
 
 const DEFAULT_PATH := "res://data/blocks.json"
 
+## 내구도 상한. Chunk 가 셀당 바이트 둘(id · 현재 내구도)을 쓰므로 초기 내구도도 한 바이트에 들어야 한다.
+const MAX_DURABILITY := 255
+
+## 블록 수 상한. Chunk 의 셀 id 가 한 바이트라 id 는 0..255 다.
+const MAX_BLOCKS := 256
+
 ## 속성 외에 각 행이 반드시 가져야 하는 키.
 const _SCALAR_KEYS: PackedStringArray = ["id", "name", "durability"]
 
@@ -59,6 +65,7 @@ static func load_default() -> BlockRegistry:
 ##   - 최상위는 Array, 각 항목은 Dictionary
 ##   - 각 항목의 키 집합은 id·name·durability + ATTRIBUTES 와 정확히 같다
 ##   - id·durability 는 0 이상의 정수(JSON 실수는 정수값일 때만 받는다)
+##   - durability 는 MAX_DURABILITY 이하, 행 수는 MAX_BLOCKS 이하 (Chunk 의 바이트 폭)
 ##   - 속성 8개는 bool 만
 ##   - name 은 비지 않은 문자열
 ##   - id 는 배열 인덱스와 같다
@@ -70,6 +77,8 @@ static func from_text(text: String) -> BlockRegistry:
     if typeof(data) != TYPE_ARRAY:
         return null
     var rows: Array = data
+    if rows.size() > MAX_BLOCKS:
+        return null
     var registry := BlockRegistry.new()
     for index in rows.size():
         var row: Variant = rows[index]
@@ -80,7 +89,7 @@ static func from_text(text: String) -> BlockRegistry:
         if _to_non_negative_int(row["id"]) != index:
             return null
         var durability := _to_non_negative_int(row["durability"])
-        if durability < 0:
+        if durability < 0 or durability > MAX_DURABILITY:
             return null
         var name: Variant = row["name"]
         if typeof(name) != TYPE_STRING or (name as String).is_empty():
