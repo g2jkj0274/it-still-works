@@ -1,6 +1,7 @@
 extends GdUnitTestSuite
 
-## 청크 검증: 인덱스 공식, 빈 청크, 왕복, 정규형, 거부, dirty 계약, 바이트 레이아웃, digest, Node 아님.
+## 청크 검증: 인덱스 공식, 빈 청크, 왕복, 정규형, 거부, dirty 계약, revision 표지, 바이트 레이아웃,
+## digest, Node 아님.
 
 
 ## 왕복·레이아웃 테스트가 공유하는 셀 세팅. [x, y, layer, id, durability].
@@ -226,6 +227,85 @@ func test_dirty_contract_for_set_durability() -> void:
     chunk.clear_dirty()
     assert_bool(chunk.set_durability(1, 2, 0, 19)).is_false()
     assert_bool(chunk.is_dirty()).is_false()
+
+
+# --- revision 표지 (dirty 와 같은 조건, 해시 밖) ---
+
+func test_revision_starts_at_zero() -> void:
+    assert_int(Chunk.empty().revision()).is_equal(0)
+    assert_int(Chunk.new().revision()).is_equal(0)
+
+
+func test_revision_increments_only_on_real_change() -> void:
+    var chunk := Chunk.empty()
+    assert_bool(chunk.set_id(1, 2, 0, 2, 20)).is_true()
+    assert_int(chunk.revision()).is_equal(1)
+    # 같은 값 재대입은 변화가 아니다.
+    assert_bool(chunk.set_id(1, 2, 0, 2, 20)).is_false()
+    assert_int(chunk.revision()).is_equal(1)
+    # durability 만 달라도 변화다.
+    assert_bool(chunk.set_id(1, 2, 0, 2, 19)).is_true()
+    assert_int(chunk.revision()).is_equal(2)
+    # set_durability 도 같은 규칙.
+    assert_bool(chunk.set_durability(1, 2, 0, 18)).is_true()
+    assert_int(chunk.revision()).is_equal(3)
+    assert_bool(chunk.set_durability(1, 2, 0, 18)).is_false()
+    assert_int(chunk.revision()).is_equal(3)
+    # air → air 는 변화가 아니다.
+    assert_bool(chunk.set_id(5, 5, 1, 0, 7)).is_false()
+    assert_int(chunk.revision()).is_equal(3)
+    # air 에 내구도는 거부 — 변화 아님.
+    assert_bool(chunk.set_durability(5, 5, 1, 7)).is_false()
+    assert_int(chunk.revision()).is_equal(3)
+
+
+func test_revision_unchanged_by_rejected_sets() -> void:
+    var chunk := Chunk.empty()
+    chunk.set_id(0, 0, 0, 2, 20)
+    assert_int(chunk.revision()).is_equal(1)
+    # 범위 밖 좌표.
+    assert_bool(chunk.set_id(-1, 0, 0, 1, 1)).is_false()
+    assert_bool(chunk.set_id(16, 0, 0, 1, 1)).is_false()
+    assert_bool(chunk.set_id(0, 0, 3, 1, 1)).is_false()
+    assert_bool(chunk.set_durability(0, 16, 0, 1)).is_false()
+    # 범위 밖 값.
+    assert_bool(chunk.set_id(0, 0, 0, 256, 1)).is_false()
+    assert_bool(chunk.set_id(0, 0, 0, 1, -1)).is_false()
+    assert_bool(chunk.set_durability(0, 0, 0, 256)).is_false()
+    assert_bool(chunk.set_durability(0, 0, 0, -1)).is_false()
+    assert_int(chunk.revision()).is_equal(1)
+
+
+func test_clear_dirty_keeps_revision() -> void:
+    var chunk := _filled()
+    var before := chunk.revision()
+    assert_int(before).is_equal(_sample_cells().size())
+    chunk.clear_dirty()
+    assert_bool(chunk.is_dirty()).is_false()
+    assert_int(chunk.revision()).is_equal(before)
+
+
+func test_revision_resets_to_zero_after_from_bytes() -> void:
+    var original := _filled()
+    assert_int(original.revision()).is_greater(0)
+    var restored := Chunk.from_bytes(original.to_bytes())
+    assert_object(restored).is_not_null()
+    assert_int(restored.revision()).is_equal(0)
+    assert_str(restored.digest()).is_equal(original.digest())
+
+
+func test_revision_does_not_affect_digest_or_bytes() -> void:
+    # 같은 내용, 다른 revision: a 는 한 번에, b 는 돌아서 도착.
+    var a := Chunk.empty()
+    assert_bool(a.set_id(3, 3, 1, 2, 20)).is_true()
+    var b := Chunk.empty()
+    assert_bool(b.set_id(3, 3, 1, 1, 8)).is_true()
+    assert_bool(b.set_id(3, 3, 1, 2, 19)).is_true()
+    assert_bool(b.set_durability(3, 3, 1, 20)).is_true()
+    assert_int(a.revision()).is_equal(1)
+    assert_int(b.revision()).is_equal(3)
+    assert_array(a.to_bytes()).is_equal(b.to_bytes())
+    assert_str(a.digest()).is_equal(b.digest())
 
 
 # --- 바이트 왕복 ---

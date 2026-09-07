@@ -2,9 +2,13 @@ extends GdUnitTestSuite
 
 ## 청크 월드 검증: 상수, 좌표 변환, 초기 상태, 로드 반경, 중심 이동, 월드 좌표 접근,
 ## P7 왕복(스냅샷·persist), 경로 무관 해시, 인정된 한계, restore_snapshot, 정렬, 해시 필드,
-## 불변식, 소스 가드, Node 아님.
+## revision 표지, 불변식, 200스텝 퍼징(불변식·revision 단조), 소스 가드, Node 아님.
 
 const SEED := 20250901
+
+## 퍼징 시드·스텝 수. 고정 — 같은 시드는 같은 경로를 만든다.
+const FUZZ_SEED := 6061
+const FUZZ_STEPS := 200
 
 ## 실수로 값이 안 바뀌는 set 을 막기 위해 테스트가 놓는 값. stone(2) 최대 내구도 20 이지만 GROUND
 ## 는 air 비율이 높아 골든 시드 (0,0) 에서는 바뀐다 — 각 테스트가 set 의 반환값 true 를 단언한다.
@@ -447,6 +451,127 @@ func test_dirty_flag_does_not_affect_hash() -> void:
     assert_str(world.compute_hash()).is_equal(dirty_hash)
 
 
+# --- revision 표지 (해시 밖, 단조 비감소) ---
+
+## 생성기는 set_id 로 청크를 채우므로 갓 생성된 청크도 revision 을 가진다(놓인 비-air 셀 수).
+## 월드 몫은 첫 로드에 정확히 1 이고, 총합 = 1 + 로드된 청크 revision 합.
+func test_revision_starts_at_zero_and_rises_on_first_load() -> void:
+    var world := _world()
+    assert_int(world.revision()).is_equal(0)
+    world.set_center(0, 0)
+    var chunk_sum := 0
+    for entry: Array in world.loaded_sorted():
+        var chunk: Chunk = entry[1]
+        chunk_sum += chunk.revision()
+    assert_int(world.revision()).is_equal(1 + chunk_sum)
+    assert_int(world.revision()).is_greater_equal(1)
+
+
+func test_revision_unchanged_by_same_center() -> void:
+    var world := _world()
+    world.set_center(0, 0)
+    var before := world.revision()
+    world.set_center(0, 0)
+    assert_int(world.revision()).is_equal(before)
+
+
+func test_revision_rises_on_load_and_unload() -> void:
+    var world := _world()
+    world.set_center(0, 0)
+    var r0 := world.revision()
+    world.set_center(1, 0)
+    var r1 := world.revision()
+    assert_int(r1).is_greater(r0)
+    world.set_center(0, 0)
+    assert_int(world.revision()).is_greater(r1)
+
+
+func test_set_id_at_success_raises_revision_and_failure_keeps_it() -> void:
+    var world := _world()
+    world.set_center(0, 0)
+    var before := world.revision()
+    assert_bool(world.set_id_at(0, 0, Chunk.LAYER_GROUND, SET_ID, SET_D)).is_true()
+    assert_int(world.revision()).is_equal(before + 1)
+    # 같은 값 재대입 — 실패, 불변.
+    assert_bool(world.set_id_at(0, 0, Chunk.LAYER_GROUND, SET_ID, SET_D)).is_false()
+    assert_int(world.revision()).is_equal(before + 1)
+    # 안 로드된 칸 — 실패, 불변.
+    assert_bool(world.set_id_at(100, 0, Chunk.LAYER_GROUND, SET_ID, SET_D)).is_false()
+    assert_int(world.revision()).is_equal(before + 1)
+    # 범위 밖 값 — 실패, 불변.
+    assert_bool(world.set_id_at(0, 0, Chunk.LAYER_GROUND, 256, 1)).is_false()
+    assert_int(world.revision()).is_equal(before + 1)
+    # set_durability_at 성공도 올린다.
+    assert_bool(world.set_durability_at(0, 0, Chunk.LAYER_GROUND, SET_D - 1)).is_true()
+    assert_int(world.revision()).is_equal(before + 2)
+    assert_bool(world.set_durability_at(0, 0, Chunk.LAYER_GROUND, SET_D - 1)).is_false()
+    assert_int(world.revision()).is_equal(before + 2)
+
+
+func test_restore_snapshot_raises_revision_only_on_success() -> void:
+    var world := _world()
+    assert_int(world.revision()).is_equal(0)
+    assert_bool(world.restore_snapshot(7, 7, _edited_bytes(7, 7))).is_true()
+    assert_int(world.revision()).is_equal(1)
+    # 실패(정규형 위반)는 불변.
+    var bad := PackedByteArray()
+    bad.resize(Chunk.BYTE_COUNT)
+    bad[Chunk.CELL_COUNT] = 1
+    assert_bool(world.restore_snapshot(8, 8, bad)).is_false()
+    assert_int(world.revision()).is_equal(1)
+    # 실패(로드된 키)도 불변.
+    world.set_center(0, 0)
+    var after_load := world.revision()
+    assert_bool(world.restore_snapshot(0, 0, _edited_bytes(0, 0))).is_false()
+    assert_int(world.revision()).is_equal(after_load)
+
+
+## 언로드로 청크 revision N 이 합에서 빠져도 총합은 줄지 않는다 — 나가는 몫을 월드가 접어 넣는다.
+func test_unloading_edited_chunk_does_not_lower_total() -> void:
+    var world := _world()
+    world.set_center(0, 0)
+    var generated := world.get_chunk(0, 0).revision()
+    for d in range(SET_D, SET_D - 3, -1):
+        assert_bool(world.set_id_at(0, 0, Chunk.LAYER_GROUND, SET_ID, d)).is_true()
+    assert_int(world.get_chunk(0, 0).revision()).is_equal(generated + 3)
+    var before := world.revision()
+    world.set_center(10, 10)
+    assert_bool(world.is_loaded(0, 0)).is_false()
+    assert_int(world.revision()).is_greater_equal(before + 1)
+    # 스냅샷에서 다시 로드된 청크는 revision 0 이지만 총합은 여전히 오른다.
+    var unloaded := world.revision()
+    world.set_center(0, 0)
+    assert_int(world.get_chunk(0, 0).revision()).is_equal(0)
+    assert_int(world.revision()).is_greater_equal(unloaded + 1)
+
+
+func test_hash_fields_have_no_revision_name() -> void:
+    var world := _world()
+    world.set_center(0, 0)
+    assert_bool(world.set_id_at(0, 0, Chunk.LAYER_GROUND, SET_ID, SET_D)).is_true()
+    assert_bool(world.restore_snapshot(7, 7, _edited_bytes(7, 7))).is_true()
+    for field: Array in world.to_hash_fields():
+        var name: String = field[0]
+        assert_bool(name.to_lower().contains("revision")).override_failure_message(
+            "해시 필드 '%s' 에 revision 이 들어 있다" % name
+        ).is_false()
+
+
+func test_revision_does_not_affect_hash() -> void:
+    # 같은 내용, 다른 revision: a 는 돌아서, b 는 한 번에.
+    var a := _world()
+    a.set_center(0, 0)
+    a.set_center(1, 0)
+    a.set_center(0, 0)
+    assert_bool(a.set_id_at(0, 0, Chunk.LAYER_GROUND, SET_ID, SET_D - 1)).is_true()
+    assert_bool(a.set_id_at(0, 0, Chunk.LAYER_GROUND, SET_ID, SET_D)).is_true()
+    var b := _world()
+    b.set_center(0, 0)
+    assert_bool(b.set_id_at(0, 0, Chunk.LAYER_GROUND, SET_ID, SET_D)).is_true()
+    assert_int(a.revision()).is_not_equal(b.revision())
+    assert_str(a.compute_hash()).is_equal(b.compute_hash())
+
+
 # --- 불변식 ---
 
 func test_invariant_after_many_moves() -> void:
@@ -460,6 +585,50 @@ func test_invariant_after_many_moves() -> void:
         _assert_invariant(world)
     assert_int(world.get_id_at(0, 0, Chunk.LAYER_GROUND)).is_equal(SET_ID)
     assert_int(world.get_id_at(-30, 20, Chunk.LAYER_GROUND)).is_equal(SET_ID)
+
+
+# --- 퍼징 (고정 시드, 200스텝) ---
+
+## 시드된 RNG 로 중심 이동·편집·스냅샷 복원을 섞는다. 매 스텝 불변식·로드 수 25 를 확인하고,
+## revision 총합이 한 번도 줄지 않음을 단언한다. 같은 시드는 같은 경로를 만든다.
+func test_fuzz_invariant_and_revision_monotonic() -> void:
+    var rng := SimRng.new(FUZZ_SEED)
+    var world := _world()
+    world.set_center(0, 0)
+    var last := world.revision()
+    var edits_applied := 0
+    for step in FUZZ_STEPS:
+        var roll := rng.next_range(0, 9)
+        if roll < 5:
+            # 중심을 근처로 옮긴다(가끔은 제자리).
+            var c := world.center()
+            world.set_center(c.x + rng.next_range(-2, 2), c.y + rng.next_range(-2, 2))
+        elif roll < 9:
+            # 로드 반경 안팎의 칸을 편집한다(밖은 거부돼야 한다).
+            var c := world.center()
+            var wx := (c.x << ChunkWorld.CHUNK_SHIFT) + rng.next_range(-40, 55)
+            var wy := (c.y << ChunkWorld.CHUNK_SHIFT) + rng.next_range(-40, 55)
+            var layer := rng.next_range(0, Chunk.LAYERS - 1)
+            var loaded := world.is_loaded(ChunkWorld.chunk_of(wx), ChunkWorld.chunk_of(wy))
+            var changed := world.set_id_at(wx, wy, layer, SET_ID, rng.next_range(1, SET_D))
+            if not loaded:
+                assert_bool(changed).is_false()
+            if changed:
+                edits_applied += 1
+        else:
+            # 로드 밖 먼 키에 스냅샷을 되돌린다.
+            var kx := 20 + rng.next_range(0, 5)
+            var ky := 20 + rng.next_range(0, 5)
+            world.restore_snapshot(kx, ky, _edited_bytes(kx, ky))
+        assert_int(world.loaded_count()).is_equal(25)
+        _assert_invariant(world)
+        var now := world.revision()
+        assert_int(now).override_failure_message(
+            "step %d: revision 총합이 줄었다 (%d → %d)" % [step, last, now]
+        ).is_greater_equal(last)
+        last = now
+    assert_int(edits_applied).is_greater(0)
+    assert_int(world.revision()).is_greater(0)
 
 
 # --- 소스 가드 ---

@@ -44,6 +44,12 @@ var _persist: Dictionary[Vector2i, bool] = {}
 var _center := Vector2i.ZERO
 var _has_center := false
 
+## 변경 횟수 표지 — 월드 자신의 몫. 해시 밖(dirty·persist 와 같은 결).
+## 로드/언로드가 하나라도 일어난 [method set_center], 성공한 [method restore_snapshot] 에 1 증가.
+## [method _unload] 는 나가는 청크의 revision 을 여기에 접어 넣는다 — 그래야 [method revision]
+## 총합이 단조 비감소다(청크가 revision 3 인 채 나가면 합이 줄어 과거 값과 겹칠 수 있다).
+var _revision: int = 0
+
 
 func _init(generator: ChunkGenerator) -> void:
     _generator = generator
@@ -74,6 +80,7 @@ func set_center(cx: int, cy: int) -> void:
     for key: Vector2i in _loaded.keys():
         if _chebyshev(key, _center) > LOAD_RADIUS:
             to_unload.append(key)
+    var changed := not to_unload.is_empty()
     for key: Vector2i in _sort_keys(to_unload):
         _unload(key)
 
@@ -82,6 +89,9 @@ func set_center(cx: int, cy: int) -> void:
             var key := Vector2i(x, y)
             if not _loaded.has(key):
                 _load(key)
+                changed = true
+    if changed:
+        _revision += 1
 
 
 ## 스냅샷이 있으면 복원하고 persist 표지를 켠다. 없으면 생성한다.
@@ -101,10 +111,12 @@ func _load(key: Vector2i) -> void:
 
 
 ## dirty 이거나 스냅샷에서 온 청크는 바이트열로 남긴다. 그 외는 생성값과 같으므로 버린다.
+## 나가는 청크의 revision 은 월드 몫에 접어 넣는다(총합 단조 비감소).
 func _unload(key: Vector2i) -> void:
     var chunk: Chunk = _loaded[key]
     if chunk.is_dirty() or _persist.has(key):
         _snapshots[key] = chunk.to_bytes()
+    _revision += chunk.revision()
     _loaded.erase(key)
     _persist.erase(key)
 
@@ -133,6 +145,15 @@ func has_center() -> bool:
 
 func center() -> Vector2i:
     return _center
+
+
+## 변경 횟수 표지 = 월드 몫 + 로드된 청크 revision 합. 단조 비감소(언로드 시 접어 넣음).
+## 해시 밖 — [method to_hash_fields]·[method compute_hash] 에 들어가지 않는다.
+func revision() -> int:
+    var total := _revision
+    for chunk: Chunk in _loaded.values():
+        total += chunk.revision()
+    return total
 
 
 ## 로드된 청크. 안 로드면 null. view 가 그릴 때 읽는다.
@@ -205,13 +226,14 @@ func restore_snapshot(cx: int, cy: int, bytes: PackedByteArray) -> bool:
     if Chunk.from_bytes(bytes) == null:
         return false
     _snapshots[key] = bytes.duplicate()
+    _revision += 1
     return true
 
 
 # --- 해시 ---
 
 ## 해시 입력이 되는 정규 필드 목록. 순서 고정.
-## dirty·persist 는 표지라 들어가지 않는다 — 같은 내용은 어느 경로로 왔든 같은 해시다.
+## dirty·persist·revision 은 표지라 들어가지 않는다 — 같은 내용은 어느 경로로 왔든 같은 해시다.
 func to_hash_fields() -> Array:
     var fields: Array = []
     fields.append(["chunks.has_center", 1 if _has_center else 0])

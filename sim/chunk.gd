@@ -43,6 +43,11 @@ var _durability := PackedByteArray()
 ## 마지막 [method clear_dirty] 이후 값이 바뀌었는가.
 var _dirty := false
 
+## 변경 횟수 표지. dirty 가 켜지는 것과 같은 조건(값이 실제로 바뀔 때)에 1 증가한다.
+## 해시 밖 — dirty 와 같은 결이라 digest·to_bytes 에 들어가지 않는다. [method clear_dirty] 는
+## 건드리지 않는다. [method empty]·[method from_bytes] 직후 0.
+var _revision: int = 0
+
 
 func _init() -> void:
     _ids.resize(CELL_COUNT)
@@ -129,6 +134,7 @@ func set_id(x: int, y: int, layer: int, id: int, durability: int) -> bool:
     _ids[index] = id
     _durability[index] = durability
     _dirty = true
+    _revision += 1
     return true
 
 
@@ -147,6 +153,7 @@ func set_durability(x: int, y: int, layer: int, d: int) -> bool:
         return false
     _durability[index] = d
     _dirty = true
+    _revision += 1
     return true
 
 
@@ -155,9 +162,14 @@ func is_dirty() -> bool:
     return _dirty
 
 
-## 저장을 마친 뒤 부른다.
+## 저장을 마친 뒤 부른다. revision 은 건드리지 않는다.
 func clear_dirty() -> void:
     _dirty = false
+
+
+## 변경 횟수 표지. 값이 실제로 바뀐 횟수(dirty 와 같은 조건). 해시 밖(dirty 와 같은 결).
+func revision() -> int:
+    return _revision
 
 
 ## 내용 해시. dirty 는 들어가지 않는다 — 같은 내용은 저장 여부와 무관하게 같은 값이다.
