@@ -18,6 +18,9 @@ const TICK_RATE := 20
 ## 틱 하나의 길이(마이크로초). 시뮬레이션 안에 실수를 들이지 않으려고 정수로 둔다.
 const TICK_INTERVAL_USEC := 1_000_000 / TICK_RATE
 
+## 스폰 칸. 원점 청크 중앙, 시드 무관, 지상층(DECISIONS 2026-09-08). 그 칸이 solid 여도 그대로 둔다.
+const SPAWN_CELL := Vector2i(8, 8)
+
 ## 시뮬레이션이 소유한 월드 상태. 읽기 전용으로 다룬다.
 var state: WorldState
 
@@ -46,7 +49,9 @@ func _init(p_seed: int, p_registry: BlockRegistry, p_terrain: TerrainTable) -> v
     terrain = p_terrain
     var generator := ChunkGenerator.new(p_seed, p_registry, p_terrain)
     var chunk_world := ChunkWorld.new(generator)
-    state = WorldState.new(SimRng.new(p_seed), chunk_world)
+    var player := PlayerState.new()
+    player.place_at(SPAWN_CELL, Chunk.LAYER_GROUND)
+    state = WorldState.new(SimRng.new(p_seed), chunk_world, p_registry, player)
     queue = SimCommandQueue.new()
 
 
@@ -104,7 +109,8 @@ func _record(command: SimCommand) -> SimCommand:
 ## 한 틱 진행한다.
 ##
 ## 1. 이 틱까지 밀린 명령을 (실행 틱, 접수 순서) 차례로 적용한다.
-##    - 로드 중심 동기화([method _sync_load_center]).
+##    1-M1a. 플레이어가 목표 쪽으로 한 틱 나아간다(`state.player.advance()`).
+##    1-M1b. 로드 중심 동기화([method _sync_chunk_center]) — 중심 = 플레이어 발 칸의 청크.
 ## 2. 틱을 하나 올린다.
 ##
 ## 서브시스템 갱신은 1 과 2 사이에 들어간다(`docs/SIM_ORDER.md`).
@@ -112,18 +118,22 @@ func _record(command: SimCommand) -> SimCommand:
 func step() -> void:
     for command in queue.take_due(state.tick):
         command.apply(state)
-    _sync_load_center()
+    state.player.advance()
+    _sync_chunk_center()
     state.tick += 1
 
 
-## 상태의 로드 중심 목표를 청크 월드에 반영한다.
-## 제품 코드(sim/·view/)에서 set_center 의 유일한 호출 지점. 같은 틱의 명령은 동기화 전(이전 중심)의
-## 로드 집합을 본다 — 새 중심으로 로드된 청크는 다음 틱 명령부터 접근된다.
-func _sync_load_center() -> void:
-    if not state.has_load_center:
-        return
-    if not state.chunks.has_center() or state.chunks.center() != state.load_center:
-        state.chunks.set_center(state.load_center.x, state.load_center.y)
+## 플레이어 발 칸의 청크를 로드 중심으로 삼는다. 제품 코드(sim/·view/)에서 set_center 의 유일한
+## 호출 지점. 로드 중심은 상태가 아니라 플레이어 위치에서 유도되는 값이다(P7).
+##
+## 같은 틱의 명령은 동기화 전(이전 중심)의 로드 집합을 본다. 첫 틱(tick 0)에는 로드 집합이 비어
+## 이동 명령이 전부 거부되고 facing 만 바뀐다. 그 뒤로는 이전 틱이 발 칸 청크 중심 반경 2 를 로드해
+## 두었고 목적지는 발 칸 이웃이라 언로드 칸을 만나지 않는다.
+func _sync_chunk_center() -> void:
+    var c := state.player.cell()
+    var want := Vector2i(ChunkWorld.chunk_of(c.x), ChunkWorld.chunk_of(c.y))
+    if not state.chunks.has_center() or state.chunks.center() != want:
+        state.chunks.set_center(want.x, want.y)
 
 
 ## [param ticks] 만큼 진행한다. 0 이하면 아무 일도 하지 않는다.

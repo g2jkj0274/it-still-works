@@ -8,8 +8,11 @@ extends Node2D
 ## 경과 시간은 정수 마이크로초로 재므로 실수가 시뮬레이션 쪽으로 새지 않는다.
 ##
 ## 표현 레이어는 시뮬레이션을 읽기만 한다. 입력은 명령을 제출할 뿐 상태를 직접 만지지 않는다
-## (SIM_ORDER 1). M1-5 까지 세계를 둘러보는 수단은 방향키 → SetLoadCenterCommand 하나다
-## (DECISIONS 2026-09-07). 활성 층은 카메라와 같은 표현 상태라 sim 에 쓰지 않는다.
+## (SIM_ORDER 1). 방향키 한 번 누름 = MovePlayerCommand 하나(한 칸). 로드 중심은 플레이어 발 칸에서
+## sim 이 유도하므로 view 는 첫 틱에 아무 명령도 내지 않는다(DECISIONS 2026-09-08). 키 → 방향은
+## 화면 기준이다: 아이소 투영에서 +x 는 우하, +y 는 좌하이므로 화면 위 = (-1,-1), 아래 = (1,1),
+## 왼쪽 = (-1,1), 오른쪽 = (1,-1). 활성 층은 카메라와 같은 표현 상태라 sim 에 쓰지 않는다.
+## 키 누름 유지·카메라의 플레이어 추적·플레이어 마커는 M1-6b.
 
 const SEED := 20250901
 
@@ -22,10 +25,6 @@ const ACTIONS: Array[StringName] = [
 var simulation: Simulation
 var driver: TickDriver
 var _last_usec: int = 0
-
-## 마지막으로 제출한 로드 중심 목표(청크 좌표). 같은 틱 안에 여러 이동이 제출될 때
-## `state.load_center` 는 아직 이전 값이므로, 누적은 이 값을 기준으로 한다.
-var _pending_center: Vector2i = Vector2i.ZERO
 
 ## 이번 프레임에 다시 그려야 하는가. _physics_process 는 이 플래그만 세우고, 실제 refresh 는
 ## SceneTree.process_frame 에서 프레임당 최대 1회 한다. queue_redraw 를 물리 스텝 안에서 부르면
@@ -43,9 +42,7 @@ func _ready() -> void:
         return
     driver = TickDriver.new()
     world_view.simulation = simulation
-    # 첫 틱에 세계가 뜬다. 제출은 한 번.
-    _pending_center = Vector2i.ZERO
-    simulation.submit(SetLoadCenterCommand.create(_pending_center.x, _pending_center.y))
+    # 첫 틱이 플레이어 발 칸의 청크를 로드한다. view 는 여기서 아무 명령도 내지 않는다.
     _last_usec = Time.get_ticks_usec()
     _update_camera()
     get_tree().process_frame.connect(_on_process_frame)
@@ -90,19 +87,18 @@ func handle_action(action: StringName) -> void:
     elif action == &"layer_down":
         world_view.set_active_layer(world_view.active_layer - 1)
     elif action == &"move_left":
-        _submit_move(-1, 0)
+        _submit_move(-1, 1)
     elif action == &"move_right":
-        _submit_move(1, 0)
+        _submit_move(1, -1)
     elif action == &"move_up":
-        _submit_move(0, -1)
+        _submit_move(-1, -1)
     elif action == &"move_down":
-        _submit_move(0, 1)
+        _submit_move(1, 1)
 
 
-## 로드 중심 목표를 (dx, dy) 청크만큼 옮기는 명령을 제출한다. 상태는 직접 쓰지 않는다.
+## 플레이어를 (dx, dy) 방향으로 한 칸 걷게 하는 명령을 제출한다. 상태는 직접 쓰지 않는다.
 func _submit_move(dx: int, dy: int) -> void:
-    _pending_center += Vector2i(dx, dy)
-    simulation.submit(SetLoadCenterCommand.create(_pending_center.x, _pending_center.y))
+    simulation.submit(MovePlayerCommand.create(dx, dy))
 
 
 ## 카메라를 로드 중심 셀의 다이아몬드 중심에 놓는다.

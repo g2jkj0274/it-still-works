@@ -3,9 +3,11 @@ extends GdUnitTestSuite
 ## 메인 씬 통합 검증.
 ##
 ## M0: 루트 노드 하나가 시뮬레이션을 소유하고 고정 틱으로 굴린다.
-## M1-5b: 루트는 Node2D, 자식 WorldView·Camera2D. 첫 틱에 (0,0) 중심으로 세계가 뜬다.
-## 방향키 액션은 SetLoadCenterCommand 를 제출할 뿐 상태를 직접 만지지 않는다.
+## M1-5b: 루트는 Node2D, 자식 WorldView·Camera2D.
+## M1-6a-2: _ready 는 명령을 제출하지 않는다 — 첫 틱이 플레이어 발 칸 (8,8) 의 청크 (0,0) 을 로드한다.
+## 방향키 액션은 화면 기준 방향의 MovePlayerCommand 하나를 제출할 뿐 상태를 직접 만지지 않는다.
 ## 층 전환은 view 상태다. 입력은 handle_action 을 직접 불러 검증한다(Input 이벤트 주입 없음).
+## 카메라의 플레이어 추적·마커는 M1-6b — 여기서는 focus_cell(청크 중앙) 추적만 본다.
 
 const MAIN_SCENE := "res://view/main.tscn"
 const MAIN_SOURCE := "res://view/main.gd"
@@ -82,29 +84,24 @@ func test_root_is_node2d_with_world_view_and_camera() -> void:
     assert_bool((camera as Camera2D).enabled).is_true()
 
 
-# --- 첫 명령과 첫 틱 ---
+# --- 첫 틱 ---
 
-func test_ready_submits_exactly_one_center_command_and_loads_nothing_yet() -> void:
+func test_ready_submits_nothing_and_loads_nothing_yet() -> void:
     var main := _main()
-    assert_int(main.simulation.command_count()).is_equal(1)
-    var entry := _last_log_entry(main)
-    assert_str(str(entry["type"])).is_equal(String(SetLoadCenterCommand.TYPE))
-    assert_int(int(entry["cx"])).is_equal(0)
-    assert_int(int(entry["cy"])).is_equal(0)
-    assert_int(int(entry["tick"])).is_equal(0)
-    # 명령은 제출만 되었고 아직 적용되지 않았다 — 상태를 직접 만지지 않는다는 증거.
+    assert_int(main.simulation.command_count()).is_equal(0)
     assert_int(main.simulation.state.chunks.loaded_count()).is_equal(0)
-    assert_bool(main.simulation.state.has_load_center).is_false()
+    assert_bool(main.simulation.state.chunks.has_center()).is_false()
+    assert_bool(main.simulation.state.player.cell() == Vector2i(8, 8)).is_true()
 
 
-func test_first_tick_loads_25_chunks_around_origin() -> void:
+func test_first_tick_loads_25_chunks_around_player_chunk() -> void:
     var main := _main()
     assert_int(_tick_once(main)).is_greater_equal(1)
     var chunks := main.simulation.state.chunks
     assert_int(chunks.loaded_count()).is_equal(25)
     assert_bool(chunks.has_center()).is_true()
     assert_bool(chunks.center() == Vector2i(0, 0)).is_true()
-    assert_int(main.simulation.command_count()).is_equal(1)
+    assert_int(main.simulation.command_count()).is_equal(0)
 
 
 # --- 층 전환 (view 상태) ---
@@ -123,7 +120,7 @@ func test_layer_actions_move_and_clamp_active_layer() -> void:
     main.handle_action(&"layer_down")
     assert_int(main.world_view.active_layer).is_equal(0)
     # 층 전환은 명령을 만들지 않고 상태 해시도 바꾸지 않는다.
-    assert_int(main.simulation.command_count()).is_equal(1)
+    assert_int(main.simulation.command_count()).is_equal(0)
 
 
 func test_layer_actions_do_not_touch_sim_state() -> void:
@@ -140,47 +137,49 @@ func test_layer_actions_do_not_touch_sim_state() -> void:
 
 # --- 이동 = 명령 제출 ---
 
-func test_move_right_submits_set_load_center_command() -> void:
+## 키 → 방향, 화면 기준(iso_projection: +x 우하, +y 좌하).
+const EXPECTED_DIRECTIONS := {
+    &"move_up": Vector2i(-1, -1),
+    &"move_down": Vector2i(1, 1),
+    &"move_left": Vector2i(-1, 1),
+    &"move_right": Vector2i(1, -1),
+}
+
+
+func test_each_direction_submits_one_move_player_command() -> void:
     var main := _main()
     _tick_once(main)
-    var count := main.simulation.command_count()
-    var center_before := main.simulation.state.chunks.center()
+    for action: StringName in EXPECTED_DIRECTIONS:
+        var count := main.simulation.command_count()
+        main.handle_action(action)
+        assert_int(main.simulation.command_count()).override_failure_message(str(action)).is_equal(count + 1)
+        var entry := _last_log_entry(main)
+        var expected: Vector2i = EXPECTED_DIRECTIONS[action]
+        assert_str(str(entry["type"])).is_equal(String(MovePlayerCommand.TYPE))
+        assert_int(int(entry["dx"])).override_failure_message("%s dx" % action).is_equal(expected.x)
+        assert_int(int(entry["dy"])).override_failure_message("%s dy" % action).is_equal(expected.y)
+        # (0,0) 을 제출하는 경로는 없다.
+        assert_bool(int(entry["dx"]) != 0 or int(entry["dy"]) != 0).is_true()
+        assert_bool(MovementRules.is_direction(expected)).is_true()
+        assert_int(int(entry["tick"])).is_equal(main.simulation.current_tick())
+
+
+func test_move_submission_does_not_touch_state_until_tick() -> void:
+    var main := _main()
+    _tick_once(main)
+    var before := main.simulation.state_hash()
     main.handle_action(&"move_right")
-    assert_int(main.simulation.command_count()).is_equal(count + 1)
-    var entry := _last_log_entry(main)
-    assert_str(str(entry["type"])).is_equal(String(SetLoadCenterCommand.TYPE))
-    assert_int(int(entry["cx"])).is_equal(1)
-    assert_int(int(entry["cy"])).is_equal(0)
     # 제출만으로는 상태가 바뀌지 않는다.
-    assert_bool(main.simulation.state.chunks.center() == center_before).is_true()
-    assert_bool(main.simulation.state.load_center == Vector2i(0, 0)).is_true()
-    # 틱이 돌면 그때 중심이 옮겨진다.
+    assert_str(main.simulation.state_hash()).is_equal(before)
+    assert_bool(main.simulation.state.player.facing == Vector2i(0, 1)).is_true()
+    # 틱이 돌면 명령이 적용된다. 걷기 성공 여부는 지형에 달렸지만 facing 은 반드시 돈다.
     assert_int(_tick_once(main)).is_greater_equal(1)
-    assert_bool(main.simulation.state.chunks.center() == Vector2i(1, 0)).is_true()
+    assert_bool(main.simulation.state.player.facing == Vector2i(1, -1)).is_true()
     assert_int(main.simulation.state.chunks.loaded_count()).is_equal(25)
 
 
-func test_each_direction_maps_to_one_chunk_step() -> void:
-    var main := _main()
-    _tick_once(main)
-    var expected := {
-        &"move_left": Vector2i(-1, 0),
-        &"move_up": Vector2i(-1, -1),
-        &"move_right": Vector2i(0, -1),
-        &"move_down": Vector2i(0, 0),
-    }
-    for action: StringName in expected:
-        main.handle_action(action)
-        _tick_once(main)
-        var target: Vector2i = expected[action]
-        assert_bool(main.simulation.state.chunks.center() == target).override_failure_message(
-            "%s 뒤 중심 %s != %s" % [action, main.simulation.state.chunks.center(), target]
-        ).is_true()
-
-
-func test_moves_in_the_same_tick_accumulate_on_pending_center() -> void:
-    # 같은 틱 안에 두 번 제출하면 state.load_center 는 아직 (0,0) 이다.
-    # view 가 마지막 제출 목표를 기억하므로 (1,0) → (1,1) 로 누적된다.
+func test_two_presses_in_the_same_tick_log_two_commands_without_accumulation() -> void:
+    # view 는 아무것도 누적하지 않는다. 명령 하나 = 방향 하나. 두 번째는 걷는 중이라 sim 이 무시한다.
     var main := _main()
     _tick_once(main)
     var count := main.simulation.command_count()
@@ -190,28 +189,23 @@ func test_moves_in_the_same_tick_accumulate_on_pending_center() -> void:
     var log := main.simulation.command_log()
     var first: Dictionary = log[log.size() - 2]
     var second: Dictionary = log[log.size() - 1]
-    assert_int(int(first["cx"])).is_equal(1)
-    assert_int(int(first["cy"])).is_equal(0)
-    assert_int(int(second["cx"])).is_equal(1)
-    assert_int(int(second["cy"])).is_equal(1)
+    assert_int(int(first["dx"])).is_equal(1)
+    assert_int(int(first["dy"])).is_equal(-1)
+    assert_int(int(second["dx"])).is_equal(1)
+    assert_int(int(second["dy"])).is_equal(1)
     assert_int(int(first["tick"])).is_equal(int(second["tick"]))
-    # 상태는 아직 이전 값.
-    assert_bool(main.simulation.state.load_center == Vector2i(0, 0)).is_true()
-    assert_int(_tick_once(main)).is_greater_equal(1)
-    assert_bool(main.simulation.state.chunks.center() == Vector2i(1, 1)).is_true()
-    assert_int(main.simulation.state.chunks.loaded_count()).is_equal(25)
 
 
-func test_move_before_first_tick_accumulates_from_origin() -> void:
-    # 첫 (0,0) 제출과 같은 틱에 이동이 들어와도 누적 기준은 (0,0) 이다.
+func test_move_before_first_tick_is_refused_but_turns_facing() -> void:
+    # 틱 0 에는 로드 집합이 비어 걷기가 거부된다(SIM_ORDER 1-M1b). facing 만 바뀐다. 버그가 아니다.
     var main := _main()
     main.handle_action(&"move_left")
-    assert_int(main.simulation.command_count()).is_equal(2)
-    var entry := _last_log_entry(main)
-    assert_int(int(entry["cx"])).is_equal(-1)
-    assert_int(int(entry["cy"])).is_equal(0)
+    assert_int(main.simulation.command_count()).is_equal(1)
     _tick_once(main)
-    assert_bool(main.simulation.state.chunks.center() == Vector2i(-1, 0)).is_true()
+    assert_bool(main.simulation.state.player.cell() == Vector2i(8, 8)).is_true()
+    assert_bool(main.simulation.state.player.is_moving()).is_false()
+    assert_bool(main.simulation.state.player.facing == Vector2i(-1, 1)).is_true()
+    assert_bool(main.simulation.state.chunks.center() == Vector2i(0, 0)).is_true()
 
 
 # --- 카메라 ---
@@ -227,6 +221,9 @@ func test_camera_follows_focus_cell() -> void:
     main.handle_action(&"move_right")
     # 제출만으로는 카메라가 움직이지 않는다 — 상태가 바뀌어야 따라간다.
     assert_bool(main.camera.position.is_equal_approx(IsoProjection.cell_center(8, 8))).is_true()
+    # 청크를 옮기려면 걸음 32틱 이상에 지형 운이 필요하다. 테스트에서만 허용되는 상태 직접 조작으로
+    # 플레이어를 다음 청크에 세우고 한 틱 돌리면 중심 (1,0) → focus (24,8) 로 카메라가 따라간다.
+    main.simulation.state.player.place_at(Vector2i(24, 8), Chunk.LAYER_GROUND)
     _tick_once(main)
     focus = main.world_view.focus_cell()
     assert_bool(focus == Vector2i(24, 8)).is_true()
@@ -246,10 +243,13 @@ func test_main_source_does_not_mutate_sim_or_use_delta() -> void:
     # _delta 는 파라미터 이름으로만 등장한다.
     assert_bool(source.contains("_delta: float")).is_true()
     assert_int(source.count("_delta")).is_equal(1)
-    # 이동은 명령으로만.
-    assert_bool(source.contains("SetLoadCenterCommand.create(")).is_true()
-    assert_bool(source.contains("load_center =")).is_false()
-    assert_bool(source.contains("has_load_center =")).is_false()
+    # 이동은 명령으로만. 옛 로드 중심 명령·그림자 상태는 남지 않는다(찾을 문자열은 이어 붙여 만든다).
+    assert_bool(source.contains("MovePlayerCommand.create(")).is_true()
+    for gone: String in ["SetLoad" + "Center", "_pending" + "_center", "load_" + "center", "player.sub =",
+            "player.facing =", "place_at(", "walk_to(", "_submit_move(0, 0)"]:
+        assert_bool(source.contains(gone)).override_failure_message(
+            "%s 에 '%s' 가 있다" % [MAIN_SOURCE, gone]
+        ).is_false()
 
 
 # --- 다시 그리기는 프레임당 최대 1회 ---

@@ -6,17 +6,21 @@
    - 지나간 틱으로 접수된 명령도 버리지 않고 이번 틱에 함께 적용한다.
    - 명령은 `state`를 바꾸는 유일한 입구다. 입력이 상태를 직접 만지지 않는다.
    - (M1~M6에서 이 사이에 서브시스템 갱신을 삽입한다. 변경은 DECISIONS.md에 기록.)
-1-M1. 로드 중심 동기화 (`Simulation._sync_load_center`, 2026-09-07)
-   - `state.has_load_center` 이고 `state.load_center` 가 `chunks.center()` 와 다르면 `chunks.set_center`.
+1-M1a. 플레이어 이동 진행 (`state.player.advance()`, 2026-09-08)
+   - 목표(`target`) 쪽으로 축별 `WALK_SPEED`(250 서브유닛)만큼 나아간다. 칸당 4틱. 멈춰 있으면 아무 일도 없다.
+   - 목표는 같은 틱 1 에서 `MovePlayerCommand` 가 `MovementRules.resolve_walk` 로 판정해 놓은 값이다. 판정은 명령 시점의 로드 집합·블록을 본다.
+1-M1b. 로드 중심 동기화 (`Simulation._sync_chunk_center`, 2026-09-08. 2026-09-07 의 `_sync_load_center` 를 대체)
+   - 중심 = 플레이어 발 칸(`player.cell()`)의 청크 `(chunk_of(x), chunk_of(y))`. `chunks.has_center()` 가 아니거나 `center()` 가 다르면 `chunks.set_center`. 로드 중심은 상태 필드가 아니라 플레이어 위치에서 유도되는 값이다 — 명령이 중심을 놓지 않는다.
    - 제품 코드(`sim/`·`view/`)에서 `set_center` 의 유일한 호출 지점. `test/unit/` 의 sim 단위 테스트(ChunkWorld·WorldState)는 예외 — 가드 테스트는 `sim/commands`·`view` 만 훑는다.
-   - 중심 값의 출처: M1-4b 에서는 `SetLoadCenterCommand`, M1-6 부터는 플레이어 위치(명령 제거, 골든 갱신).
+   - 함정 (a): 첫 틱(tick 0, 그리고 M1-10 로드 직후 첫 틱)에는 로드 집합이 비어 `MovementRules.is_passable` 이 전부 false 다. 그 틱의 이동 명령은 전부 거부되고 `facing` 만 바뀐다. 버그가 아니다. 첫 걸음은 틱 1 부터.
+   - 함정 (b): 그 밖의 틱에서는 이전 틱의 동기화가 발 칸 청크 중심 반경 2(`LOAD_RADIUS`)를 로드해 두었고, 목적지는 발 칸의 여덟 이웃(체비쇼프 1)이라 언로드 칸을 만나지 않는다. 언로드 칸이 거부되는 일은 (a) 뿐이다.
    - 같은 틱에 적용되는 명령은 동기화 전(이전 중심)의 로드 집합을 본다. 새 중심으로 로드된 청크는 다음 틱 명령부터 접근된다. 배치 명령이 `set_id_at == false` 를 맞으면 이 경계다 — 버그가 아니다.
    - 언로드된 청크는 갱신하지 않는다(P7). M1 에는 틱당 셀 갱신이 없다(중력은 M3).
 2. `state.tick += 1`
 
 ## 서브시스템이 붙을 자리
 1과 2 사이에, 마일스톤마다 아래 순서로 늘어난다. 확정 전까지는 자리 표시일 뿐이다.
-- M1 청크/블록 — 1-M1 로드 중심 동기화(확정). 지형 규칙(낙하 등)은 M3 부터.
+- M1 청크/블록 — 1-M1a 플레이어 이동 진행, 1-M1b 로드 중심 동기화(확정). 지형 규칙(낙하 등)은 M3 부터.
 - M2 낮밤·생존 지표
 - M3 회로 (감지 → 전달 → 논리 → 작동)
 - M4~M6 몹, 제작, 그 밖의 세계 규칙

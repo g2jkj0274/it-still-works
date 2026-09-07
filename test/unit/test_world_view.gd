@@ -23,10 +23,9 @@ func _view(seed := SEED) -> WorldView:
     return view
 
 
-## (0,0) 중심으로 25 청크를 로드한 뒤 돌려준다.
+## 첫 틱을 돌려 스폰 (8,8) 청크 (0,0) 중심으로 25 청크를 로드한 뒤 돌려준다.
 func _loaded_view(seed := SEED) -> WorldView:
     var view := _view(seed)
-    view.simulation.submit(SetLoadCenterCommand.create(0, 0))
     view.simulation.step()
     assert_int(view.simulation.state.chunks.loaded_count()).is_equal(25)
     return view
@@ -63,7 +62,7 @@ func test_null_simulation_yields_empty() -> void:
     assert_array(view.build_cells()).is_empty()
 
 
-func test_no_load_center_yields_empty() -> void:
+func test_unloaded_world_yields_empty() -> void:
     var view := _view()
     assert_int(view.simulation.state.chunks.loaded_count()).is_equal(0)
     assert_array(view.build_cells()).is_empty()
@@ -250,16 +249,18 @@ func test_focus_cell() -> void:
     var view := _view()
     assert_bool(view.focus_cell() == Vector2i(8, 8)).is_true()
 
-    view.simulation.submit(SetLoadCenterCommand.create(0, 0))
     view.simulation.step()
     assert_bool(view.focus_cell() == Vector2i(8, 8)).is_true()
 
-    view.simulation.submit(SetLoadCenterCommand.create(1, 0))
+    # 청크 이동: 단위 테스트에서만 허용되는 상태 직접 조작. 다음 틱의 동기화가 중심을 옮긴다.
+    view.simulation.state.player.place_at(Vector2i(24, 8), Chunk.LAYER_GROUND)
     view.simulation.step()
+    assert_bool(view.simulation.state.chunks.center() == Vector2i(1, 0)).is_true()
     assert_bool(view.focus_cell() == Vector2i(24, 8)).is_true()
 
-    view.simulation.submit(SetLoadCenterCommand.create(-1, 2))
+    view.simulation.state.player.place_at(Vector2i(-8, 40), Chunk.LAYER_GROUND)
     view.simulation.step()
+    assert_bool(view.simulation.state.chunks.center() == Vector2i(-1, 2)).is_true()
     assert_bool(view.focus_cell() == Vector2i(-8, 40)).is_true()
 
 
@@ -304,10 +305,11 @@ func test_cells_for_draw_returns_same_instance_while_state_unchanged() -> void:
         assert_bool((a[i][2] as Color).is_equal_approx(fresh[i][2])).is_true()
 
 
-func test_cells_for_draw_rebuilds_after_command_step() -> void:
+func test_cells_for_draw_rebuilds_after_chunk_center_moves() -> void:
     var view := _loaded_view()
     var a: Array = view._cells_for_draw()
-    view.simulation.submit(SetLoadCenterCommand.create(1, 0))
+    # 청크 이동: 단위 테스트에서만 허용되는 상태 직접 조작. 다음 틱의 동기화가 중심을 (1,0) 으로 옮긴다.
+    view.simulation.state.player.place_at(Vector2i(24, 8), Chunk.LAYER_GROUND)
     view.simulation.step()
     var c: Array = view._cells_for_draw()
     assert_bool(is_same(a, c)).override_failure_message("상태가 바뀌었는데 캐시를 돌려줬다").is_false()

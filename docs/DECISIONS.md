@@ -111,6 +111,7 @@
 - 결정: M1-6 플레이어 이동 전까지 세계를 둘러보는 유일한 수단. view 는 명령만 제출하고 상태를 직접 만지지 않는다(SIM_ORDER 1). `_unhandled_input` 에서 `is_echo()` 는 무시 — 한 번 누름 = 명령 하나(OS 키 반복률이 명령 로그에 새지 않게). `view/` 에 `set_center(` 없음은 grep 테스트가 지킨다. 첫 프레임에 (0,0) 을 한 번 제출해 세계가 뜬다.
 - 근거: "set_center 호출 지점은 step() 하나" 결정이 금지한 것은 명령이 set_center 를 직접 부르는 것이고, 명령→`load_center`→step 동기화 경로는 그 결정이 승인한 구조다.
 - 예정: M1-6 에서 플레이어 이동 명령이 이를 대체하고 SetLoadCenterCommand 는 제거된다(골든 갱신).
+- 정정(2026-09-08): M1-6a-2 에서 제거됨. 방향키는 `MovePlayerCommand` 를 제출하고 첫 프레임 제출은 없다(아래 2026-09-08 "로드 중심 = 플레이어 발 칸 청크" 항목).
 
 ## 2026-09-08 — 플레이어 이동 규칙: 서브유닛 1000, 칸당 4틱, 8방향, 같은 층 안에서만
 - 결정: `PlayerState` 는 발 위치를 칸당 1000 서브유닛 정수로 든다(legacy character_state 이식, 높이 축 제거). `WALK_SPEED = 250`/틱 → 칸당 4틱(초당 5칸), 대각선도 같은 속도(아이소 투영에서 화면 길이가 같다). `MovementRules` 는 8방향 고정 순서, 목적지 칸이 `solid` 속성이 아니고(passable) 바닥이 있어야(supported: 아래 층이 `solid`, 지하층은 암묵 기반암) 걷는다. 대각선은 스치는 양옆 두 칸이 passable 이어야 한다(모서리 뚫기 금지; 옆이 바닥 없는 구멍이어도 된다). 출발 칸은 검사하지 않는다. 언로드 칸은 passable 이 아니다. 판정은 `registry.has_at(id, ATTR_SOLID)` 만 본다(P2).
@@ -119,3 +120,12 @@
 - 근거: P3 정수 결정론. P6 이동은 회로를 모른다. P7 발 칸 이웃은 체비쇼프 1 이내라 반경 2 로드 안에 항상 있다.
 - 버린 대안: 스폰 탐색(상태 플래그 필요), 대각선 sqrt(2) 속도(화면에서 느려 보임), M1 낙하(SIM_ORDER 가 지형 규칙을 M3 로 둠).
 - 분할(architect): M1-6a-1 PlayerState·MovementRules 만(기존 파일 불변, 골든 불변) → M1-6a-2 명령·상태 연결·SetLoadCenterCommand 제거(골든 1회 갱신, 파일 5개 초과 예외: 나누면 로드 중심 출처가 둘이 되거나 중간 커밋이 결정론 테스트를 깨뜨린다) → M1-6b view. 6a-2 와 6b 사이에 다른 태스크를 두지 않는다.
+
+## 2026-09-08 — 로드 중심 = 플레이어 발 칸 청크. SetLoadCenterCommand 제거
+- 결정: 로드 중심은 상태 필드가 아니다. `Simulation.step()` 이 명령 적용 → `state.player.advance()`(1-M1a) → `_sync_chunk_center()`(1-M1b) → tick++ 순서로 돌며, 1-M1b 가 플레이어 발 칸 `player.cell()` 의 청크 `(chunk_of(x), chunk_of(y))` 를 중심으로 `set_center` 를 부른다(제품 코드 유일 호출 지점 유지). `WorldState.load_center`·`has_load_center` 와 `SetLoadCenterCommand` 는 삭제. `WorldState` 는 `player: PlayerState` 와 읽기 전용 `registry: BlockRegistry` 를 든다(네 인자 `_init` 전부 필수). 해시 필드는 tick·rng·values 뒤, chunks 앞에 `player.sub`·`player.target`·`player.layer`·`player.facing` 넷. registry 는 표라 해시에 넣지 않는다(2026-09-06 레지스트리 결정과 같다). `sim/`·`view/`·`test/` 에 옛 이름(`load_center`·`SetLoadCenter`·`_pending_center`)이 남지 않음을 grep 테스트가 지킨다.
+- 결정: `MovePlayerCommand(dx, dy)` 는 (1) 8방향이 아니면 무시(`create(0,0)` 은 허용되는 no-op), (2) facing 을 먼저 돌린다 — 걷기가 거부돼도 벽 쪽을 본다(M1-7 채집 목표), (3) 걷는 중이면 무시(한 칸 단위 결정), (4) `MovementRules.resolve_walk` 가 제자리를 주면 거부. 첫 틱(tick 0)에는 로드 집합이 비어 모든 걷기가 거부되고 facing 만 바뀐다 — SIM_ORDER 1-M1b 함정 (a). 스폰 탐색·선로드는 두지 않는다(2026-09-08 이동 규칙 결정).
+- 결정: view 의 키 → 방향은 화면 기준이다. 아이소 투영(`IsoProjection`: +x 우하, +y 좌하)에서 화면 위 = (-1,-1), 아래 = (1,1), 왼쪽 = (-1,1), 오른쪽 = (1,-1). 한 번 누름 = 명령 하나(echo 무시 유지), view 는 아무것도 누적하지 않는다(`_pending_center` 삭제). `_ready` 는 명령을 제출하지 않는다 — 첫 틱이 스폰 청크를 로드한다. 카메라의 플레이어 추적·마커·키 누름 유지는 M1-6b.
+- 근거: P7 — 로드 중심은 입력이 아니라 상태에서 유도되는 값이다. 출처가 명령과 플레이어 둘이면 같은 입력 로그가 view 타이밍에 따라 다른 중심을 낳고, 플레이어가 언로드 청크에 서는 창이 생긴다. P3 — 이동 판정은 정수·속성만 본다.
+- 버린 대안: (a) `SetLoadCenterCommand` 와 `MovePlayerCommand` 를 한동안 공존시키기 — 중심 출처가 둘이 되는 커밋이 생긴다. (b) 플레이어 위치의 그림자를 view 에 두기(감사 10 조건 위반). (c) `WorldState` 가 registry 를 모르고 명령이 Simulation 에서 registry 를 받기 — 명령 `apply(state)` 서명이 깨지고 재생 경로가 둘이 된다.
+- 예외 기록: 한 커밋 파일 5개 제한의 예외(M1-4b 와 같은 근거). 명령 추가·명령 삭제·WorldState 서명·step 순서·main.gd·테스트 6개·골든을 나누면 중간 커밋이 결정론 골든을 깨뜨리거나(플레이어 해시 필드) 로드 중심 출처가 둘이 된다. "테스트 통과 시에만 커밋"이 상위 규칙이다.
+- 골든 시나리오: 시드 20250901 의 스폰 (8,8) 은 북·동이 solid 지대라 첫 걸음 (1,0) 은 벽에 거부된다. (0,1) 15걸음으로 청크 (0,1), (1,0) 8걸음으로 (1,1) 까지 걸어 경계 넘기(로드·언로드)를 골든이 덮는다. 지형 표가 바뀌면 경로도 바뀌므로 골든 갱신 시 `test_scenario_walks_the_player_out_of_the_spawn_chunk` 가 경로를 다시 확인한다.

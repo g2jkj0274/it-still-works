@@ -1,18 +1,26 @@
 extends GdUnitTestSuite
 
-## 월드 상태 저장소와 상태 해시 검증.
+## 월드 상태 저장소와 상태 해시 검증. 네 인자 생성(rng·chunks·registry·player), 해시 필드 순서
+## (values → player.* 4개 → chunks), 플레이어 필드 각각이 해시를 바꿈, registry 는 해시 밖.
+##
+## 픽스처는 인메모리로 네 개를 만든다. Simulation 을 거치지 않으므로 플레이어는 원점에 선다.
 
 
-func _chunks(seed_value: int) -> ChunkWorld:
+func _registry() -> BlockRegistry:
     var registry := BlockRegistry.load_default()
-    var terrain := TerrainTable.load_default(registry)
     assert_object(registry).is_not_null()
+    return registry
+
+
+func _chunks(seed_value: int, registry: BlockRegistry) -> ChunkWorld:
+    var terrain := TerrainTable.load_default(registry)
     assert_object(terrain).is_not_null()
     return ChunkWorld.new(ChunkGenerator.new(seed_value, registry, terrain))
 
 
 func _make(seed_value: int = 1) -> WorldState:
-    return WorldState.new(SimRng.new(seed_value), _chunks(seed_value))
+    var registry := _registry()
+    return WorldState.new(SimRng.new(seed_value), _chunks(seed_value, registry), registry, PlayerState.new())
 
 
 func test_new_state_starts_at_tick_zero() -> void:
@@ -24,8 +32,17 @@ func test_new_state_has_chunks_without_center() -> void:
     assert_object(state.chunks).is_not_null()
     assert_bool(state.chunks.has_center()).is_false()
     assert_int(state.chunks.loaded_count()).is_equal(0)
-    assert_bool(state.has_load_center).is_false()
-    assert_bool(state.load_center == Vector2i.ZERO).is_true()
+
+
+func test_new_state_holds_registry_and_player() -> void:
+    var registry := _registry()
+    var player := PlayerState.new()
+    player.place_at(Vector2i(3, -4), Chunk.LAYER_UPPER)
+    var state := WorldState.new(SimRng.new(1), _chunks(1, registry), registry, player)
+    assert_object(state.registry).is_same(registry)
+    assert_object(state.player).is_same(player)
+    assert_bool(state.player.cell() == Vector2i(3, -4)).is_true()
+    assert_int(state.player.layer).is_equal(Chunk.LAYER_UPPER)
 
 
 func test_missing_value_returns_fallback() -> void:
@@ -150,25 +167,66 @@ func test_hash_fields_are_ordered_and_named() -> void:
         names.append(str(field[0]))
     assert_array(names).contains_exactly([
         "tick", "rng.seed", "rng.state", "values.count", "value.ore", "value.wood",
-        "load_center.set", "load_center",
+        "player.sub", "player.target", "player.layer", "player.facing",
         "chunks.has_center", "chunks.center", "chunks.loaded", "chunks.snapshots",
     ])
     assert_int(int(fields[3][1])).is_equal(2)
     assert_int(int(fields[4][1])).is_equal(5)
     assert_int(int(fields[5][1])).is_equal(3)
-    assert_int(int(fields[6][1])).is_equal(0)
+    assert_str(str(fields[6][1])).is_equal("0,0")
     assert_str(str(fields[7][1])).is_equal("0,0")
+    assert_int(int(fields[8][1])).is_equal(Chunk.LAYER_GROUND)
+    assert_str(str(fields[9][1])).is_equal("0,1")
     assert_int(int(fields[10][1])).is_equal(0)
+    assert_int(int(fields[12][1])).is_equal(0)
 
 
-func test_load_center_change_changes_hash() -> void:
+func test_registry_is_not_a_hash_field() -> void:
+    # 표는 코드와 같은 층이다(DECISIONS 2026-09-06). 해시에 넣지 않는다.
+    var state := _make(42)
+    for field: Array in state.to_hash_fields():
+        assert_bool(str(field[0]).contains("registry")).override_failure_message(
+            "해시 필드에 registry 가 있다: %s" % str(field[0])
+        ).is_false()
+
+
+func test_player_sub_change_changes_hash() -> void:
     var state := _make(42)
     var before := state.compute_hash()
-    state.has_load_center = true
-    var flagged := state.compute_hash()
-    assert_str(flagged).is_not_equal(before)
-    state.load_center = Vector2i(3, -1)
-    assert_str(state.compute_hash()).is_not_equal(flagged)
+    state.player.sub += Vector2i(250, 0)
+    assert_str(state.compute_hash()).is_not_equal(before)
+
+
+func test_player_target_change_changes_hash() -> void:
+    var state := _make(42)
+    var before := state.compute_hash()
+    state.player.walk_to(Vector2i(1, 0))
+    assert_str(state.compute_hash()).is_not_equal(before)
+
+
+func test_player_layer_change_changes_hash() -> void:
+    var state := _make(42)
+    var before := state.compute_hash()
+    state.player.layer = Chunk.LAYER_UNDER
+    assert_str(state.compute_hash()).is_not_equal(before)
+
+
+func test_player_facing_change_changes_hash() -> void:
+    var state := _make(42)
+    var before := state.compute_hash()
+    state.player.facing = Vector2i(-1, 0)
+    assert_str(state.compute_hash()).is_not_equal(before)
+
+
+func test_player_hash_fields_match_player_state() -> void:
+    var state := _make(42)
+    state.player.place_at(Vector2i(-2, 5), Chunk.LAYER_UPPER)
+    var fields := state.to_hash_fields()
+    var player_fields := state.player.to_hash_fields()
+    var offset := 4  # tick, rng.seed, rng.state, values.count (값 없음)
+    for i in player_fields.size():
+        assert_str(str(fields[offset + i][0])).is_equal(str(player_fields[i][0]))
+        assert_str(str(fields[offset + i][1])).is_equal(str(player_fields[i][1]))
 
 
 func test_chunk_center_change_changes_hash() -> void:
@@ -185,12 +243,12 @@ func test_chunk_center_change_changes_hash() -> void:
     assert_bool(names.has("chunk.-2,-2")).is_true()
 
 
-func test_chunk_hash_fields_follow_load_center_fields() -> void:
+func test_chunk_hash_fields_follow_player_fields() -> void:
     var state := _make(42)
     var fields := state.to_hash_fields()
     var chunk_fields := state.chunks.to_hash_fields()
     var offset := fields.size() - chunk_fields.size()
-    assert_str(str(fields[offset - 1][0])).is_equal("load_center")
+    assert_str(str(fields[offset - 1][0])).is_equal("player.facing")
     for i in chunk_fields.size():
         assert_str(str(fields[offset + i][0])).is_equal(str(chunk_fields[i][0]))
         assert_str(str(fields[offset + i][1])).is_equal(str(chunk_fields[i][1]))

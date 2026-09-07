@@ -8,7 +8,8 @@ extends RefCounted
 ##
 ## 값은 정수만 담는다. 시뮬레이션 로직에 부동소수점을 들이지 않기 위한 제약이다.
 ##
-## M1-4b: 틱, 난수원, 이름 붙은 정수 값, 청크 월드([member chunks]), 로드 중심 목표를 가진다.
+## M1-6a-2: 틱, 난수원, 이름 붙은 정수 값, 플레이어([member player]), 청크 월드([member chunks])를
+## 가진다. 로드 중심은 상태가 아니다 — Simulation.step() 이 플레이어 발 칸에서 유도한다(SIM_ORDER 1-M1b).
 ## 생존·회로 등 나머지 서브시스템 상태는 M2~M6 에서 붙는다. 붙일 때는 [method to_hash_fields] 에
 ## 순서 있는 필드로 함께 넣어야 결정론 회귀 테스트가 그것을 지킨다.
 
@@ -21,17 +22,22 @@ var rng: SimRng
 ## 청크 월드(P7). 필수 — null 을 허용하지 않는다. 빈 세계 fallback 은 없다.
 var chunks: ChunkWorld
 
-## 로드 중심 목표. M1-6 에서 플레이어 위치로 대체되는 발판.
-## `chunks.set_center` 는 Simulation.step() 만 부른다 — 명령은 이 두 값만 바꾼다.
-var load_center: Vector2i = Vector2i.ZERO
-var has_load_center: bool = false
+## 블록 속성 표. 읽기 전용 — 명령이 속성(`solid` 등)을 물을 때 쓴다. 표는 코드와 같은 층이라
+## 상태가 아니고 해시에 들어가지 않는다(DECISIONS 2026-09-06 레지스트리).
+var registry: BlockRegistry
+
+## 플레이어 위치·목표·층·방향. 필수. 해시 필드는 values 뒤·chunks 앞에 붙는다.
+var player: PlayerState
 
 var _values: Dictionary[StringName, int] = {}
 
 
-func _init(p_rng: SimRng, p_chunks: ChunkWorld) -> void:
+## 네 인자 전부 필수. null 검사는 [Simulation.create] 가 한다.
+func _init(p_rng: SimRng, p_chunks: ChunkWorld, p_registry: BlockRegistry, p_player: PlayerState) -> void:
     rng = p_rng
     chunks = p_chunks
+    registry = p_registry
+    player = p_player
 
 
 func set_value(key: StringName, value: int) -> void:
@@ -91,7 +97,6 @@ func to_hash_fields() -> Array:
     ]
     for key in sorted_keys():
         fields.append(["value." + String(key), _values[key]])
-    fields.append(["load_center.set", 1 if has_load_center else 0])
-    fields.append(["load_center", "%d,%d" % [load_center.x, load_center.y]])
+    fields.append_array(player.to_hash_fields())
     fields.append_array(chunks.to_hash_fields())
     return fields

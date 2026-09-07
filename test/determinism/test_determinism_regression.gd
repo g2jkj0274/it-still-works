@@ -31,11 +31,19 @@ const TOTAL_TICKS := 2000
 ##   재료를 격자에 놓아 만들게 되어 제작 격자가 상태에 추가됨
 ##   163d462b... M0 legacy 이동으로 격자·캐릭터·회로 등이 상태에서 빠져 해시 대상이 틱·난수원·값만 남고, 틱 수가 20 → 2000 이 됨
 ##   08c670c2... 청크 월드·로드 중심이 상태에 추가되고 로드 중심 명령이 시나리오에 들어감. 골든이 25 청크 digest 를 포함하므로 data/blocks.json·data/terrain.json 편집 시 골든 갱신. 스냅샷 해시 경로는 블록 변경 명령이 생기는 M1-7 골든이 덮는다
-const GOLDEN_HASH := "08c670c2bea379df6d7b40dff153b8b86371d733a0cbd6d24757741da5a010d1"
+##   6f882498... M1-6a-2: 플레이어 상태 4필드(sub·target·layer·facing) 추가·로드 중심 필드 제거·이동 명령이 시나리오에 들어감. 로드 중심은 플레이어 발 칸에서 유도되고 첫 틱에 스폰 청크 (0,0) 이 로드된다
+const GOLDEN_HASH := "6f882498083ec79be4f9bea4ea5fe358cf09ccfb0f6684ea1ed9b0b656b9624e"
 
 ## 실행마다 새로 만든다. 명령 객체는 큐가 틱과 순서를 새겨 넣으므로 재사용하지 않는다.
+##
+## 이동 명령: 첫 걸음은 틱 1 이후(틱 0 은 미로드라 거부된다 — SIM_ORDER 1-M1b). 이 시드의 스폰
+## (8,8) 은 북쪽·동쪽이 solid 지대라 (9,8) 로의 첫 걸음(틱 1)은 벽에 거부되고 facing 만 돈다.
+## 틱 5,9,…,61 에 (0,1) 15개(칸당 4틱)로 (8,23) — 틱 36 에 청크 (0,1) 로 경계를 넘는다. 틱 65,…,93 에
+## (1,0) 8개로 (16,23) — 틱 96 에 청크 (1,1). 틱 100 에 (0,-1) 로 (16,22), 틱 101·102 는 걷는 중이라
+## 무시되고 facing 만 (1,1) 로 돈다. 지형(data/terrain.json·blocks.json)이 바뀌면 이 경로도 바뀐다 —
+## 골든 갱신 때 아래 `test_scenario_walks_the_player_out_of_the_spawn_chunk` 가 경로를 다시 확인한다.
 func _scenario() -> Array:
-    return [
+    var scenario: Array = [
         [0, SetValueCommand.create(&"wood", 10)],
         [0, SetValueCommand.create(&"ore", 4)],
         [1, AddValueCommand.create(&"wood", -3)],
@@ -46,10 +54,16 @@ func _scenario() -> Array:
         [8, AddValueCommand.create(&"crop", 5)],
         [8, RollValueCommand.create(&"night_roll", 0, 99)],
         [13, AddValueCommand.create(&"wood", 21)],
-        [0, SetLoadCenterCommand.create(0, 0)],
-        [7, SetLoadCenterCommand.create(1, 0)],
-        [9, SetLoadCenterCommand.create(0, 0)],
     ]
+    scenario.append([1, MovePlayerCommand.create(1, 0)])
+    for i in 15:
+        scenario.append([5 + 4 * i, MovePlayerCommand.create(0, 1)])
+    for i in 8:
+        scenario.append([65 + 4 * i, MovePlayerCommand.create(1, 0)])
+    scenario.append([100, MovePlayerCommand.create(0, -1)])
+    scenario.append([101, MovePlayerCommand.create(0, -1)])
+    scenario.append([102, MovePlayerCommand.create(1, 1)])
+    return scenario
 
 
 func _submit_all(sim: Simulation, scenario: Array) -> void:
@@ -139,6 +153,22 @@ func test_serialized_command_stream_replays_identically() -> void:
         restored.append([entry[0], SimCommandCodec.from_dict(data)])
 
     assert_str(_replay(SEED, restored)).is_equal(_replay())
+
+
+func test_scenario_walks_the_player_out_of_the_spawn_chunk() -> void:
+    # 골든이 청크 경계 넘기(로드·언로드·발 칸 동기화)를 덮는지 확인한다. 걸음 수·방향을 바꿔
+    # 스폰 청크 안에 머물게 되면 이 테스트가 먼저 운다.
+    var sim := Simulation.create_default(SEED)
+    _submit_all(sim, _scenario())
+    sim.advance(TOTAL_TICKS)
+    assert_bool(sim.state.player.cell() == Vector2i(16, 22)).override_failure_message(
+        "플레이어 %s" % sim.state.player.cell()).is_true()
+    assert_bool(sim.state.chunks.center() == Vector2i(1, 1)).override_failure_message(
+        "중심 %s" % sim.state.chunks.center()).is_true()
+    assert_int(sim.state.chunks.loaded_count()).is_equal(25)
+    assert_bool(sim.state.chunks.is_loaded(-2, -2)).is_false()
+    assert_bool(sim.state.player.is_moving()).is_false()
+    assert_bool(sim.state.player.facing == Vector2i(1, 1)).is_true()
 
 
 func test_golden_hash_is_unchanged() -> void:
