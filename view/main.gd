@@ -8,20 +8,36 @@ extends Node2D
 ## 경과 시간은 정수 마이크로초로 재므로 실수가 시뮬레이션 쪽으로 새지 않는다.
 ##
 ## 표현 레이어는 시뮬레이션을 읽기만 한다. 입력은 명령을 제출할 뿐 상태를 직접 만지지 않는다
-## (SIM_ORDER 1). 방향키 한 번 누름 = MovePlayerCommand 하나(한 칸). 로드 중심은 플레이어 발 칸에서
-## sim 이 유도하므로 view 는 첫 틱에 아무 명령도 내지 않는다(DECISIONS 2026-09-08). 키 → 방향은
-## 화면 기준이다: 아이소 투영에서 +x 는 우하, +y 는 좌하이므로 화면 위 = (-1,-1), 아래 = (1,1),
-## 왼쪽 = (-1,1), 오른쪽 = (1,-1). 활성 층은 카메라와 같은 표현 상태라 sim 에 쓰지 않는다.
-## 카메라는 플레이어 발 위치(WorldView.focus_position)를 따르고, 활성 층은 틱마다 플레이어 층을
-## 따라간다(WorldView.follow_player_layer). 키 누름 유지는 M1-6b-2c.
+## (SIM_ORDER 1). 로드 중심은 플레이어 발 칸에서 sim 이 유도하므로 view 는 첫 틱에 아무 명령도
+## 내지 않는다(DECISIONS 2026-09-08).
+##
+## 입력 둘:
+##   - 층 전환(Q/E): 한 번 누름 = 한 번. _unhandled_input 이 받고 echo 는 버린다. view 상태다.
+##   - 이동(방향키): 틱마다 눌린 방향 하나. _physics_process 가 틱마다 "제출 → step" 을 문자
+##     그대로 돌린다 — 프레임 히치로 틱이 몰려도 끊기지 않는다. 걷는 중(player.is_moving, 읽기만)엔
+##     제출하지 않으므로 명령 로그는 걷는 동안 4틱마다 1개다. 여러 키가 눌리면 MOVE_ACTIONS 순서의
+##     첫 것 하나만 — 조합하지 않는다(대각선 합이 8방향 밖으로 나간다). 벽 쪽을 눌러도 제출은 된다.
+##     view 는 판정을 모른다(DECISIONS 2026-09-08 "이동 입력은 틱마다 눌린 방향 하나").
+## 키 → 방향은 화면 기준이다: 아이소 투영에서 +x 는 우하, +y 는 좌하이므로 화면 위 = (-1,-1),
+## 아래 = (1,1), 왼쪽 = (-1,1), 오른쪽 = (1,-1). 활성 층은 카메라와 같은 표현 상태라 sim 에 쓰지
+## 않는다. 카메라는 플레이어 발 위치(WorldView.focus_position)를 따르고, 활성 층은 틱마다
+## 플레이어 층을 따라간다(WorldView.follow_player_layer).
 
 const SEED := 20250901
 
-## _unhandled_input 이 판정하는 액션. 순서는 판정 순서.
-const ACTIONS: Array[StringName] = [
-    &"layer_up", &"layer_down",
-    &"move_left", &"move_right", &"move_up", &"move_down",
-]
+## _unhandled_input 이 판정하는 액션. 순서는 판정 순서. 층 전환뿐 — 이동은 여기 없다.
+const ACTIONS: Array[StringName] = [&"layer_up", &"layer_down"]
+
+## 눌린 상태를 틱마다 읽는 이동 액션. 순서는 우선순위 — 동시에 눌리면 앞의 것 하나만.
+const MOVE_ACTIONS: Array[StringName] = [&"move_up", &"move_down", &"move_left", &"move_right"]
+
+## 이동 액션 → 격자 방향(화면 기준, iso +x 우하 +y 좌하).
+const MOVE_DIRECTIONS: Dictionary = {
+    &"move_up": Vector2i(-1, -1),
+    &"move_down": Vector2i(1, 1),
+    &"move_left": Vector2i(-1, 1),
+    &"move_right": Vector2i(1, -1),
+}
 
 var simulation: Simulation
 var driver: TickDriver
@@ -57,7 +73,10 @@ func _physics_process(_delta: float) -> void:
     var elapsed := now - _last_usec
     _last_usec = now
     var ticks := driver.pump(elapsed)
-    simulation.advance(ticks)
+    # 틱마다 명령 하나를 문자 그대로: 눌린 방향을 제출하고 그 틱을 돌린다.
+    for _i in ticks:
+        _submit_held_move()
+        simulation.step()
     if ticks > 0:
         _needs_refresh = true
         world_view.follow_player_layer()
@@ -72,7 +91,8 @@ func _on_process_frame() -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-    # 한 번 누름 = 명령 하나. OS 키 반복률이 명령 로그에 새지 않게 echo 는 버린다.
+    # 층 전환은 한 번 누름 = 한 번. OS 키 반복률이 새지 않게 echo 는 버린다. 이동 키는 여기서
+    # 보지 않는다 — 눌린 상태를 틱마다 읽는다(held_direction).
     if event.is_echo():
         return
     for action: StringName in ACTIONS:
@@ -81,7 +101,7 @@ func _unhandled_input(event: InputEvent) -> void:
             return
 
 
-## 액션 하나를 처리한다. 테스트가 Input 이벤트 주입 없이 직접 부른다.
+## 층 액션 하나를 처리한다. 테스트가 Input 이벤트 주입 없이 직접 부른다.
 func handle_action(action: StringName) -> void:
     if simulation == null:
         return
@@ -89,19 +109,27 @@ func handle_action(action: StringName) -> void:
         world_view.set_active_layer(world_view.active_layer + 1)
     elif action == &"layer_down":
         world_view.set_active_layer(world_view.active_layer - 1)
-    elif action == &"move_left":
-        _submit_move(-1, 1)
-    elif action == &"move_right":
-        _submit_move(1, -1)
-    elif action == &"move_up":
-        _submit_move(-1, -1)
-    elif action == &"move_down":
-        _submit_move(1, 1)
 
 
-## 플레이어를 (dx, dy) 방향으로 한 칸 걷게 하는 명령을 제출한다. 상태는 직접 쓰지 않는다.
-func _submit_move(dx: int, dy: int) -> void:
-    simulation.submit(MovePlayerCommand.create(dx, dy))
+## 지금 눌린 이동 방향. MOVE_ACTIONS 순서로 첫 눌린 액션의 방향, 없으면 ZERO. 조합하지 않는다.
+func held_direction() -> Vector2i:
+    for action: StringName in MOVE_ACTIONS:
+        if Input.is_action_pressed(action):
+            return MOVE_DIRECTIONS[action]
+    return Vector2i.ZERO
+
+
+## 눌린 방향이 있고 플레이어가 걷는 중이 아니면 한 칸 걷기 명령을 제출한다. 상태는 읽기만 한다.
+## 걸을 수 있는지는 묻지 않는다 — 판정은 sim 의 몫이라 벽 쪽 명령도 제출된다(facing 은 돈다).
+func _submit_held_move() -> void:
+    if simulation == null:
+        return
+    if simulation.state.player.is_moving():
+        return
+    var dir := held_direction()
+    if dir == Vector2i.ZERO:
+        return
+    simulation.submit(MovePlayerCommand.create(dir.x, dir.y))
 
 
 ## 카메라를 플레이어 발 칸 다이아몬드 중심에 놓는다. 틱 사이 보간은 없다(부드러움은 M7 폴리시).

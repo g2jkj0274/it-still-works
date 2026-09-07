@@ -112,6 +112,7 @@
 - 근거: "set_center 호출 지점은 step() 하나" 결정이 금지한 것은 명령이 set_center 를 직접 부르는 것이고, 명령→`load_center`→step 동기화 경로는 그 결정이 승인한 구조다.
 - 예정: M1-6 에서 플레이어 이동 명령이 이를 대체하고 SetLoadCenterCommand 는 제거된다(골든 갱신).
 - 정정(2026-09-08): M1-6a-2 에서 제거됨. 방향키는 `MovePlayerCommand` 를 제출하고 첫 프레임 제출은 없다(아래 2026-09-08 "로드 중심 = 플레이어 발 칸 청크" 항목).
+- 정정(2026-09-08): 이동은 6b-2c 부터 틱마다 눌린 방향이다. "한 번 누름 = 명령 하나" 는 층 전환에만 남는다(아래 2026-09-08 "이동 입력은 틱마다 눌린 방향 하나" 항목).
 
 ## 2026-09-08 — 플레이어 이동 규칙: 서브유닛 1000, 칸당 4틱, 8방향, 같은 층 안에서만
 - 결정: `PlayerState` 는 발 위치를 칸당 1000 서브유닛 정수로 든다(legacy character_state 이식, 높이 축 제거). `WALK_SPEED = 250`/틱 → 칸당 4틱(초당 5칸), 대각선도 같은 속도(아이소 투영에서 화면 길이가 같다). `MovementRules` 는 8방향 고정 순서, 목적지 칸이 `solid` 속성이 아니고(passable) 바닥이 있어야(supported: 아래 층이 `solid`, 지하층은 암묵 기반암) 걷는다. 대각선은 스치는 양옆 두 칸이 passable 이어야 한다(모서리 뚫기 금지; 옆이 바닥 없는 구멍이어도 된다). 출발 칸은 검사하지 않는다. 언로드 칸은 passable 이 아니다. 판정은 `registry.has_at(id, ATTR_SOLID)` 만 본다(P2).
@@ -129,3 +130,19 @@
 - 버린 대안: (a) `SetLoadCenterCommand` 와 `MovePlayerCommand` 를 한동안 공존시키기 — 중심 출처가 둘이 되는 커밋이 생긴다. (b) 플레이어 위치의 그림자를 view 에 두기(감사 10 조건 위반). (c) `WorldState` 가 registry 를 모르고 명령이 Simulation 에서 registry 를 받기 — 명령 `apply(state)` 서명이 깨지고 재생 경로가 둘이 된다.
 - 예외 기록: 한 커밋 파일 5개 제한의 예외(M1-4b 와 같은 근거). 명령 추가·명령 삭제·WorldState 서명·step 순서·main.gd·테스트 6개·골든을 나누면 중간 커밋이 결정론 골든을 깨뜨리거나(플레이어 해시 필드) 로드 중심 출처가 둘이 된다. "테스트 통과 시에만 커밋"이 상위 규칙이다.
 - 골든 시나리오: 시드 20250901 의 스폰 (8,8) 은 북·동이 solid 지대라 첫 걸음 (1,0) 은 벽에 거부된다. (0,1) 15걸음으로 청크 (0,1), (1,0) 8걸음으로 (1,1) 까지 걸어 경계 넘기(로드·언로드)를 골든이 덮는다. 지형 표가 바뀌면 경로도 바뀌므로 골든 갱신 시 `test_scenario_walks_the_player_out_of_the_spawn_chunk` 가 경로를 다시 확인한다.
+
+## 2026-09-08 — 이동 입력은 틱마다 눌린 방향 하나. 걷는 중엔 제출하지 않는다
+- 결정: `GameMain._physics_process` 는 driver 가 준 틱 수만큼 **틱마다** "`_submit_held_move()` → `simulation.step()`" 을 문자 그대로 돈다(`advance(` 는 main 에서 사라진다). 프레임 히치로 한 물리 스텝에 틱이 몰려도 걷기가 끊기지 않는다 — 틱 N 에 낸 걸음이 N+4 에 끝나면 같은 스텝 안의 N+4 에 다음 걸음이 나간다. `_submit_held_move` 는 `player.is_moving()` 을 읽어 걷는 중이면 아무것도 내지 않으므로 명령 로그는 걷는 동안 4틱당 1개다. `held_direction()` 은 `MOVE_ACTIONS` 우선순위(up, down, left, right)에서 `Input.is_action_pressed` 인 첫 것 하나의 방향이다 — 조합하지 않는다(대각선 두 개의 합은 8방향 밖으로 나가고, view 는 아무것도 누적하지 않는다). 벽 쪽을 눌러도 틱마다 제출된다: view 는 판정을 모른다(SIM_ORDER 1). sim 이 거부하고 facing 만 돌린다. 이동 4액션은 `_unhandled_input` 에서 빠진다. 층 전환(Q/E)은 여전히 한 번 누름 = 한 번(echo 무시)이다. `Input.` 은 view 에서 main.gd 에만 있다(가드).
+- 근거: 2026-09-07 view 항목의 "한 번 누름 = 명령 하나" 는 둘러보기 명령에 맞는 규칙이었다. 칸당 4틱 걷기에서 그 규칙은 키를 두드리는 조작이 된다. 틱마다 눌린 상태를 읽으면 OS 키 반복률이 로그에 새지 않으면서(틱이 유일한 시계) 결정론이 유지된다(P3: 같은 명령 로그 = 같은 상태). 걷는 중 제출을 막는 것은 로그 크기를 틱이 아니라 걸음에 비례시키려는 것이다 — sim 이 어차피 무시하는 명령을 기록하지 않는다.
+- 버린 대안: (a) 물리 스텝당 한 번 제출하고 `advance(ticks)` — 틱이 몰린 스텝에서 걸음 사이가 벌어진다. (b) 눌린 방향 벡터를 합산 — 방향 집합 밖. (c) 벽 쪽 제출을 view 가 거른다 — view 가 `resolve_walk` 를 부르게 되어 판정이 둘이 된다. (d) 테스트용 입력 훅 — 헤드리스에서 `Input.action_press` 가 `is_action_pressed` 에 즉시 반영돼 필요 없었다.
+
+## 2026-09-08 — 렌더 캐시 키 = 활성 층 | Simulation 인스턴스 id | chunks.revision()
+- 결정: `WorldView._cells_for_draw` 의 캐시 키는 `"%d|%d|%d" % [active_layer, simulation.get_instance_id(), chunks.revision()]` 이다. `revision` 은 dirty 와 같은 결의 **표지**다 — 해시·digest·`to_bytes` 밖이고, 값이 실제로 바뀔 때만(`set_id`·`set_durability` 가 dirty 를 켜는 같은 조건) 증가한다. `ChunkWorld.revision()` 은 자신의 로드/언로드 카운트에 로드된 청크의 revision 합을 더한 값이며, 언로드 시 그 청크의 revision 을 ChunkWorld 에 접어 넣어 총합이 단조 비감소다(키 재사용 없음). 생성 직후 청크의 revision 은 0 이 아니라 생성기가 `set_id` 로 놓은 셀 수다 — 키 용도엔 무관하므로 0 으로 되돌리지 않는다. 인스턴스 id 는 M1-10 이 새 Simulation 을 재주입할 때 revision 이 0 부터 다시 시작해 옛 키와 겹치는 것을 막는다.
+- 근거: 감사 10 경고 — 이전 키 `compute_hash()` 는 로드 25청크 SHA-256(약 0.9ms/청크) + 스냅샷 전부로 refresh 당 약 23ms, 틱 예산 50ms 의 절반이었고 스냅샷 누적으로 탐험에 비례해 늘었다. 표지 비교는 덧셈 25번이다. 해시 밖이라 결정론 골든은 불변이다.
+- 버린 대안: (a) `compute_hash` 키 유지 — 위 비용. (b) 틱마다 무조건 rebuild — 6400셀 재계산. (c) revision 을 해시에 넣기 — 표현용 카운터가 상태가 된다(P3 위반 소지).
+
+## 2026-09-08 — 플레이어 마커는 코드 도형(P12 플레이스홀더, M7 교체)
+- 결정: `WorldView.build_player_marker(sub, facing, player_layer, active_layer)` 는 플레이어가 활성 층에 있을 때만 `[body, facing_dot]` 을 돌려주고 다른 층이면 빈 배열이다. body = 발 칸 다이아몬드 중심(`sub_to_screen(sub) + (0, TILE_H/2)`)을 아래 꼭짓점으로 하고 위로 솟은 밝은 노랑(`Palette.PLAYER`) 다이아몬드(가로 TILE_W/2, 세로 TILE_H/2 + 6). facing = 몸 중심에서 `dir_to_screen(facing)` 쪽 4px 에 놓인 흰 점(`Palette.PLAYER_FACING`, 반지름 2 다이아몬드) — P4 "상태는 보인다": 위치와 facing 이 읽힌다. sub 가 서브유닛이라 걷는 동안 자연히 미끄러진다. 마커는 캐시하지 않는다(매 refresh 꼭짓점 8개).
+- 결정: `WorldView._last_player_layer` 는 `follow_player_layer` 의 변화 감지 메모다. 플레이어 층이 바뀐 틱에만 활성 층을 맞추고 그 밖엔 Q/E 엿보기를 유지한다. sim 으로 되먹임하지 않으므로 감사 10 의 "상태 그림자" 가 아니다 — 지워도 표현만 달라진다.
+- 근거: P12 플레이스홀더는 M6 까지 허용. P4. 원 대신 다이아몬드는 헤드리스에서 꼭짓점으로 검증하기 위함이다.
+- 버린 대안: (a) 스프라이트 텍스처 — `tools/pixelart/` 가 아직 없고 M7 에서 전량 교체된다. (b) 다른 층에서도 반투명 마커 — P8 "한 화면에 한 층" 과 어긋난다.

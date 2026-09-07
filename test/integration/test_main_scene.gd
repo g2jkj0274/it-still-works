@@ -5,10 +5,15 @@ extends GdUnitTestSuite
 ## M0: 루트 노드 하나가 시뮬레이션을 소유하고 고정 틱으로 굴린다.
 ## M1-5b: 루트는 Node2D, 자식 WorldView·Camera2D.
 ## M1-6a-2: _ready 는 명령을 제출하지 않는다 — 첫 틱이 플레이어 발 칸 (8,8) 의 청크 (0,0) 을 로드한다.
-## 방향키 액션은 화면 기준 방향의 MovePlayerCommand 하나를 제출할 뿐 상태를 직접 만지지 않는다.
-## 층 전환은 view 상태다. 입력은 handle_action 을 직접 불러 검증한다(Input 이벤트 주입 없음).
+## 층 전환은 view 상태다. handle_action 을 직접 불러 검증한다.
 ## M1-6b-2b: 카메라는 WorldView.focus_position(플레이어 발 위치)을 따르고, 틱이 돌면 활성 층이
-## 플레이어 층을 따라간다(follow_player_layer). 키 누름 유지는 M1-6b-2c.
+## 플레이어 층을 따라간다(follow_player_layer).
+## M1-6b-2c: 이동은 키 누름 유지 = 틱마다 눌린 방향 하나. 헤드리스에서 Input.action_press /
+## action_release 가 Input.is_action_pressed 에 즉시 반영된다(flush 불필요, 확인됨) — 테스트는 그걸로
+## 키를 누른다. 걷는 중엔 제출하지 않으므로 명령 로그는 4틱당 1개. 벽 쪽을 눌러도 제출은 된다(view 는
+## 판정을 모른다). 틱은 driver 를 reset 한 뒤 정확히 n 틱치 시간을 넣어 돌린다(_run_ticks).
+## 지형 의존(시드 20250901): 스폰 (8,8) 에서 화면 4방향 중 move_left (-1,1) 만 허용, 그 도착 칸 (7,9)
+## 에서 move_down (1,1) 이 두 걸음 연속 허용. 지형 표가 바뀌면 사전 조건 단언이 먼저 알린다.
 ## view→sim 소스 가드는 test_world_view 가 res://view 전체를 순회한다 — 여기는 main 전용 가드만 남는다.
 
 const MAIN_SCENE := "res://view/main.tscn"
@@ -29,6 +34,46 @@ func _tick_once(main: GameMain) -> int:
     main._last_usec = Time.get_ticks_usec() - Simulation.TICK_INTERVAL_USEC
     main._physics_process(0.0)
     return main.simulation.current_tick() - before
+
+
+## 정확히 n 틱을 한 번의 _physics_process 로 돌린다. 이월 잔여를 지우고 n 틱치 시간을 넣는다.
+## n 이 driver 상한(기본 5)을 넘으면 테스트가 driver 를 바꿔 둔다.
+func _run_ticks(main: GameMain, n: int) -> void:
+    var before := main.simulation.current_tick()
+    main.driver.reset()
+    main._last_usec = Time.get_ticks_usec() - Simulation.TICK_INTERVAL_USEC * n
+    main._physics_process(0.0)
+    assert_int(main.simulation.current_tick() - before).override_failure_message(
+        "%d 틱을 요청했는데 다르게 돌았다" % n).is_equal(n)
+
+
+func _press(action: StringName) -> void:
+    Input.action_press(action)
+
+
+func _release_all() -> void:
+    for action: StringName in GameMain.MOVE_ACTIONS:
+        Input.action_release(action)
+
+
+## 눌린 키는 테스트 사이로 새지 않는다.
+func after_test() -> void:
+    _release_all()
+
+
+## 발 칸 feet 에서 dir 로 한 걸음이 허용되는가. sim 이 쓰는 같은 판정(resolve_walk)으로 — 읽기만.
+func _can_walk(sim: Simulation, feet: Vector2i, dir: Vector2i) -> bool:
+    return MovementRules.resolve_walk(sim.state.chunks, sim.registry, feet, sim.state.player.layer, dir) != feet
+
+
+## 화면 4방향 중 지금 발 칸에서 거부되는 첫 이동 액션.
+func _blocked_move_action(sim: Simulation) -> StringName:
+    var feet := sim.state.player.cell()
+    for action: StringName in GameMain.MOVE_ACTIONS:
+        if not _can_walk(sim, feet, GameMain.MOVE_DIRECTIONS[action]):
+            return action
+    assert_bool(false).override_failure_message("발 칸 %s 에서 거부되는 화면 방향이 없다" % feet).is_true()
+    return &""
 
 
 func _last_log_entry(main: GameMain) -> Dictionary:
@@ -147,7 +192,7 @@ func test_layer_actions_do_not_touch_sim_state() -> void:
     assert_int(main.simulation.command_count()).is_equal(count)
 
 
-# --- 이동 = 명령 제출 ---
+# --- 이동 = 눌린 방향을 틱마다 명령으로 ---
 
 ## 키 → 방향, 화면 기준(iso_projection: +x 우하, +y 좌하).
 const EXPECTED_DIRECTIONS := {
@@ -158,62 +203,201 @@ const EXPECTED_DIRECTIONS := {
 }
 
 
-func test_each_direction_submits_one_move_player_command() -> void:
+func test_move_actions_and_directions_are_the_four_screen_diagonals() -> void:
+    assert_array(GameMain.ACTIONS).contains_exactly([&"layer_up", &"layer_down"])
+    assert_array(GameMain.MOVE_ACTIONS).contains_exactly([&"move_up", &"move_down", &"move_left", &"move_right"])
+    assert_int(GameMain.MOVE_DIRECTIONS.size()).is_equal(4)
+    for action: StringName in GameMain.MOVE_ACTIONS:
+        assert_bool(GameMain.MOVE_DIRECTIONS.has(action)).override_failure_message(str(action)).is_true()
+        var dir: Vector2i = GameMain.MOVE_DIRECTIONS[action]
+        assert_bool(dir == EXPECTED_DIRECTIONS[action]).override_failure_message(str(action)).is_true()
+        assert_bool(MovementRules.is_direction(dir)).override_failure_message(str(action)).is_true()
+        assert_bool(dir.x != 0 and dir.y != 0).override_failure_message("%s 는 대각선이어야 한다" % action).is_true()
+
+
+func test_unhandled_input_ignores_move_keys_but_still_switches_layers() -> void:
     var main := _main()
-    _tick_once(main)
+    _run_ticks(main, 1)
+    for action: StringName in GameMain.MOVE_ACTIONS:
+        var event := InputEventAction.new()
+        event.action = action
+        event.pressed = true
+        main._unhandled_input(event)
+    assert_int(main.simulation.command_count()).is_equal(0)
+    var layer_event := InputEventAction.new()
+    layer_event.action = &"layer_up"
+    layer_event.pressed = true
+    main._unhandled_input(layer_event)
+    assert_int(main.world_view.active_layer).is_equal(Chunk.LAYER_UPPER)
+    assert_int(main.simulation.command_count()).is_equal(0)
+
+
+func test_held_direction_is_zero_without_keys_and_physics_steps_submit_nothing() -> void:
+    var main := _main()
+    assert_bool(main.held_direction() == Vector2i.ZERO).is_true()
+    _run_ticks(main, 1)
+    _run_ticks(main, 5)
+    assert_int(main.simulation.command_count()).is_equal(0)
+    assert_int(main.simulation.current_tick()).is_equal(6)
+
+
+func test_each_held_direction_submits_its_command_on_the_tick() -> void:
+    var main := _main()
+    _run_ticks(main, 1)
     for action: StringName in EXPECTED_DIRECTIONS:
         var count := main.simulation.command_count()
-        main.handle_action(action)
+        _press(action)
+        var tick_before := main.simulation.current_tick()
+        _run_ticks(main, 1)
+        _release_all()
         assert_int(main.simulation.command_count()).override_failure_message(str(action)).is_equal(count + 1)
         var entry := _last_log_entry(main)
         var expected: Vector2i = EXPECTED_DIRECTIONS[action]
         assert_str(str(entry["type"])).is_equal(String(MovePlayerCommand.TYPE))
         assert_int(int(entry["dx"])).override_failure_message("%s dx" % action).is_equal(expected.x)
         assert_int(int(entry["dy"])).override_failure_message("%s dy" % action).is_equal(expected.y)
-        # (0,0) 을 제출하는 경로는 없다.
         assert_bool(int(entry["dx"]) != 0 or int(entry["dy"]) != 0).is_true()
-        assert_bool(MovementRules.is_direction(expected)).is_true()
-        assert_int(int(entry["tick"])).is_equal(main.simulation.current_tick())
+        assert_int(int(entry["tick"])).is_equal(tick_before)
+        assert_bool(main.simulation.state.player.facing == expected).is_true()
+        # 걷기가 허용됐으면 도착할 때까지 돌린다(키는 뗐으니 명령은 더 없다).
+        var guard := 0
+        while main.simulation.state.player.is_moving() and guard < 4:
+            _run_ticks(main, 1)
+            guard += 1
+        assert_bool(main.simulation.state.player.is_moving()).is_false()
+        assert_int(main.simulation.command_count()).is_equal(count + 1)
 
 
-func test_move_submission_does_not_touch_state_until_tick() -> void:
+func test_submit_held_move_does_not_touch_state_until_tick() -> void:
     var main := _main()
-    _tick_once(main)
+    _run_ticks(main, 1)
     var before := main.simulation.state_hash()
-    main.handle_action(&"move_right")
+    _press(&"move_right")
+    main._submit_held_move()
+    assert_int(main.simulation.command_count()).is_equal(1)
     # 제출만으로는 상태가 바뀌지 않는다.
     assert_str(main.simulation.state_hash()).is_equal(before)
     assert_bool(main.simulation.state.player.facing == Vector2i(0, 1)).is_true()
+    _release_all()
     # 틱이 돌면 명령이 적용된다. 걷기 성공 여부는 지형에 달렸지만 facing 은 반드시 돈다.
-    assert_int(_tick_once(main)).is_greater_equal(1)
+    _run_ticks(main, 1)
     assert_bool(main.simulation.state.player.facing == Vector2i(1, -1)).is_true()
     assert_int(main.simulation.state.chunks.loaded_count()).is_equal(25)
 
 
-func test_two_presses_in_the_same_tick_log_two_commands_without_accumulation() -> void:
-    # view 는 아무것도 누적하지 않는다. 명령 하나 = 방향 하나. 두 번째는 걷는 중이라 sim 이 무시한다.
+func test_held_key_logs_one_command_per_walk_not_per_tick() -> void:
+    # 스폰에서 move_left 한 걸음이 허용된다(사전 조건). 틱 1: 명령·출발. 틱 2~4: 걷는 중이라 제출 없음.
+    # 틱 5(도착 뒤): 다시 명령 하나.
     var main := _main()
-    _tick_once(main)
+    _run_ticks(main, 1)
+    var dir: Vector2i = GameMain.MOVE_DIRECTIONS[&"move_left"]
+    assert_bool(_can_walk(main.simulation, Vector2i(8, 8), dir)).override_failure_message(
+        "사전 조건: 시드 20250901 스폰에서 move_left 가 허용돼야 한다").is_true()
+    _press(&"move_left")
+    var first_tick := main.simulation.current_tick()
+    _run_ticks(main, 1)
+    assert_int(main.simulation.command_count()).is_equal(1)
+    assert_bool(main.simulation.state.player.is_moving()).is_true()
+    var entry := _last_log_entry(main)
+    assert_int(int(entry["dx"])).is_equal(dir.x)
+    assert_int(int(entry["dy"])).is_equal(dir.y)
+    assert_int(int(entry["tick"])).is_equal(first_tick)
+    for _i in 3:
+        _run_ticks(main, 1)
+        assert_int(main.simulation.command_count()).is_equal(1)
+    assert_bool(main.simulation.state.player.is_moving()).is_false()
+    assert_bool(main.simulation.state.player.cell() == Vector2i(8, 8) + dir).is_true()
+    _run_ticks(main, 1)
+    assert_int(main.simulation.command_count()).is_equal(2)
+    assert_int(int(_last_log_entry(main)["tick"])).is_equal(first_tick + 4)
+
+
+func test_eight_ticks_in_one_physics_step_submit_at_n_and_n_plus_4() -> void:
+    # 한 물리 스텝에 틱 8개가 몰려도 "제출 → step" 은 틱마다 돈다: 명령은 틱 N 과 N+4 에 하나씩.
+    var main := _main()
+    _run_ticks(main, 1)
+    # (8,8) → move_left → (7,9). 거기서 move_down 이 두 걸음 연속 허용된다(사전 조건).
+    _press(&"move_left")
+    _run_ticks(main, 4)
+    _release_all()
+    var start := main.simulation.state.player.cell()
+    assert_bool(start == Vector2i(7, 9)).override_failure_message("사전 조건: move_left 로 (7,9)").is_true()
+    assert_bool(main.simulation.state.player.is_moving()).is_false()
+    var down: Vector2i = GameMain.MOVE_DIRECTIONS[&"move_down"]
+    assert_bool(_can_walk(main.simulation, start, down)).override_failure_message("사전 조건: (7,9) 에서 move_down").is_true()
+    assert_bool(_can_walk(main.simulation, start + down, down)).override_failure_message("사전 조건: (8,10) 에서 move_down").is_true()
     var count := main.simulation.command_count()
-    main.handle_action(&"move_right")
-    main.handle_action(&"move_down")
+    var n := main.simulation.current_tick()
+    main.driver = TickDriver.new(Simulation.TICK_INTERVAL_USEC, 8)
+    _press(&"move_down")
+    _run_ticks(main, 8)
+    assert_int(main.simulation.current_tick()).is_equal(n + 8)
     assert_int(main.simulation.command_count()).is_equal(count + 2)
     var log := main.simulation.command_log()
-    var first: Dictionary = log[log.size() - 2]
-    var second: Dictionary = log[log.size() - 1]
-    assert_int(int(first["dx"])).is_equal(1)
-    assert_int(int(first["dy"])).is_equal(-1)
-    assert_int(int(second["dx"])).is_equal(1)
-    assert_int(int(second["dy"])).is_equal(1)
-    assert_int(int(first["tick"])).is_equal(int(second["tick"]))
+    assert_int(int(log[count]["tick"])).is_equal(n)
+    assert_int(int(log[count + 1]["tick"])).is_equal(n + 4)
+    assert_bool(main.simulation.state.player.cell() == start + down * 2).is_true()
+    assert_bool(main.simulation.state.player.is_moving()).is_false()
+
+
+func test_two_held_keys_use_only_the_first_in_move_actions_order() -> void:
+    var main := _main()
+    _run_ticks(main, 1)
+    var up: Vector2i = GameMain.MOVE_DIRECTIONS[&"move_up"]
+    # right 를 먼저 눌러도 up 이 앞선다.
+    _press(&"move_right")
+    _press(&"move_up")
+    assert_bool(main.held_direction() == up).is_true()
+    _release_all()
+    _press(&"move_up")
+    _press(&"move_right")
+    assert_bool(main.held_direction() == up).is_true()
+    # 넷 다 눌러도 하나.
+    _press(&"move_down")
+    _press(&"move_left")
+    assert_bool(main.held_direction() == up).is_true()
+    var tick := main.simulation.current_tick()
+    _run_ticks(main, 1)
+    assert_int(main.simulation.command_count()).is_equal(1)
+    var entry := _last_log_entry(main)
+    assert_int(int(entry["dx"])).is_equal(up.x)
+    assert_int(int(entry["dy"])).is_equal(up.y)
+    assert_int(int(entry["tick"])).is_equal(tick)
+    assert_bool(main.simulation.state.player.facing == up).is_true()
+    _release_all()
+    # up 을 떼면 다음 순서(down)가 잡힌다.
+    _press(&"move_right")
+    _press(&"move_down")
+    assert_bool(main.held_direction() == GameMain.MOVE_DIRECTIONS[&"move_down"]).is_true()
+
+
+func test_wall_direction_held_submits_every_tick_but_never_moves() -> void:
+    # 거부돼도 제출은 된다 — view 는 판정을 모른다. 위치는 그대로, facing 은 돈다.
+    var main := _main()
+    _run_ticks(main, 1)
+    var action := _blocked_move_action(main.simulation)
+    var dir: Vector2i = GameMain.MOVE_DIRECTIONS[action]
+    var first_tick := main.simulation.current_tick()
+    _press(action)
+    _run_ticks(main, 5)
+    assert_int(main.simulation.command_count()).is_equal(5)
+    var log := main.simulation.command_log()
+    for i in 5:
+        assert_int(int(log[i]["tick"])).is_equal(first_tick + i)
+        assert_int(int(log[i]["dx"])).is_equal(dir.x)
+        assert_int(int(log[i]["dy"])).is_equal(dir.y)
+    assert_bool(main.simulation.state.player.cell() == Vector2i(8, 8)).is_true()
+    assert_bool(main.simulation.state.player.is_moving()).is_false()
+    assert_bool(main.simulation.state.player.facing == dir).is_true()
 
 
 func test_move_before_first_tick_is_refused_but_turns_facing() -> void:
     # 틱 0 에는 로드 집합이 비어 걷기가 거부된다(SIM_ORDER 1-M1b). facing 만 바뀐다. 버그가 아니다.
     var main := _main()
-    main.handle_action(&"move_left")
+    _press(&"move_left")
+    _run_ticks(main, 1)
     assert_int(main.simulation.command_count()).is_equal(1)
-    _tick_once(main)
+    assert_int(int(_last_log_entry(main)["tick"])).is_equal(0)
     assert_bool(main.simulation.state.player.cell() == Vector2i(8, 8)).is_true()
     assert_bool(main.simulation.state.player.is_moving()).is_false()
     assert_bool(main.simulation.state.player.facing == Vector2i(-1, 1)).is_true()
@@ -288,6 +472,10 @@ func test_main_source_does_not_write_tick_or_use_delta() -> void:
     # 이동은 명령으로만. (0,0) 을 제출하는 경로는 없다.
     assert_bool(source.contains("MovePlayerCommand.create(")).is_true()
     assert_bool(source.contains("_submit_move(0, 0)")).is_false()
+    # 틱마다 "제출 → step" 을 문자 그대로 돈다. 묶음 진행(advance)은 쓰지 않는다.
+    assert_bool(source.contains("advance(")).is_false()
+    assert_int(source.count("simulation.step()")).is_equal(1)
+    assert_bool(source.contains("Input.is_action_pressed(")).is_true()
     # 카메라·층은 view 의 판단을 부른다.
     assert_bool(source.contains("world_view.focus_position()")).is_true()
     assert_int(source.count("world_view.follow_player_layer()")).is_equal(2)
