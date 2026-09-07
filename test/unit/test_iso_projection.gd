@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 
 ## 아이소 투영 검증: 상수 비율, top 기준 정의(원점·축·음수), 다이아몬드 네 점, 왕복(중심·오프셋),
-## Node 아님.
+## 서브유닛 투영(칸 원점 일치·칸 중심), 방향 투영(8방향 단위·위/오른쪽 키·ZERO), Node 아님.
 
 const W := IsoProjection.TILE_W
 const H := IsoProjection.TILE_H
@@ -108,6 +108,82 @@ func test_screen_to_cell_at_top_vertex_boundary() -> void:
     var top := IsoProjection.cell_to_screen(2, 5)
     assert_bool(IsoProjection.screen_to_cell(top + Vector2(0, 1)) == Vector2i(2, 5)).is_true()
     assert_bool(IsoProjection.screen_to_cell(top - Vector2(0, 1)) == Vector2i(1, 4)).is_true()
+
+
+# --- 서브유닛 투영 ---
+
+## 8×8 격자(음수 포함): 칸 원점 서브유닛의 투영 == 그 칸의 top.
+func test_sub_to_screen_matches_cell_to_screen_on_grid() -> void:
+    for wx in range(-4, 4):
+        for wy in range(-4, 4):
+            var sub := PlayerState.sub_of(Vector2i(wx, wy))
+            _assert_vec(
+                IsoProjection.sub_to_screen(sub),
+                IsoProjection.cell_to_screen(wx, wy),
+                "sub(%d,%d)" % [wx, wy],
+            )
+
+
+func test_sub_to_screen_origin_is_zero() -> void:
+    _assert_vec(IsoProjection.sub_to_screen(Vector2i.ZERO), Vector2.ZERO, "sub origin")
+
+
+## 칸 한가운데 (500,500) 은 top 에서 (0, H/2) 아래 = cell_center.
+func test_sub_to_screen_half_cell_is_cell_center() -> void:
+    var half := PlayerState.SUBUNITS / 2
+    _assert_vec(IsoProjection.sub_to_screen(Vector2i(half, half)), Vector2(0, H / 2.0), "half(0,0)")
+    var base := PlayerState.sub_of(Vector2i(3, -2))
+    _assert_vec(
+        IsoProjection.sub_to_screen(base + Vector2i(half, half)),
+        IsoProjection.cell_center(3, -2),
+        "half(3,-2)",
+    )
+
+
+## 서브유닛 한 축 이동은 칸 이동을 SUBUNITS 로 나눈 만큼 화면에서 움직인다(선형).
+func test_sub_to_screen_is_linear_in_subunits() -> void:
+    var quarter := PlayerState.SUBUNITS / 4
+    var expected := IsoProjection.cell_to_screen(1, 0) / 4.0
+    _assert_vec(IsoProjection.sub_to_screen(Vector2i(quarter, 0)), expected, "quarter +x")
+
+
+# --- 방향 투영 ---
+
+func test_dir_to_screen_eight_directions_are_unit() -> void:
+    for dx in range(-1, 2):
+        for dy in range(-1, 2):
+            var dir := Vector2i(dx, dy)
+            if dir == Vector2i.ZERO:
+                continue
+            var v := IsoProjection.dir_to_screen(dir)
+            assert_float(v.length()).override_failure_message(
+                "dir %s 의 길이 %f" % [dir, v.length()]
+            ).is_equal_approx(1.0, 1e-6)
+
+
+func test_dir_to_screen_up_key_points_screen_up() -> void:
+    var v := IsoProjection.dir_to_screen(Vector2i(-1, -1))
+    assert_float(v.x).is_equal_approx(0.0, 1e-6)
+    assert_float(v.y).is_less(0.0)
+
+
+func test_dir_to_screen_right_key_points_screen_right() -> void:
+    var v := IsoProjection.dir_to_screen(Vector2i(1, -1))
+    assert_float(v.x).is_greater(0.0)
+    assert_float(v.y).is_equal_approx(0.0, 1e-6)
+
+
+func test_dir_to_screen_down_and_left_keys() -> void:
+    var down := IsoProjection.dir_to_screen(Vector2i(1, 1))
+    assert_float(down.x).is_equal_approx(0.0, 1e-6)
+    assert_float(down.y).is_greater(0.0)
+    var left := IsoProjection.dir_to_screen(Vector2i(-1, 1))
+    assert_float(left.x).is_less(0.0)
+    assert_float(left.y).is_equal_approx(0.0, 1e-6)
+
+
+func test_dir_to_screen_zero_is_zero() -> void:
+    _assert_vec(IsoProjection.dir_to_screen(Vector2i.ZERO), Vector2.ZERO, "zero dir")
 
 
 # --- Node 아님 ---

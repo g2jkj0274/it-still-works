@@ -22,6 +22,12 @@ const UNKNOWN := Color(1, 0, 1)
 ## 아래 층 블록을 바닥으로 그릴 때 곱하는 밝기.
 const FLOOR_DIM := 0.55
 
+## 플레이어 마커. 밝은 노랑, 젤리 톤(P10 실루엣 규칙과 같은 결). 블록이 아니라 NAME_TO_COLOR 밖.
+const PLAYER := Color(1.0, 0.85, 0.3)
+
+## 플레이어가 바라보는 방향 점. 흰색.
+const PLAYER_FACING := Color(1.0, 1.0, 1.0)
+
 const NAME_TO_COLOR: Dictionary = {
     "air": Color(0, 0, 0, 0),
     "dirt": Color(0.62, 0.42, 0.24),

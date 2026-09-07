@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 
 ## 팔레트 검증: 레지스트리 전체 id 매핑, air 투명, 범위 밖·null → UNKNOWN, dim, 키 집합이
-## blocks.json 이름 집합과 양방향으로 같음, 상수 구별.
+## blocks.json 이름 집합과 양방향으로 같음, 상수 구별, 플레이어 색(블록 팔레트 밖).
 
 
 func _registry() -> BlockRegistry:
@@ -115,6 +115,33 @@ func test_special_colors_are_distinct() -> void:
         assert_bool(Palette.color_for(registry, id).is_equal_approx(Palette.BEDROCK)).override_failure_message(
             "id %d 색이 BEDROCK 과 같다" % id
         ).is_false()
+
+
+# --- 플레이어 색 (블록이 아니다 — NAME_TO_COLOR 밖) ---
+
+func test_player_color_is_opaque_and_bright() -> void:
+    assert_float(Palette.PLAYER.a).is_equal(1.0)
+    assert_float(Palette.PLAYER.v).is_greater_equal(0.8)
+
+
+func test_player_facing_is_white() -> void:
+    _assert_color(Palette.PLAYER_FACING, Color(1.0, 1.0, 1.0), "PLAYER_FACING")
+    assert_float(Palette.PLAYER_FACING.a).is_equal(1.0)
+
+
+func test_player_colors_are_not_block_colors() -> void:
+    assert_bool(Palette.PLAYER.is_equal_approx(Palette.PLAYER_FACING)).is_false()
+    for key: String in Palette.NAME_TO_COLOR.keys():
+        var c: Color = Palette.NAME_TO_COLOR[key]
+        assert_bool(c.is_equal_approx(Palette.PLAYER)).override_failure_message(
+            "'%s' 색이 PLAYER 와 같다" % key
+        ).is_false()
+        assert_bool(c.is_equal_approx(Palette.PLAYER_FACING)).override_failure_message(
+            "'%s' 색이 PLAYER_FACING 과 같다" % key
+        ).is_false()
+    for special: Color in [Palette.BEDROCK, Palette.VOID, Palette.UNKNOWN]:
+        assert_bool(special.is_equal_approx(Palette.PLAYER)).is_false()
+        assert_bool(special.is_equal_approx(Palette.PLAYER_FACING)).is_false()
 
 
 # --- Node 아님 ---

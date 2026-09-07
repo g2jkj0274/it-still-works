@@ -27,6 +27,24 @@ static func cell_center(wx: int, wy: int) -> Vector2:
     return cell_to_screen(wx, wy) + Vector2(0.0, TILE_H / 2.0)
 
 
+## 서브유닛 위치(PlayerState.SUBUNITS 분의 1 칸) → 화면 좌표. [method cell_to_screen] 의 연속판:
+## `sub_to_screen(PlayerState.sub_of(c)) == cell_to_screen(c.x, c.y)`. 칸 중심 (500,500) 은
+## top + (0, TILE_H/2) 로 [method cell_center] 와 맞는다. 실수는 여기(화면)에서만 생긴다.
+static func sub_to_screen(sub: Vector2i) -> Vector2:
+    return Vector2(
+        (sub.x - sub.y) * TILE_W / (2.0 * PlayerState.SUBUNITS),
+        (sub.x + sub.y) * TILE_H / (2.0 * PlayerState.SUBUNITS),
+    )
+
+
+## 격자 방향 → 정규화된 화면 방향. (0,0) 은 ZERO.
+## 격자 위 키 방향 (-1,-1) 이 화면 위, 오른쪽 키 (1,-1) 이 화면 오른쪽이 된다.
+static func dir_to_screen(dir: Vector2i) -> Vector2:
+    if dir == Vector2i.ZERO:
+        return Vector2.ZERO
+    return (cell_to_screen(dir.x, dir.y) - cell_to_screen(0, 0)).normalized()
+
+
 ## 화면 좌표 → 그 점을 담는 셀. [method cell_to_screen] 의 역.
 ##
 ## 도출: top 정의에서 p.x / TILE_W = (wx - wy) / 2, p.y / TILE_H = (wx + wy) / 2 + t
