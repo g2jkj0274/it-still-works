@@ -86,13 +86,14 @@ func set_center(cx: int, cy: int) -> void:
 
 ## 스냅샷이 있으면 복원하고 persist 표지를 켠다. 없으면 생성한다.
 ## 스냅샷 바이트열은 [method restore_snapshot] 이나 [method _unload] 가 만든 것이라 from_bytes 가
-## null 을 낼 수 없다. 그래도 null 이면 생성값을 쓰고 persist 는 켜지 않는다 (assert 대신 —
-## 세계가 멈추는 것보다 지형이 되돌아가는 쪽이 P5 에 맞다).
+## null 을 낼 수 없다. 그래도 null 이면 생성값을 쓰고 persist 는 켜지 않되, 스냅샷은 지우지
+## 않고 남긴다 (assert 대신 — 세계가 멈추는 것보다 지형이 되돌아가는 쪽이 P5 에 맞고, 바이트열을
+## 버리지 않아야 P7 유실 경로가 코드에 남지 않는다. 감사 2026-09-08).
 func _load(key: Vector2i) -> void:
     if _snapshots.has(key):
         var restored := Chunk.from_bytes(_snapshots[key])
-        _snapshots.erase(key)
         if restored != null:
+            _snapshots.erase(key)
             _loaded[key] = restored
             _persist[key] = true
             return

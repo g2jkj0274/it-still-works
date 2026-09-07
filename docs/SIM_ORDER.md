@@ -8,7 +8,7 @@
    - (M1~M6에서 이 사이에 서브시스템 갱신을 삽입한다. 변경은 DECISIONS.md에 기록.)
 1-M1. 로드 중심 동기화 (`Simulation._sync_load_center`, 2026-09-07)
    - `state.has_load_center` 이고 `state.load_center` 가 `chunks.center()` 와 다르면 `chunks.set_center`.
-   - 제품 코드(`sim/`·`view/`)에서 `set_center` 의 유일한 호출 지점. ChunkWorld 단위 테스트는 예외.
+   - 제품 코드(`sim/`·`view/`)에서 `set_center` 의 유일한 호출 지점. `test/unit/` 의 sim 단위 테스트(ChunkWorld·WorldState)는 예외 — 가드 테스트는 `sim/commands`·`view` 만 훑는다.
    - 중심 값의 출처: M1-4b 에서는 `SetLoadCenterCommand`, M1-6 부터는 플레이어 위치(명령 제거, 골든 갱신).
    - 같은 틱에 적용되는 명령은 동기화 전(이전 중심)의 로드 집합을 본다. 새 중심으로 로드된 청크는 다음 틱 명령부터 접근된다. 배치 명령이 `set_id_at == false` 를 맞으면 이 경계다 — 버그가 아니다.
    - 언로드된 청크는 갱신하지 않는다(P7). M1 에는 틱당 셀 갱신이 없다(중력은 M3).

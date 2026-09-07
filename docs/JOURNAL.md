@@ -8,3 +8,4 @@
 2026-09-07 03:00 | M1 | M1-4b 청크 월드를 WorldState/Simulation 에 연결, 로드 중심 명령 | 261/261, 골든 08c670c2 3프로세스 일치, 1차 거절 후 재작성
 2026-09-07 03:50 | M1 | M1-5a IsoProjection·Palette·WorldView.build_cells | 299/299, 결정론 유지
 2026-09-08 | M1 | M1-5b Node2D 씬·Camera2D·입력 맵·방향키→SetLoadCenter·삼각형 배열 렌더 | 320/320, 결정론 2프로세스 일치, 어제 미커밋분 마무리
+2026-09-08 | M1 | 이터레이션 10 architect 전체 감사 — 위반 0, 경고 6, docs 불일치 3 정리, _load 스냅샷 erase 순서 수정 | 320/320, 결정론 2프로세스 일치

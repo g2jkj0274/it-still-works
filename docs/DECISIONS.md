@@ -55,6 +55,7 @@
 - 결정: `CHUNK_SIZE=16`, `LAYERS=3`, 셀 768. 셀 인덱스 = `(layer*16 + y)*16 + x`. 저장은 `_ids: PackedByteArray` + `_durability: PackedByteArray`(현재 내구도 0..255). 따라서 `blocks.json` 의 `durability` 는 255 이하(레지스트리가 검증).
 - 정규형(P3): `id == 0`(air) 이면 durability 는 반드시 0. `set_id(..., 0, d)` 는 d 를 버리고 0, air 칸 `set_durability` 는 거부. 0..255 밖 값은 거부(클램프·랩어라운드 금지 — PackedByteArray 대입은 256 이 0 으로 조용히 접힌다).
 - dirty 계약(P7): `empty()`·`from_bytes()` 직후 clean. 값이 실제로 바뀔 때만 dirty. 범위 밖 set 은 dirty 아님. dirty 는 digest 에 안 들어간다. 언로드 저장은 dirty 청크만 적는다 — `set_durability` 가 dirty 를 놓치면 내구도가 조용히 유실된다(P7 2항이 지키라는 바로 그 값).
+  - 정정(2026-09-08 감사): 2026-09-07 persist 항목이 이를 덮었다. 언로드 저장 조건은 "dirty **또는** persist 표지" 다(`chunk_world.gd _unload`). 스냅샷에서 복원된 청크는 값이 안 바뀌어도 다시 적힌다.
 - 근거: 셀당 바이트는 인덱스가 고정이라 정규형이 구조에서 나온다. "깎인 셀만 목록" 은 정렬·정규화에 딕셔너리와 레지스트리 지식이 필요해 P3 위반 지점이 생기고 같은 세계가 두 표현을 갖는다. 청크당 768B 추가는 반경 3 에서도 37KB.
 - 성능 메모: 5ms/1000부품 예산은 부품 목록 순회 비용이지 셀 수 비용이 아니다. M3 중력·M6 액체를 "로드된 전체 셀 스캔"으로 짜면 반경 2 에서 19,200셀/틱 — 그때 architect 검토에 "활성 셀 목록(정렬된 PackedInt32Array)" 조건을 건다. 32 는 dirty 단위가 4배, 8 은 청크 간 조회가 는다 — 16 유지.
 - 버린 대안: 위 목록 방식, 복셀 그리드(legacy).
