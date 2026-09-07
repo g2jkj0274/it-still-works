@@ -286,3 +286,127 @@ func test_world_view_is_node2d_not_sim() -> void:
     assert_bool(view is ChunkWorld).is_false()
     assert_bool(view is WorldState).is_false()
     assert_bool(view is Simulation).is_false()
+
+
+# --- 캐시: _cells_for_draw 는 `층 | 청크 해시` 가 같으면 같은 인스턴스 ---
+
+func test_cells_for_draw_returns_same_instance_while_state_unchanged() -> void:
+    var view := _loaded_view()
+    var a: Array = view._cells_for_draw()
+    var b: Array = view._cells_for_draw()
+    assert_bool(is_same(a, b)).override_failure_message("캐시 히트가 같은 Array 인스턴스가 아니다").is_true()
+    # 내용은 build_cells 와 같다.
+    var fresh := view.build_cells()
+    assert_int(a.size()).is_equal(fresh.size())
+    for i in a.size():
+        assert_int(a[i][0]).is_equal(fresh[i][0])
+        assert_int(a[i][1]).is_equal(fresh[i][1])
+        assert_bool((a[i][2] as Color).is_equal_approx(fresh[i][2])).is_true()
+
+
+func test_cells_for_draw_rebuilds_after_command_step() -> void:
+    var view := _loaded_view()
+    var a: Array = view._cells_for_draw()
+    view.simulation.submit(SetLoadCenterCommand.create(1, 0))
+    view.simulation.step()
+    var c: Array = view._cells_for_draw()
+    assert_bool(is_same(a, c)).override_failure_message("상태가 바뀌었는데 캐시를 돌려줬다").is_false()
+    assert_int(c.size()).is_equal(CELLS_PER_LAYER)
+    # 새 중심 (1,0): 첫 청크 (-1,-2) 의 (0,0) → 월드 (-16,-32).
+    assert_int(c[0][0]).is_equal(-16)
+    assert_int(c[0][1]).is_equal(-32)
+    # 한 번 더 부르면 다시 히트.
+    assert_bool(is_same(c, view._cells_for_draw())).is_true()
+
+
+func test_cells_for_draw_rebuilds_after_layer_change() -> void:
+    var view := _loaded_view()
+    var ground: Array = view._cells_for_draw()
+    view.set_active_layer(Chunk.LAYER_UNDER)
+    var under: Array = view._cells_for_draw()
+    assert_bool(is_same(ground, under)).is_false()
+    for cell: Array in under:
+        assert_float((cell[2] as Color).a).is_equal(1.0)
+    # 같은 층으로 set 해도 실제 변경이 없으면 히트.
+    view.set_active_layer(Chunk.LAYER_UNDER)
+    assert_bool(is_same(under, view._cells_for_draw())).is_true()
+
+
+func test_cells_for_draw_null_simulation_is_empty_and_does_not_change_hash() -> void:
+    var empty: WorldView = auto_free(WorldView.new())
+    assert_array(empty._cells_for_draw()).is_empty()
+    var view := _loaded_view()
+    var before := view.simulation.state_hash()
+    view._cells_for_draw()
+    view.set_active_layer(Chunk.LAYER_UPPER)
+    view._cells_for_draw()
+    assert_str(view.simulation.state_hash()).is_equal(before)
+
+
+# --- 삼각형 배열: VOID 제외, 셀당 꼭짓점 4·인덱스 6 ---
+
+func test_build_triangles_empty_input() -> void:
+    var tri := WorldView.build_triangles([])
+    assert_int(tri.size()).is_equal(3)
+    assert_int((tri[0] as PackedInt32Array).size()).is_equal(0)
+    assert_int((tri[1] as PackedVector2Array).size()).is_equal(0)
+    assert_int((tri[2] as PackedColorArray).size()).is_equal(0)
+
+
+func test_build_triangles_skips_void_and_counts_match() -> void:
+    var view := _loaded_view()
+    view.set_active_layer(Chunk.LAYER_UPPER)  # 바닥과 VOID 가 섞인 층.
+    var cells := view.build_cells()
+    var opaque := 0
+    for cell: Array in cells:
+        if (cell[2] as Color).a > 0.0:
+            opaque += 1
+    assert_int(opaque).is_greater(0)
+    assert_int(opaque).is_less(cells.size())
+    var tri := WorldView.build_triangles(cells)
+    var indices: PackedInt32Array = tri[0]
+    var points: PackedVector2Array = tri[1]
+    var colors: PackedColorArray = tri[2]
+    assert_int(indices.size()).is_equal(6 * opaque)
+    assert_int(points.size()).is_equal(4 * opaque)
+    assert_int(colors.size()).is_equal(4 * opaque)
+    for idx in indices:
+        assert_bool(idx >= 0 and idx < points.size()).is_true()
+    for c in colors:
+        assert_float(c.a).is_greater(0.0)
+
+
+func test_build_triangles_geometry_matches_diamond() -> void:
+    var cells: Array = [
+        [3, -2, Color(1, 0, 0)],
+        [0, 0, Palette.VOID],       # 건너뜀
+        [-5, 7, Color(0, 1, 0)],
+    ]
+    var tri := WorldView.build_triangles(cells)
+    var indices: PackedInt32Array = tri[0]
+    var points: PackedVector2Array = tri[1]
+    var colors: PackedColorArray = tri[2]
+    assert_int(points.size()).is_equal(8)
+    assert_int(indices.size()).is_equal(12)
+    var d0 := IsoProjection.diamond(3, -2)
+    var d1 := IsoProjection.diamond(-5, 7)
+    for k in 4:
+        assert_bool(points[k].is_equal_approx(d0[k])).override_failure_message("셀0 꼭짓점 %d" % k).is_true()
+        assert_bool(points[4 + k].is_equal_approx(d1[k])).override_failure_message("셀1 꼭짓점 %d" % k).is_true()
+        assert_bool(colors[k].is_equal_approx(Color(1, 0, 0))).is_true()
+        assert_bool(colors[4 + k].is_equal_approx(Color(0, 1, 0))).is_true()
+    # 두 삼각형 (0,1,2), (0,2,3) — 다이아몬드 대각선 top→bottom 으로 분할.
+    assert_array(Array(indices.slice(0, 6))).is_equal([0, 1, 2, 0, 2, 3])
+    assert_array(Array(indices.slice(6, 12))).is_equal([4, 5, 6, 4, 6, 7])
+
+
+func test_build_triangles_is_deterministic() -> void:
+    var view := _loaded_view()
+    var cells := view.build_cells()
+    var a := WorldView.build_triangles(cells)
+    var b := WorldView.build_triangles(cells)
+    assert_bool((a[0] as PackedInt32Array) == (b[0] as PackedInt32Array)).is_true()
+    assert_bool((a[1] as PackedVector2Array) == (b[1] as PackedVector2Array)).is_true()
+    assert_bool((a[2] as PackedColorArray) == (b[2] as PackedColorArray)).is_true()
+    # 지상층은 전부 불투명 → 6400 셀 × 6.
+    assert_int((a[0] as PackedInt32Array).size()).is_equal(6 * CELLS_PER_LAYER)
