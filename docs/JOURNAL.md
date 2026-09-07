@@ -9,3 +9,4 @@
 2026-09-07 03:50 | M1 | M1-5a IsoProjection·Palette·WorldView.build_cells | 299/299, 결정론 유지
 2026-09-08 | M1 | M1-5b Node2D 씬·Camera2D·입력 맵·방향키→SetLoadCenter·삼각형 배열 렌더 | 320/320, 결정론 2프로세스 일치, 어제 미커밋분 마무리
 2026-09-08 | M1 | 이터레이션 10 architect 전체 감사 — 위반 0, 경고 6, docs 불일치 3 정리, _load 스냅샷 erase 순서 수정 | 320/320, 결정론 2프로세스 일치
+2026-09-08 | M1 | M1-6a-1 PlayerState(서브유닛 1000, 칸당 4틱) + MovementRules(8방향, 속성 기반, 모서리 규칙) | 369/369, 골든 불변 2프로세스 일치

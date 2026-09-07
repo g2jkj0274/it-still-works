@@ -1,9 +1,9 @@
 # STATE
 마일스톤: M1 (M0 완료 — 빈 세계 2000틱 결정론 통과, 2026-09-06)
-진행 중: 없음 — 이터레이션 10 architect 전체 감사 통과(위반 0, 2026-09-08). 다음은 M1-6
-마지막 통과 테스트: 320/320 (tools/test.sh, 약 77초, 2026-09-08)
+진행 중: 없음 — M1-6a-1 완료·커밋(2026-09-08). 다음은 M1-6a-2(MovePlayerCommand·SetLoadCenter 제거·골든 갱신) → 즉시 M1-6b(view)
+마지막 통과 테스트: 369/369 (tools/test.sh, 약 80초, 2026-09-08)
 마지막 결정론 테스트: 통과 — 08c670c2bea379df6d7b40dff153b8b86371d733a0cbd6d24757741da5a010d1 (M1-4b 갱신, 별도 프로세스 3회 일치. 2026-09-08 M1-5b 뒤 tools/determinism.sh 2회 재확인)
-이터레이션 수: 10 (10마다 architect 전체 감사 — 10 완료, 다음 감사는 20)
+이터레이션 수: 11 (10마다 architect 전체 감사 — 10 완료, 다음 감사는 20)
 
 ## M1 태스크 (LOOP.md M1)
 - [x] M1-1 블록 속성 시스템(P2) + `data/blocks.json` + `sim/block_registry.gd` (2026-09-07, 26 테스트. view 는 M1-5 에서 붙음)
@@ -13,7 +13,10 @@
 - [x] M1-4b WorldState.chunks 필수, Simulation.create/create_default, SetLoadCenterCommand → step() 동기화, 골든 갱신, SIM_ORDER 1-M1 (2026-09-07, 23 테스트. 첫 로드 틱 45~48ms, 경계 넘기 틱 9ms, 빈 틱 2.5µs)
 - [x] M1-5a 아이소 투영 + 팔레트 + WorldView.build_cells(바닥 규칙 넷) + 단위 테스트 (2026-09-07, 38 테스트)
 - [x] M1-5b main.gd/tscn Node2D 전환, Camera2D, 입력 맵(layer_up/down, move_*), 방향키 → SetLoadCenter 명령, 통합 테스트 (2026-09-08, 21 테스트. 드로우콜 6400→1 삼각형 배열, `층|청크해시` 캐시, refresh 프레임당 1회)
-- [ ] M1-6 플레이어 이동(명령 경유, 서브유닛 정수 — legacy character_state 참고)
+- [ ] M1-6 플레이어 이동(명령 경유, 서브유닛 정수 — legacy character_state 참고). architect 분할(2026-09-08):
+  - [x] M1-6a-1 `sim/player_state.gd` + `sim/movement_rules.gd` + 단위 테스트 2개. 기존 파일 불변, 골든 불변. (2026-09-08, 49 테스트. 새 class_name 추가 시 `godot --headless --path . --import` 한 번 필요)
+  - [ ] M1-6a-2 `MovePlayerCommand`, `SetLoadCenterCommand` 삭제, WorldState.player/registry, step 순서(명령→player.advance→_sync_chunk_center→tick), main.gd 최소 수정, 영향 테스트 셋(test_sim_command/test_world_state/test_world_view/test_main_scene/determinism) 갱신, 골든 1회 갱신, SIM_ORDER·DECISIONS. 파일 5개 초과 예외를 DECISIONS 에 기록.
+  - [ ] M1-6b view: 키 누름 중 틱마다 명령, 카메라가 플레이어 서브유닛 위치 추적(focus_cell 교체), 플레이어 마커, 활성 층이 플레이어 층을 따름, 렌더 캐시 키 교체, view→sim 가드 통일. 6a-2 뒤 즉시, 사이에 다른 태스크 금지.
 - [ ] M1-7 채집·배치 명령, 인벤토리
 - [ ] M1-8 기초 크래프팅(부품만 — M1 은 레시피 0개, 틀만)
 - [ ] M1-9 연구대 부품 + 연구 트리 UI 골격(빈 트리)
@@ -31,6 +34,8 @@
 - [ ] M1-7 승인 조건(감사 10, P4): `build_cells` 가 내구도 바이트를 그리지 않는다. 채집으로 내구도가 깎이는 순간 P4 위반이므로 M1-7 에 내구도 표시를 포함한다.
 - [ ] M1-10 승인 조건(감사 10, P7): `Chunk.clear_dirty()` 는 ChunkWorld 가 `_persist[key] = true` 와 함께만 부른다. 저장이 dirty 를 끄고 persist 를 안 켜면 언로드 때 버려져 저장 파일과 메모리 세계가 갈린다.
 - [ ] 가드 통일(감사 10): `test_world_view.gd VIEW_SOURCES` 에 main.gd 없음, `test_main_scene.gd` 가드는 set_center/set_value/set_id 만 본다(erase_value·set_durability·restore_snapshot 누락). `test_simulation.gd:278` 식 디렉터리 순회 가드로 통일 — M1-6 에서 view 를 만질 때 같이.
+- [ ] M1-6a-2 메모(architect): `_sync_load_center` → `_sync_chunk_center` 개명(가드 needle `load_center` 와 충돌). WorldState._init 네 인자 필수, registry.digest() 는 해시에 넣지 않음. 첫 틱(tick 0)엔 로드 집합이 비어 이동 명령이 전부 거부되고 facing 만 바뀐다 — SIM_ORDER 에 적고 테스트 1개. 골든 시나리오의 첫 이동은 틱 1 이후. `MovePlayerCommand.create(0,0)` 은 no-op 허용하되 main.gd 가 (0,0) 을 제출하는 경로 없음을 테스트.
+- [ ] M1-7 (architect, M1-6a 검토): 플레이어 발밑(아래 층) 셀을 채집으로 air 로 만들면 M3 낙하 규칙이 없는 동안 VOID 위에 서게 된다. 발 칸 아래 셀 채집을 거부하거나 그 상태를 명시적으로 결정한다.
 - [ ] M1-7 채집 규칙(architect, M1-2 검토): breakable 블록(레지스트리 max>0)의 현재 내구도 0 은 저장 상태로 존재할 수 없다. 0 에 도달한 틱 안에서 air 로 바꾼다. Chunk 는 레지스트리를 모르므로 이 규칙은 채집·몹 파괴 명령 쪽이 지킨다.
 
 비고:
