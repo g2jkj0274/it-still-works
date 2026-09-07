@@ -7,7 +7,9 @@ extends GdUnitTestSuite
 ## M1-6a-2: _ready 는 명령을 제출하지 않는다 — 첫 틱이 플레이어 발 칸 (8,8) 의 청크 (0,0) 을 로드한다.
 ## 방향키 액션은 화면 기준 방향의 MovePlayerCommand 하나를 제출할 뿐 상태를 직접 만지지 않는다.
 ## 층 전환은 view 상태다. 입력은 handle_action 을 직접 불러 검증한다(Input 이벤트 주입 없음).
-## 카메라의 플레이어 추적·마커는 M1-6b — 여기서는 focus_cell(청크 중앙) 추적만 본다.
+## M1-6b-2b: 카메라는 WorldView.focus_position(플레이어 발 위치)을 따르고, 틱이 돌면 활성 층이
+## 플레이어 층을 따라간다(follow_player_layer). 키 누름 유지는 M1-6b-2c.
+## view→sim 소스 가드는 test_world_view 가 res://view 전체를 순회한다 — 여기는 main 전용 가드만 남는다.
 
 const MAIN_SCENE := "res://view/main.tscn"
 const MAIN_SOURCE := "res://view/main.gd"
@@ -33,6 +35,16 @@ func _last_log_entry(main: GameMain) -> Dictionary:
     var log := main.simulation.command_log()
     assert_int(log.size()).is_greater(0)
     return log[log.size() - 1]
+
+
+## 플레이어 발 칸에서 실제로 걸을 수 있는 첫 방향. sim 이 쓰는 같은 판정(resolve_walk)으로 고른다 — 읽기만.
+func _walkable_dir(sim: Simulation) -> Vector2i:
+    var feet := sim.state.player.cell()
+    for dir: Vector2i in MovementRules.DIRECTIONS:
+        if MovementRules.resolve_walk(sim.state.chunks, sim.registry, feet, sim.state.player.layer, dir) != feet:
+            return dir
+    assert_bool(false).override_failure_message("발 칸 %s 에서 걸을 방향이 없다" % feet).is_true()
+    return Vector2i.ZERO
 
 
 # --- M0 골격 ---
@@ -208,34 +220,64 @@ func test_move_before_first_tick_is_refused_but_turns_facing() -> void:
     assert_bool(main.simulation.state.chunks.center() == Vector2i(0, 0)).is_true()
 
 
-# --- 카메라 ---
+# --- 카메라: 플레이어 발 위치 추적 ---
 
-func test_camera_follows_focus_cell() -> void:
+func test_camera_follows_focus_position() -> void:
     var main := _main()
-    # 틱 전: 중심이 없으니 focus (8,8).
-    var focus := main.world_view.focus_cell()
-    assert_bool(focus == Vector2i(8, 8)).is_true()
-    assert_bool(main.camera.position.is_equal_approx(IsoProjection.cell_center(8, 8))).is_true()
+    var spawn_center := IsoProjection.cell_center(8, 8)
+    # 첫 프레임: 스폰 발 칸 중심.
+    assert_bool(main.world_view.focus_position().is_equal_approx(spawn_center)).is_true()
+    assert_bool(main.camera.position.is_equal_approx(spawn_center)).is_true()
     _tick_once(main)
-    assert_bool(main.camera.position.is_equal_approx(IsoProjection.cell_center(8, 8))).is_true()
-    main.handle_action(&"move_right")
-    # 제출만으로는 카메라가 움직이지 않는다 — 상태가 바뀌어야 따라간다.
-    assert_bool(main.camera.position.is_equal_approx(IsoProjection.cell_center(8, 8))).is_true()
-    # 청크를 옮기려면 걸음 32틱 이상에 지형 운이 필요하다. 테스트에서만 허용되는 상태 직접 조작으로
-    # 플레이어를 다음 청크에 세우고 한 틱 돌리면 중심 (1,0) → focus (24,8) 로 카메라가 따라간다.
-    main.simulation.state.player.place_at(Vector2i(24, 8), Chunk.LAYER_GROUND)
+    assert_bool(main.camera.position.is_equal_approx(spawn_center)).is_true()
+    # 걸을 수 있는 방향으로 명령을 제출한다. 제출만으로는 카메라가 움직이지 않는다 — 상태가 바뀌어야 따라간다.
+    var dir := _walkable_dir(main.simulation)
+    main.simulation.submit(MovePlayerCommand.create(dir.x, dir.y))
+    assert_bool(main.camera.position.is_equal_approx(spawn_center)).is_true()
+    # 물리 스텝이 틱을 돌리면 카메라가 발 위치와 함께 움직인다.
+    assert_int(_tick_once(main)).is_greater_equal(1)
+    assert_bool(main.camera.position.is_equal_approx(spawn_center)).override_failure_message(
+        "걷기 시작했는데 카메라가 스폰에 남아 있다").is_false()
+    assert_bool(main.camera.position.is_equal_approx(main.world_view.focus_position())).is_true()
+    # 도착할 때까지 돌리면 다음 칸 중심. 물리 스텝 하나가 틱을 여러 개 돌릴 수 있으니 도착 여부로 멈춘다.
+    var guard := 0
+    while main.simulation.state.player.is_moving() and guard < 8:
+        _tick_once(main)
+        assert_bool(main.camera.position.is_equal_approx(main.world_view.focus_position())).is_true()
+        guard += 1
+    assert_bool(main.simulation.state.player.is_moving()).is_false()
+    var dest := Vector2i(8, 8) + dir
+    assert_bool(main.simulation.state.player.cell() == dest).is_true()
+    assert_bool(main.camera.position.is_equal_approx(IsoProjection.cell_center(dest.x, dest.y))).is_true()
+
+
+# --- 활성 층: 플레이어 층 추적 ---
+
+func test_active_layer_tracks_player_layer() -> void:
+    var main := _main()
+    # 씬 준비 직후 활성 층 == 플레이어 층.
+    assert_int(main.world_view.active_layer).is_equal(main.simulation.state.player.layer)
     _tick_once(main)
-    focus = main.world_view.focus_cell()
-    assert_bool(focus == Vector2i(24, 8)).is_true()
-    assert_bool(main.camera.position.is_equal_approx(IsoProjection.cell_center(24, 8))).is_true()
+    assert_int(main.world_view.active_layer).is_equal(main.simulation.state.player.layer)
+    # Q/E 엿보기는 플레이어 층이 그대로면 틱이 돌아도 되돌리지 않는다.
+    main.handle_action(&"layer_up")
+    assert_int(main.world_view.active_layer).is_equal(Chunk.LAYER_UPPER)
+    _tick_once(main)
+    assert_int(main.world_view.active_layer).is_equal(Chunk.LAYER_UPPER)
+    # 플레이어 층이 바뀌면 다음 틱에 따라간다. 층 변경: 테스트에서만 허용되는 상태 직접 조작
+    # (M1 에는 층을 바꾸는 명령이 없다).
+    main.simulation.state.player.layer = Chunk.LAYER_UNDER
+    assert_int(main.world_view.active_layer).is_equal(Chunk.LAYER_UPPER)
+    assert_int(_tick_once(main)).is_greater_equal(1)
+    assert_int(main.world_view.active_layer).is_equal(Chunk.LAYER_UNDER)
 
 
-# --- 소스 가드 ---
+# --- 소스 가드 (main 전용 — view→sim 쓰기 가드는 test_world_view 가 res://view 전체를 순회한다) ---
 
-func test_main_source_does_not_mutate_sim_or_use_delta() -> void:
+func test_main_source_does_not_write_tick_or_use_delta() -> void:
     assert_bool(FileAccess.file_exists(MAIN_SOURCE)).is_true()
     var source := FileAccess.get_file_as_string(MAIN_SOURCE)
-    for token: String in ["set_center(", "set_value(", "state.tick =", "set_id(", "randi", "randf",
+    for token: String in ["state.tick =",
             "delta *", "* delta", "delta)", "delta /", "/ delta", "delta +", "+ delta", "delta -", "- delta"]:
         assert_bool(source.contains(token)).override_failure_message(
             "%s 에 '%s' 가 있다" % [MAIN_SOURCE, token]
@@ -243,13 +285,12 @@ func test_main_source_does_not_mutate_sim_or_use_delta() -> void:
     # _delta 는 파라미터 이름으로만 등장한다.
     assert_bool(source.contains("_delta: float")).is_true()
     assert_int(source.count("_delta")).is_equal(1)
-    # 이동은 명령으로만. 옛 로드 중심 명령·그림자 상태는 남지 않는다(찾을 문자열은 이어 붙여 만든다).
+    # 이동은 명령으로만. (0,0) 을 제출하는 경로는 없다.
     assert_bool(source.contains("MovePlayerCommand.create(")).is_true()
-    for gone: String in ["SetLoad" + "Center", "_pending" + "_center", "load_" + "center", "player.sub =",
-            "player.facing =", "place_at(", "walk_to(", "_submit_move(0, 0)"]:
-        assert_bool(source.contains(gone)).override_failure_message(
-            "%s 에 '%s' 가 있다" % [MAIN_SOURCE, gone]
-        ).is_false()
+    assert_bool(source.contains("_submit_move(0, 0)")).is_false()
+    # 카메라·층은 view 의 판단을 부른다.
+    assert_bool(source.contains("world_view.focus_position()")).is_true()
+    assert_int(source.count("world_view.follow_player_layer()")).is_equal(2)
 
 
 # --- 다시 그리기는 프레임당 최대 1회 ---

@@ -12,7 +12,8 @@ extends Node2D
 ## sim 이 유도하므로 view 는 첫 틱에 아무 명령도 내지 않는다(DECISIONS 2026-09-08). 키 → 방향은
 ## 화면 기준이다: 아이소 투영에서 +x 는 우하, +y 는 좌하이므로 화면 위 = (-1,-1), 아래 = (1,1),
 ## 왼쪽 = (-1,1), 오른쪽 = (1,-1). 활성 층은 카메라와 같은 표현 상태라 sim 에 쓰지 않는다.
-## 키 누름 유지·카메라의 플레이어 추적·플레이어 마커는 M1-6b.
+## 카메라는 플레이어 발 위치(WorldView.focus_position)를 따르고, 활성 층은 틱마다 플레이어 층을
+## 따라간다(WorldView.follow_player_layer). 키 누름 유지는 M1-6b-2c.
 
 const SEED := 20250901
 
@@ -44,6 +45,7 @@ func _ready() -> void:
     world_view.simulation = simulation
     # 첫 틱이 플레이어 발 칸의 청크를 로드한다. view 는 여기서 아무 명령도 내지 않는다.
     _last_usec = Time.get_ticks_usec()
+    world_view.follow_player_layer()
     _update_camera()
     get_tree().process_frame.connect(_on_process_frame)
 
@@ -58,6 +60,7 @@ func _physics_process(_delta: float) -> void:
     simulation.advance(ticks)
     if ticks > 0:
         _needs_refresh = true
+        world_view.follow_player_layer()
         _update_camera()
 
 
@@ -101,7 +104,6 @@ func _submit_move(dx: int, dy: int) -> void:
     simulation.submit(MovePlayerCommand.create(dx, dy))
 
 
-## 카메라를 로드 중심 셀의 다이아몬드 중심에 놓는다.
+## 카메라를 플레이어 발 칸 다이아몬드 중심에 놓는다. 틱 사이 보간은 없다(부드러움은 M7 폴리시).
 func _update_camera() -> void:
-    var focus := world_view.focus_cell()
-    camera.position = IsoProjection.cell_center(focus.x, focus.y)
+    camera.position = world_view.focus_position()
